@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ROAD_PROFILES } from '../constants';
 import type { RoadProfile } from '../types';
 import { tx, type Language } from '../lib/i18n';
@@ -43,6 +43,20 @@ type RouteCheckPrefill = {
   roadClass?: RoadProfile;
 };
 
+type RouteWarningResponse = {
+  warnings: string[];
+  source: string;
+  message: string;
+};
+
+function parseVehicleMeasure(value: string, unit: 'mm' | 'kg') {
+  const normalized = value.replace(/\s/g, '').replace(',', '.');
+  const parsed = Number(normalized.replace(/[^\d.-]/g, ''));
+  if (!Number.isFinite(parsed)) return null;
+  if (unit === 'mm' && /m/i.test(value) && !/mm/i.test(value)) return Math.round(parsed * 1000);
+  return Math.round(parsed);
+}
+
 export function RouteCheckFutureSection({
   language,
   routeFrom,
@@ -56,6 +70,43 @@ export function RouteCheckFutureSection({
 }) {
   const sourceHelper = tx(language, 'Hentes fra vognkort når tilgjengelig', 'Fetched from vehicle card when available');
   const emptyRouteText = tx(language, 'Ikke lagt inn ennå', 'Not entered yet');
+  const heightRef = useRef<HTMLInputElement>(null);
+  const lengthRef = useRef<HTMLInputElement>(null);
+  const widthRef = useRef<HTMLInputElement>(null);
+  const totalWeightRef = useRef<HTMLInputElement>(null);
+  const [routeWarningResult, setRouteWarningResult] = useState<RouteWarningResponse | null>(null);
+  const [routeWarningLoading, setRouteWarningLoading] = useState(false);
+  const [routeWarningError, setRouteWarningError] = useState('');
+
+  async function checkRouteWarnings() {
+    setRouteWarningLoading(true);
+    setRouteWarningError('');
+
+    try {
+      const response = await fetch('/api/route-warnings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: routeFrom,
+          to: routeTo,
+          vehicleHeightMm: parseVehicleMeasure(heightRef.current?.value ?? '', 'mm'),
+          vehicleWidthMm: parseVehicleMeasure(widthRef.current?.value ?? '', 'mm'),
+          vehicleLengthMm: parseVehicleMeasure(lengthRef.current?.value ?? '', 'mm'),
+          totalWeightKg: parseVehicleMeasure(totalWeightRef.current?.value ?? '', 'kg'),
+        }),
+      });
+
+      if (!response.ok) throw new Error('Route warning request failed');
+      const json = (await response.json()) as RouteWarningResponse;
+      setRouteWarningResult(json);
+    } catch {
+      setRouteWarningError(
+        tx(language, 'Kunne ikke gjennomføre foreløpig rutesjekk.', 'Could not run the preliminary route check.'),
+      );
+    } finally {
+      setRouteWarningLoading(false);
+    }
+  }
 
   return (
     <section className="route-check-section" aria-labelledby="route-check-title">
@@ -86,22 +137,22 @@ export function RouteCheckFutureSection({
         <div className="route-check-form" aria-label={tx(language, 'Kjøretøydata for rutesjekk', 'Vehicle data for route check')}>
           <label>
             <span>{tx(language, 'Kjøretøyhøyde', 'Vehicle height')}</span>
-            <input type="text" defaultValue={prefill?.vehicleHeight ?? ''} placeholder="4,20 m" />
+            <input ref={heightRef} type="text" defaultValue={prefill?.vehicleHeight ?? ''} placeholder="4,20 m" />
             <small>{sourceHelper}</small>
           </label>
           <label>
             <span>{tx(language, 'Kjøretøylengde', 'Vehicle length')}</span>
-            <input type="text" defaultValue={prefill?.vehicleLength ?? ''} placeholder="19,50 m" />
+            <input ref={lengthRef} type="text" defaultValue={prefill?.vehicleLength ?? ''} placeholder="19,50 m" />
             <small>{sourceHelper}</small>
           </label>
           <label>
             <span>{tx(language, 'Kjøretøybredde', 'Vehicle width')}</span>
-            <input type="text" defaultValue={prefill?.vehicleWidth ?? ''} placeholder="2,55 m" />
+            <input ref={widthRef} type="text" defaultValue={prefill?.vehicleWidth ?? ''} placeholder="2,55 m" />
             <small>{sourceHelper}</small>
           </label>
           <label>
             <span>{tx(language, 'Totalvekt', 'Total weight')}</span>
-            <input type="text" defaultValue={prefill?.totalWeight ?? ''} placeholder="50 000 kg" />
+            <input ref={totalWeightRef} type="text" defaultValue={prefill?.totalWeight ?? ''} placeholder="50 000 kg" />
             <small>{sourceHelper}</small>
           </label>
           <label>
@@ -122,6 +173,29 @@ export function RouteCheckFutureSection({
           <p className="helper">
             Ruten er veiledende. Sjekk alltid høyde, vekt, bruksklasse og skilting før kjøring.
           </p>
+          <button type="button" className="secondary-button" onClick={checkRouteWarnings} disabled={routeWarningLoading}>
+            {routeWarningLoading
+              ? tx(language, 'Sjekker...', 'Checking...')
+              : tx(language, 'Sjekk tunnel og høyde', 'Check tunnel and height')}
+          </button>
+          {routeWarningError ? <p className="helper">{routeWarningError}</p> : null}
+          {routeWarningResult ? (
+            <div className="route-warning-list">
+              <h3>{tx(language, 'Foreløpig tunnelsjekk', 'Preliminary tunnel check')}</h3>
+              <p>
+                {routeWarningResult.warnings.length === 0
+                  ? tx(
+                      language,
+                      'Ingen varsler funnet i foreløpig sjekk',
+                      'No warnings found in the preliminary check',
+                    )
+                  : routeWarningResult.message}
+              </p>
+              <p className="helper">
+                Foreløpig funksjon. Sjekk alltid skilting og offisielle kilder.
+              </p>
+            </div>
+          ) : null}
         </div>
 
         <div className="route-warning-list">
