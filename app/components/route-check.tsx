@@ -1,9 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from 'react';
 import { ROAD_PROFILES } from '../constants';
 import type { RoadProfile } from '../types';
 import { tx, type Language } from '../lib/i18n';
+import RouteMap from './route-map';
 
 // Private helpers for the driving/rest planner (UI-only)
 function parseNumberOrDefault(value: string, def: number) {
@@ -33,6 +34,7 @@ function formatDateShort(date: Date | null) {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
+
 type RouteCheckPrefill = {
   vehicleHeight?: string;
   vehicleLength?: string;
@@ -54,27 +56,6 @@ export function RouteCheckFutureSection({
 }) {
   const sourceHelper = tx(language, 'Hentes fra vognkort når tilgjengelig', 'Fetched from vehicle card when available');
   const emptyRouteText = tx(language, 'Ikke lagt inn ennå', 'Not entered yet');
-
-  // Driving/rest planning UI state (UI-only)
-  const [departure, setDeparture] = useState<string>('');
-  const [drivingUsedHours, setDrivingUsedHours] = useState<string>('0');
-  const [maxDrivingBeforeBreakHours, setMaxDrivingBeforeBreakHours] = useState<string>('4.5');
-  const [dailyLimitHours, setDailyLimitHours] = useState<string>('9');
-  const [extendedDay, setExtendedDay] = useState<boolean>(false);
-
-  const parsedDrivingUsed = parseNumberOrDefault(drivingUsedHours, 0);
-  const parsedMaxDrivingBeforeBreak = parseNumberOrDefault(maxDrivingBeforeBreakHours, 4.5);
-  const parsedDailyLimit = parseNumberOrDefault(dailyLimitHours, 9);
-
-  const nextBreakBy = useMemo(
-    () => computeNextBreakBy(departure, parsedDrivingUsed, parsedMaxDrivingBeforeBreak),
-    [departure, parsedDrivingUsed, parsedMaxDrivingBeforeBreak],
-  );
-
-  const dailyRestBy = useMemo(
-    () => computeDailyRestBy(departure, parsedDrivingUsed, parsedDailyLimit, extendedDay),
-    [departure, parsedDrivingUsed, parsedDailyLimit, extendedDay],
-  );
 
   return (
     <section className="route-check-section" aria-labelledby="route-check-title">
@@ -101,7 +82,8 @@ export function RouteCheckFutureSection({
             <strong>{routeTo.trim() || emptyRouteText}</strong>
           </div>
         </div>
-          <div className="route-check-form" aria-label={tx(language, 'Rutesjekk felt', 'Route check fields')}>
+
+        <div className="route-check-form" aria-label={tx(language, 'Kjøretøydata for rutesjekk', 'Vehicle data for route check')}>
           <label>
             <span>{tx(language, 'Kjøretøyhøyde', 'Vehicle height')}</span>
             <input type="text" defaultValue={prefill?.vehicleHeight ?? ''} placeholder="4,20 m" />
@@ -135,86 +117,11 @@ export function RouteCheckFutureSection({
           </label>
         </div>
 
-        <div className="route-check-rest" aria-label={tx(language, 'Kjøre-/hvileplan', 'Driving/rest planner')}>
-          <h3>{tx(language, 'Kjøre- og hvileplan (UI-only)', 'Driving & rest planning (UI-only)')}</h3>
-          <p className="helper">{tx(language, "Regel: Etter maks 4,5 timer kjøring kreves normalt 45 minutter pause. Daglig kjøretid er normalt 9 timer.", "Rule: After max 4.5 hours driving a 45-minute break is normally required. Daily driving time is normally 9 hours.")}</p>
-
-          <label>
-            <span>{tx(language, 'Planlagt avgang', 'Planned departure time')}</span>
-            <input
-              type="datetime-local"
-              value={departure}
-              onChange={(e) => setDeparture(e.target.value)}
-            />
-          </label>
-
-          <label>
-            <span>{tx(language, 'Tid kjørt allerede i dag (timer)', 'Driving time already used today (hours)')}</span>
-            <input
-              type="number"
-              step="0.25"
-              min="0"
-              value={drivingUsedHours}
-              onChange={(e) => setDrivingUsedHours(e.target.value)}
-            />
-          </label>
-
-          <label>
-            <span>{tx(language, 'Maks kjøretid før pause (timer)', 'Max driving period before break (hours)')}</span>
-            <input
-              type="number"
-              step="0.25"
-              min="0"
-              value={maxDrivingBeforeBreakHours}
-              onChange={(e) => setMaxDrivingBeforeBreakHours(e.target.value)}
-            />
-          </label>
-
-          <label>
-            <span>{tx(language, 'Døgnkjøring (timer)', 'Daily driving limit (hours)')}</span>
-            <input
-              type="number"
-              step="0.25"
-              min="0"
-              value={dailyLimitHours}
-              onChange={(e) => setDailyLimitHours(e.target.value)}
-            />
-          </label>
-
-          <label className="checkbox-label">
-            <input type="checkbox" checked={extendedDay} onChange={(e) => setExtendedDay(e.target.checked)} />
-            <span>{tx(language, 'Tillat utvidet 10-timers dag', 'Allow extended 10-hour day')}</span>
-          </label>
-
-          <div className="route-check-rest-result">
-            <h4>{tx(language, 'Forhåndsvisning', 'Preview')}</h4>
-            <div>
-              <strong>{tx(language, 'Neste pause senest', 'Next break by')}</strong>
-              <div>{nextBreakBy ? formatDateShort(nextBreakBy) : tx(language, 'Avgangstid ikke satt', 'Departure time not set')}</div>
-            </div>
-            <div>
-              <strong>{tx(language, 'Døgnhvile senest', 'Daily rest by')}</strong>
-              <div>{dailyRestBy ? formatDateShort(dailyRestBy) : tx(language, 'Avgangstid ikke satt', 'Departure time not set')}</div>
-            </div>
-            <div>
-              <strong>{tx(language, 'Anbefalte stoppesteder', 'Recommended stops')}</strong>
-              <div>{tx(language, 'Anbefalte stoppesteder kommer når rutedata kobles til', 'Recommended stops appear when route data is connected')}</div>
-              <ul className="rest-stop-placeholder">
-                <li>{tx(language, 'Stoppested A (plassholder)', 'Stop A (placeholder)')}</li>
-                <li>{tx(language, 'Stoppested B (plassholder)', 'Stop B (placeholder)')}</li>
-                <li>{tx(language, 'Stoppested C (plassholder)', 'Stop C (placeholder)')}</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <div className="route-check-map" aria-label={tx(language, 'Kart kommer senere', 'Map coming later')}>
-          <div className="route-map-line route-map-line--primary" />
-          <div className="route-map-line route-map-line--secondary" />
-          <div className="route-map-node route-map-node--from" />
-          <div className="route-map-node route-map-node--to" />
-          <strong>{tx(language, 'Kart kommer senere', 'Map coming later')}</strong>
-          <span>{tx(language, 'Ingen eksterne kart- eller rutedata er koblet til ennå.', 'No external map or route data is connected yet.')}</span>
+        <div>
+          <RouteMap language={language} routeFrom={routeFrom} routeTo={routeTo} />
+          <p className="helper">
+            Ruten er veiledende. Sjekk alltid høyde, vekt, bruksklasse og skilting før kjøring.
+          </p>
         </div>
 
         <div className="route-warning-list">
@@ -225,6 +132,111 @@ export function RouteCheckFutureSection({
             <li>{tx(language, 'Bruksklassevarsler', 'Road class warnings')}</li>
             <li>{tx(language, 'Rutevegliste', 'Route road list')}</li>
           </ul>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function DrivingRestSection({ language }: { language: Language }) {
+  const [departure, setDeparture] = useState<string>('');
+  const [drivingUsedHours, setDrivingUsedHours] = useState<string>('0');
+  const [maxDrivingBeforeBreakHours, setMaxDrivingBeforeBreakHours] = useState<string>('4.5');
+  const [dailyLimitHours, setDailyLimitHours] = useState<string>('9');
+  const [extendedDay, setExtendedDay] = useState<boolean>(false);
+
+  const parsedDrivingUsed = parseNumberOrDefault(drivingUsedHours, 0);
+  const parsedMaxDrivingBeforeBreak = parseNumberOrDefault(maxDrivingBeforeBreakHours, 4.5);
+  const parsedDailyLimit = parseNumberOrDefault(dailyLimitHours, 9);
+
+  const nextBreakBy = useMemo(
+    () => computeNextBreakBy(departure, parsedDrivingUsed, parsedMaxDrivingBeforeBreak),
+    [departure, parsedDrivingUsed, parsedMaxDrivingBeforeBreak],
+  );
+
+  const dailyRestBy = useMemo(
+    () => computeDailyRestBy(departure, parsedDrivingUsed, parsedDailyLimit, extendedDay),
+    [departure, parsedDrivingUsed, parsedDailyLimit, extendedDay],
+  );
+
+  return (
+    <section className="route-check-section" aria-labelledby="driving-rest-title">
+      <div className="route-check-copy">
+        <p className="eyebrow">{tx(language, 'Planlegging', 'Planning')}</p>
+        <h2 id="driving-rest-title">{tx(language, 'Kjøre- og hviletid', 'Driving and rest time')}</h2>
+        <p>
+          {tx(
+            language,
+            'En enkel forhåndsvisning for pause og døgnhvile. Rute- og stoppdata kobles til senere.',
+            'A simple preview for breaks and daily rest. Route and stop data will be connected later.',
+          )}
+        </p>
+      </div>
+
+      <div className="route-check-rest" aria-label={tx(language, 'Kjøre-/hvileplan', 'Driving/rest planner')}>
+        <p className="helper">{tx(language, 'Regel: Etter maks 4,5 timer kjøring kreves normalt 45 minutter pause. Daglig kjøretid er normalt 9 timer.', 'Rule: After max 4.5 hours driving a 45-minute break is normally required. Daily driving time is normally 9 hours.')}</p>
+
+        <label>
+          <span>{tx(language, 'Planlagt avgang', 'Planned departure time')}</span>
+          <input
+            type="datetime-local"
+            value={departure}
+            onChange={(e) => setDeparture(e.target.value)}
+          />
+        </label>
+
+        <label>
+          <span>{tx(language, 'Tid kjørt allerede i dag (timer)', 'Driving time already used today (hours)')}</span>
+          <input
+            type="number"
+            step="0.25"
+            min="0"
+            value={drivingUsedHours}
+            onChange={(e) => setDrivingUsedHours(e.target.value)}
+          />
+        </label>
+
+        <label>
+          <span>{tx(language, 'Maks kjøretid før pause (timer)', 'Max driving period before break (hours)')}</span>
+          <input
+            type="number"
+            step="0.25"
+            min="0"
+            value={maxDrivingBeforeBreakHours}
+            onChange={(e) => setMaxDrivingBeforeBreakHours(e.target.value)}
+          />
+        </label>
+
+        <label>
+          <span>{tx(language, 'Døgnkjøring (timer)', 'Daily driving limit (hours)')}</span>
+          <input
+            type="number"
+            step="0.25"
+            min="0"
+            value={dailyLimitHours}
+            onChange={(e) => setDailyLimitHours(e.target.value)}
+          />
+        </label>
+
+        <label className="checkbox-label">
+          <input type="checkbox" checked={extendedDay} onChange={(e) => setExtendedDay(e.target.checked)} />
+          <span>{tx(language, 'Tillat utvidet 10-timers dag', 'Allow extended 10-hour day')}</span>
+        </label>
+
+        <div className="route-check-rest-result">
+          <h4>{tx(language, 'Forhåndsvisning', 'Preview')}</h4>
+          <div>
+            <strong>{tx(language, 'Neste pause senest', 'Next break by')}</strong>
+            <div>{nextBreakBy ? formatDateShort(nextBreakBy) : tx(language, 'Avgangstid ikke satt', 'Departure time not set')}</div>
+          </div>
+          <div>
+            <strong>{tx(language, 'Døgnhvile senest', 'Daily rest by')}</strong>
+            <div>{dailyRestBy ? formatDateShort(dailyRestBy) : tx(language, 'Avgangstid ikke satt', 'Departure time not set')}</div>
+          </div>
+          <div>
+            <strong>{tx(language, 'Anbefalte stoppesteder', 'Recommended stops')}</strong>
+            <div>{tx(language, 'Anbefalte stoppesteder kommer når rutedata kobles til', 'Recommended stops appear when route data is connected')}</div>
+          </div>
         </div>
       </div>
     </section>

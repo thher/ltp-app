@@ -721,6 +721,8 @@ select {
 .route-check-section {
   margin-top: 26px;
   padding: 24px;
+  width: 100%;
+  max-width: 100%;
   border: 1px solid rgba(215, 232, 224, 0.13);
   border-radius: 24px;
   background:
@@ -749,9 +751,10 @@ select {
 
 .route-check-layout {
   display: grid;
-  grid-template-columns: minmax(260px, 0.9fr) minmax(320px, 1.2fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
-  align-items: stretch;
+  align-items: start;
+  min-width: 0;
 }
 
 .route-check-route-preview {
@@ -786,6 +789,7 @@ select {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+  min-width: 0;
 }
 
 .route-check-form label {
@@ -795,6 +799,7 @@ select {
   border: 1px solid rgba(215, 232, 224, 0.12);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.045);
+  min-width: 0;
 }
 
 .route-check-form span {
@@ -804,8 +809,11 @@ select {
 }
 
 .route-check-form input,
-.route-check-form select {
+.route-check-form select,
+.route-check-rest input {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   min-height: 42px;
   border: 1px solid rgba(215, 232, 224, 0.12);
   border-radius: 12px;
@@ -816,7 +824,9 @@ select {
 }
 
 .route-check-map {
-  min-height: 272px;
+  width: 100%;
+  min-width: 0;
+  min-height: 360px;
   border: 1px solid rgba(103, 198, 164, 0.22);
   border-radius: 20px;
   background:
@@ -829,7 +839,96 @@ select {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
+  padding: 0;
+}
+
+.route-check-map .leaflet-container {
+  width: 100% !important;
+  min-height: 360px !important;
+  height: 360px !important;
+  border-radius: 20px;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.route-map-placeholder {
+  position: relative;
+  flex: 1;
+  min-height: 360px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
   padding: 22px;
+  overflow: hidden;
+}
+
+.route-check-map-caption {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  background: rgba(3, 8, 8, 0.72);
+  border-top: 1px solid rgba(215, 232, 224, 0.12);
+}
+
+.route-check-rest {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid rgba(215, 232, 224, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.route-check-rest h3,
+.route-check-rest h4 {
+  margin: 0;
+}
+
+.route-check-rest .helper,
+.route-check-rest-result div {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.route-check-rest label {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.route-check-rest label span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.route-check-rest .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.route-check-rest .checkbox-label input {
+  width: auto;
+  min-height: 0;
+}
+
+.route-check-rest-result {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgba(103, 198, 164, 0.14);
+  border-radius: 16px;
+  background: rgba(103, 198, 164, 0.07);
+}
+
+.rest-stop-placeholder {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding-left: 18px;
 }
 
 .route-check-map strong {
@@ -907,7 +1006,7 @@ select {
 
 .route-warning-list ul {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   list-style: none;
   margin: 0;
@@ -925,6 +1024,8 @@ select {
   color: var(--muted);
   font-size: 0.88rem;
   font-weight: 700;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 [data-theme="light"] .route-check-section {
@@ -935,6 +1036,8 @@ select {
 
 [data-theme="light"] .route-check-form label,
 [data-theme="light"] .route-check-route-preview div,
+[data-theme="light"] .route-check-rest,
+[data-theme="light"] .route-check-rest-result,
 [data-theme="light"] .route-warning-list {
   background: #ffffff;
   border-color: rgba(0, 0, 0, 0.06);
@@ -942,10 +1045,16 @@ select {
 }
 
 [data-theme="light"] .route-check-form input,
-[data-theme="light"] .route-check-form select {
+[data-theme="light"] .route-check-form select,
+[data-theme="light"] .route-check-rest input {
   background: #f9fbfb;
   border-color: rgba(0, 0, 0, 0.1);
   color: var(--foreground);
+}
+
+[data-theme="light"] .route-check-map-caption {
+  background: rgba(255, 255, 255, 0.92);
+  border-top-color: rgba(0, 0, 0, 0.06);
 }
 
 [data-theme="light"] .route-check-map {
@@ -3291,7 +3400,13 @@ select {
   }
 
   .route-check-map {
-    min-height: 230px;
+    min-height: 280px;
+  }
+
+  .route-check-map .leaflet-container,
+  .route-map-placeholder {
+    min-height: 280px !important;
+    height: 280px !important;
   }
 
   .panel-card,

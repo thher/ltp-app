@@ -37,7 +37,7 @@ function getVehicleText(vehicleType: VehicleType, language: Language) {
     },
     specialTransport: {
       label: 'Spesialtyper',
-      description: 'Modulvogntog, tÃ¸mmer, dolly/semi og andre spesialrader.',
+      description: 'Modulvogntog, tømmer, dolly/semi og andre spesialrader.',
       labelEn: 'Special types',
       descriptionEn: 'Modular combinations, timber, dolly/semi and other special rows.',
     },

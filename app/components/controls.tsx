@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { tx, type Language } from '../lib/i18n';
 
@@ -10,7 +10,7 @@ export function LanguageToggle({
   onChange: (language: Language) => void;
 }) {
   return (
-    <div className="language-toggle" aria-label={tx(language, 'Velg sprÃ¥k', 'Choose language')}>
+    <div className="language-toggle" aria-label={tx(language, 'Velg språk', 'Choose language')}>
       <button
         type="button"
         className={language === 'no' ? 'is-active' : ''}
@@ -33,7 +33,7 @@ export function ThemeToggle({ language, theme, onChange }: { language: Language;
   return (
     <div className="theme-toggle" aria-label={tx(language, 'Tema', 'Theme')}>
       <button type="button" className={theme === 'dark' ? 'is-active' : ''} onClick={() => onChange('dark')}>
-        {tx(language, 'MÃ¸rk', 'Dark')}
+        {tx(language, 'Mørk', 'Dark')}
       </button>
       <button type="button" className={theme === 'light' ? 'is-active' : ''} onClick={() => onChange('light')}>
         {tx(language, 'Lys', 'Light')}

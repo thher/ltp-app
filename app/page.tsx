@@ -34,7 +34,7 @@ import {
   WHEEL_SETUP_OPTIONS,
 } from './constants';
 import { GlobalTopControls } from './components/controls';
-import { RouteCheckFutureSection } from './components/route-check';
+import { DrivingRestSection, RouteCheckFutureSection } from './components/route-check';
 import { AxleWeightTable, VehicleAxleVisual } from './components/vehicle-display';
 import {
   buildAxleWeightRows,
@@ -68,7 +68,7 @@ function getVehicleText(vehicleType: VehicleType, language: Language) {
     },
     specialTransport: {
       label: 'Spesialtyper',
-      description: 'Modulvogntog, tÃ¸mmer, dolly/semi og andre spesialrader.',
+      description: 'Modulvogntog, tømmer, dolly/semi og andre spesialrader.',
       labelEn: 'Special types',
       descriptionEn: 'Modular combinations, timber, dolly/semi and other special rows.',
     },
@@ -182,7 +182,7 @@ function getVognkortChecklist(vehicleType: VehicleType, language: Language): str
   if (vehicleType === 'articulatedBus') {
     return [
       ...common,
-      tx(language, 'Punkt 11: Sitteplasser og stÃ¥plasser', 'Point 11: Seating and standing places'),
+      tx(language, 'Punkt 11: Sitteplasser og ståplasser', 'Point 11: Seating and standing places'),
       tx(language, 'Punkt 15: Merknader hvis aksler eller plassering er spesielle', 'Point 15: Notes if axles or placement are special'),
     ];
   }
@@ -190,7 +190,7 @@ function getVognkortChecklist(vehicleType: VehicleType, language: Language): str
   if (vehicleType === 'bus') {
     return [
       ...common,
-      tx(language, 'Punkt 11: Sitteplasser og stÃ¥plasser', 'Point 11: Seating and standing places'),
+      tx(language, 'Punkt 11: Sitteplasser og ståplasser', 'Point 11: Seating and standing places'),
       tx(language, 'Punkt 15 bare hvis det star noe ekstra om aksler eller spesielle merknader', 'Point 15 only if there is something extra about axles or special notes'),
     ];
   }
@@ -414,7 +414,7 @@ export default function Home() {
         language,
         missingRuleMessage: tx(
           language,
-          'Mangler beregnet totalvekt fra valgt kjÃ¸retÃ¸ytype, akseloppsett og bruksklasse.',
+          'Mangler beregnet totalvekt fra valgt kjøretøytype, akseloppsett og bruksklasse.',
           'Missing calculated total weight from the selected vehicle type, axle setup and road class.',
         ),
       })
@@ -518,7 +518,7 @@ export default function Home() {
     const normalizedRegistration = registrationNumber.trim().toUpperCase().replace(/\s+/g, '');
 
     if (!normalizedRegistration) {
-      setLookupMessage(tx(language, 'Skriv inn registreringsnummer fÃ¸rst.', 'Enter registration number first.'));
+      setLookupMessage(tx(language, 'Skriv inn registreringsnummer først.', 'Enter registration number first.'));
       setLookupNotes([]);
       return;
     }
@@ -534,7 +534,7 @@ export default function Home() {
         | { message?: string; notes?: string[] };
 
       if (!response.ok || !('vehicle' in payload) || !payload.vehicle) {
-        setLookupMessage(translateRuntimeText(payload.message ?? tx(language, 'Fant ikke kjÃ¸retÃ¸ydata for dette registreringsnummeret.', 'No vehicle data found for this registration number.'), language));
+        setLookupMessage(translateRuntimeText(payload.message ?? tx(language, 'Fant ikke kjøretøydata for dette registreringsnummeret.', 'No vehicle data found for this registration number.'), language));
         setLookupNotes(payload.notes ?? []);
         return;
       }
@@ -630,10 +630,10 @@ export default function Home() {
       setSemiTrailerResult(null);
       setError('');
       setScreen('calculator');
-      setLookupMessage(tx(language, `Data hentet for ${vehicle.registration}. Feltene er fylt inn sÃ¥ langt API-et ga treff.`, `Data fetched for ${vehicle.registration}. Fields were filled as far as the API provided matches.`));
+      setLookupMessage(tx(language, `Data hentet for ${vehicle.registration}. Feltene er fylt inn så langt API-et ga treff.`, `Data fetched for ${vehicle.registration}. Fields were filled as far as the API provided matches.`));
       setLookupNotes(vehicle.notes);
     } catch {
-      setLookupMessage(tx(language, 'Kunne ikke hente kjÃ¸retÃ¸ydata akkurat nÃ¥.', 'Could not fetch vehicle data right now.'));
+      setLookupMessage(tx(language, 'Kunne ikke hente kjøretøydata akkurat nå.', 'Could not fetch vehicle data right now.'));
       setLookupNotes([]);
     } finally {
       setLookupLoading(false);
@@ -644,7 +644,7 @@ export default function Home() {
     const normalizedRegistration = trailerRegistrationNumber.trim().toUpperCase().replace(/\s+/g, '');
 
     if (!normalizedRegistration) {
-      setTrailerLookupMessage(tx(language, 'Skriv inn registreringsnummer for tilhenger fÃ¸rst.', 'Enter trailer registration first.'));
+      setTrailerLookupMessage(tx(language, 'Skriv inn registreringsnummer for tilhenger først.', 'Enter trailer registration first.'));
       setTrailerLookupNotes([]);
       return;
     }
@@ -711,7 +711,7 @@ export default function Home() {
       setTrailerLookupMessage(`${tx(language, 'Tilhengerdata hentet for', 'Trailer data fetched for')} ${vehicle.registration}`);
       setTrailerLookupNotes(vehicle.notes ?? []);
     } catch {
-      setTrailerLookupMessage(tx(language, 'Kunne ikke hente tilhengerdata akkurat nÃ¥.', 'Could not fetch trailer data right now.'));
+      setTrailerLookupMessage(tx(language, 'Kunne ikke hente tilhengerdata akkurat nå.', 'Could not fetch trailer data right now.'));
       setTrailerLookupNotes([]);
     } finally {
       setTrailerLookupLoading(false);
@@ -730,12 +730,12 @@ export default function Home() {
     if (!message) return message;
     // Simple pattern translations for common thrown messages
     if (message.startsWith('Feltet')) {
-      // Examples: Feltet {label} mÃ¥ fylles ut.
-      const fillMatch = message.match(/^Feltet (.+) mÃ¥ fylles ut\./);
+      // Examples: Feltet {label} må fylles ut.
+      const fillMatch = message.match(/^Feltet (.+) må fylles ut\./);
       if (fillMatch) {
         return lang === 'en' ? `Field ${fillMatch[1]} must be filled out.` : message;
       }
-      const minMatch = message.match(/^Feltet (.+) mÃ¥ inneholde minst Ã©n verdi\./);
+      const minMatch = message.match(/^Feltet (.+) må inneholde minst én verdi\./);
       if (minMatch) {
         return lang === 'en' ? `Field ${minMatch[1]} must contain at least one value.` : message;
       }
@@ -746,18 +746,18 @@ export default function Home() {
     }
 
     const map: Record<string, string> = {
-      'Denne kombinasjonen av trekkvogn og semitrailer er ikke lagt inn ennÃ¥.':
+      'Denne kombinasjonen av trekkvogn og semitrailer er ikke lagt inn ennå.':
         'This combination of tractor and semitrailer is not configured yet.',
-      'Fant ikke riktig avstandsbÃ¥nd for denne minsteavstanden.': 'Could not find matching distance band for this minimum distance.',
-      'Minsteavstand mÃ¥ vÃ¦re et gyldig tall i meter.': 'Minimum distance must be a valid number in meters.',
-      'Avstand fra kingpin til boggisenter mÃ¥ vÃ¦re et gyldig tall i mm.': 'Kingpin to bogie center distance must be a valid number in mm.',
-      'Tillatt totalvekt for trekkvogn mÃ¥ vÃ¦re et gyldig tall i kg.': 'Allowed total weight for tractor must be a valid number in kg.',
-      'Egenvekt for trekkvogn mÃ¥ vÃ¦re et gyldig tall i kg.': 'Own weight for tractor must be a valid number in kg.',
-      'Tillatt totalvekt for semitrailer mÃ¥ vÃ¦re et gyldig tall i kg.': 'Allowed total weight for semitrailer must be a valid number in kg.',
-      'Egenvekt for semitrailer mÃ¥ vÃ¦re et gyldig tall i kg.': 'Own weight for semitrailer must be a valid number in kg.',
-      'Tillatt vogntogvekt mÃ¥ vÃ¦re et gyldig tall i kg.': 'Allowed combination weight must be a valid number in kg.',
-      'Egenvekt med fÃ¸rer mÃ¥ vÃ¦re et gyldig tall i kg.': 'Gross own weight with driver must be a valid number in kg.',
-      'Batteri-/teknologivekt mÃ¥ vÃ¦re et gyldig tall i kg.': 'Battery/technology weight must be a valid number in kg.',
+      'Fant ikke riktig avstandsbånd for denne minsteavstanden.': 'Could not find matching distance band for this minimum distance.',
+      'Minsteavstand må være et gyldig tall i meter.': 'Minimum distance must be a valid number in meters.',
+      'Avstand fra kingpin til boggisenter må være et gyldig tall i mm.': 'Kingpin to bogie center distance must be a valid number in mm.',
+      'Tillatt totalvekt for trekkvogn må være et gyldig tall i kg.': 'Allowed total weight for tractor must be a valid number in kg.',
+      'Egenvekt for trekkvogn må være et gyldig tall i kg.': 'Own weight for tractor must be a valid number in kg.',
+      'Tillatt totalvekt for semitrailer må være et gyldig tall i kg.': 'Allowed total weight for semitrailer must be a valid number in kg.',
+      'Egenvekt for semitrailer må være et gyldig tall i kg.': 'Own weight for semitrailer must be a valid number in kg.',
+      'Tillatt vogntogvekt må være et gyldig tall i kg.': 'Allowed combination weight must be a valid number in kg.',
+      'Egenvekt med fører må være et gyldig tall i kg.': 'Gross own weight with driver must be a valid number in kg.',
+      'Batteri-/teknologivekt må være et gyldig tall i kg.': 'Battery/technology weight must be a valid number in kg.',
     };
 
     return lang === 'en' && map[message] ? map[message] : message;
@@ -869,34 +869,34 @@ export default function Home() {
             : Number(semiTrailerForm.combinationCardWeightKg.replace(',', '.'));
 
         if (!Number.isFinite(minimumDistanceMeters) || minimumDistanceMeters <= 0) {
-          throw new Error('Minsteavstand mÃ¥ vÃ¦re et gyldig tall i meter.');
+          throw new Error('Minsteavstand må være et gyldig tall i meter.');
         }
 
         if (
           kingpinToBogieCenterMm !== null &&
           (!Number.isFinite(kingpinToBogieCenterMm) || kingpinToBogieCenterMm <= 0)
         ) {
-          throw new Error('Avstand fra kingpin til boggisenter mÃ¥ vÃ¦re et gyldig tall i mm.');
+          throw new Error('Avstand fra kingpin til boggisenter må være et gyldig tall i mm.');
         }
 
         if (tractorAllowedWeightKg !== null && (!Number.isFinite(tractorAllowedWeightKg) || tractorAllowedWeightKg < 0)) {
-          throw new Error('Tillatt totalvekt for trekkvogn mÃ¥ vÃ¦re et gyldig tall i kg.');
+          throw new Error('Tillatt totalvekt for trekkvogn må være et gyldig tall i kg.');
         }
 
         if (tractorOwnWeightKg !== null && (!Number.isFinite(tractorOwnWeightKg) || tractorOwnWeightKg < 0)) {
-          throw new Error('Egenvekt for trekkvogn mÃ¥ vÃ¦re et gyldig tall i kg.');
+          throw new Error('Egenvekt for trekkvogn må være et gyldig tall i kg.');
         }
 
         if (trailerAllowedWeightKg !== null && (!Number.isFinite(trailerAllowedWeightKg) || trailerAllowedWeightKg < 0)) {
-          throw new Error('Tillatt totalvekt for semitrailer mÃ¥ vÃ¦re et gyldig tall i kg.');
+          throw new Error('Tillatt totalvekt for semitrailer må være et gyldig tall i kg.');
         }
 
         if (trailerOwnWeightKg !== null && (!Number.isFinite(trailerOwnWeightKg) || trailerOwnWeightKg < 0)) {
-          throw new Error('Egenvekt for semitrailer mÃ¥ vÃ¦re et gyldig tall i kg.');
+          throw new Error('Egenvekt for semitrailer må være et gyldig tall i kg.');
         }
 
         if (combinationCardWeightKg !== null && (!Number.isFinite(combinationCardWeightKg) || combinationCardWeightKg < 0)) {
-          throw new Error('Tillatt vogntogvekt mÃ¥ vÃ¦re et gyldig tall i kg.');
+          throw new Error('Tillatt vogntogvekt må være et gyldig tall i kg.');
         }
 
         const tableLookup = getSemiTrailerTableWeight(tractorAxles, trailerAxles, minimumDistanceMeters, roadProfile);
@@ -948,24 +948,24 @@ export default function Home() {
             tx(language, `4. Tabell 3b (${getRoadProfileLabel(roadProfile)}) = ${formatNumber(tableLookup.tableWeightKg, 0)} kg for ${tableLookup.tableContext}`, `4. Table 3b (${getRoadProfileLabel(roadProfile)}) = ${formatNumber(tableLookup.tableWeightKg, 0)} kg for ${translateRuntimeText(tableLookup.tableContext, language)}`),
             tractorAllowedWeightKg !== null
               ? tx(language, `5. Tillatt totalvekt trekkvogn fra vognkort = ${formatNumber(tractorAllowedWeightKg, 0)} kg`, `5. Allowed tractor total weight from card = ${formatNumber(tractorAllowedWeightKg, 0)} kg`)
-              : tx(language, '5. Tillatt totalvekt trekkvogn er ikke lagt inn ennÃ¥', '5. Allowed tractor total weight not provided yet'),
+              : tx(language, '5. Tillatt totalvekt trekkvogn er ikke lagt inn ennå', '5. Allowed tractor total weight not provided yet'),
             tractorOwnWeightKg !== null
               ? tx(language, `6. Egenvekt trekkvogn = ${formatNumber(tractorOwnWeightKg, 0)} kg`, `6. Tractor own weight = ${formatNumber(tractorOwnWeightKg, 0)} kg`)
-              : tx(language, '6. Egenvekt trekkvogn er ikke lagt inn ennÃ¥', '6. Tractor own weight not provided yet'),
+              : tx(language, '6. Egenvekt trekkvogn er ikke lagt inn ennå', '6. Tractor own weight not provided yet'),
             trailerAllowedWeightKg !== null
               ? tx(language, `7. Tillatt totalvekt semitrailer fra vognkort = ${formatNumber(trailerAllowedWeightKg, 0)} kg`, `7. Allowed semitrailer total weight from card = ${formatNumber(trailerAllowedWeightKg, 0)} kg`)
-              : tx(language, '7. Tillatt totalvekt semitrailer er ikke lagt inn ennÃ¥', '7. Allowed semitrailer total weight not provided yet'),
+              : tx(language, '7. Tillatt totalvekt semitrailer er ikke lagt inn ennå', '7. Allowed semitrailer total weight not provided yet'),
             trailerOwnWeightKg !== null
               ? tx(language, `8. Egenvekt semitrailer = ${formatNumber(trailerOwnWeightKg, 0)} kg`, `8. Semitrailer own weight = ${formatNumber(trailerOwnWeightKg, 0)} kg`)
-              : tx(language, '8. Egenvekt semitrailer er ikke lagt inn ennÃ¥', '8. Semitrailer own weight not provided yet'),
+              : tx(language, '8. Egenvekt semitrailer er ikke lagt inn ennå', '8. Semitrailer own weight not provided yet'),
             combinationCardWeightKg !== null
               ? tx(language, `9. Tillatt vogntogvekt fra kort/oppgave = ${formatNumber(combinationCardWeightKg, 0)} kg`, `9. Allowed combination weight from card = ${formatNumber(combinationCardWeightKg, 0)} kg`)
-              : tx(language, '9. Tillatt vogntogvekt er ikke lagt inn ennÃ¥', '9. Allowed combination weight not provided yet'),
+              : tx(language, '9. Tillatt vogntogvekt er ikke lagt inn ennå', '9. Allowed combination weight not provided yet'),
             availablePayloadKg !== null
               ? tx(language, `10. Tilgjengelig nyttelast = ${formatNumber(availablePayloadKg, 0)} kg`, `10. Available payload = ${formatNumber(availablePayloadKg, 0)} kg`)
               : tx(language, '10. Tilgjengelig nyttelast krever at begge egenvekter er lagt inn.', '10. Available payload requires both own weights to be provided.'),
             ltp.status === 'ready'
-              ? tx(language, `11. LTP = (${formatNumber(ltp.frontPayloadKg ?? 0, 0)} Ã— ${formatNumber(ltp.bogieDistanceMm ?? 0, 0)}) / ${formatNumber(ltp.totalPayloadKg ?? 0, 0)} = ${formatNumber(ltp.rawLtpCm ?? 0)} cm, rundet opp til ${formatNumber(ltp.ltpCm ?? 0, 0)} cm`, `11. LTP = (${formatNumber(ltp.frontPayloadKg ?? 0, 0)} Ã— ${formatNumber(ltp.bogieDistanceMm ?? 0, 0)}) / ${formatNumber(ltp.totalPayloadKg ?? 0, 0)} = ${formatNumber(ltp.rawLtpCm ?? 0)} cm, rounded up to ${formatNumber(ltp.ltpCm ?? 0, 0)} cm`)
+              ? tx(language, `11. LTP = (${formatNumber(ltp.frontPayloadKg ?? 0, 0)} × ${formatNumber(ltp.bogieDistanceMm ?? 0, 0)}) / ${formatNumber(ltp.totalPayloadKg ?? 0, 0)} = ${formatNumber(ltp.rawLtpCm ?? 0)} cm, rundet opp til ${formatNumber(ltp.ltpCm ?? 0, 0)} cm`, `11. LTP = (${formatNumber(ltp.frontPayloadKg ?? 0, 0)} × ${formatNumber(ltp.bogieDistanceMm ?? 0, 0)}) / ${formatNumber(ltp.totalPayloadKg ?? 0, 0)} = ${formatNumber(ltp.rawLtpCm ?? 0)} cm, rounded up to ${formatNumber(ltp.ltpCm ?? 0, 0)} cm`)
               : tx(language, `11. LTP ikke klar: ${ltp.message}`, `11. LTP not ready: ${translateRuntimeText(ltp.message, language)}`),
             tx(language, `12. Sluttvekt = ${formatNumber(finalLimit.value, 0)} kg, begrenset av ${finalLimit.label}.`, `12. Final weight = ${formatNumber(finalLimit.value, 0)} kg, limited by ${translateRuntimeText(finalLimit.label, language)}.`),
           ],
@@ -991,13 +991,13 @@ export default function Home() {
       const passengerWeightValue = busPassengerWeightKg.trim() === '' ? NaN : Number(busPassengerWeightKg.replace(',', '.'));
 
       if (!Number.isFinite(grossOwnWeightWithDriver) || grossOwnWeightWithDriver < 0) {
-        throw new Error('Egenvekt med fÃ¸rer mÃ¥ vÃ¦re et gyldig tall i kg.');
+        throw new Error('Egenvekt med fører må være et gyldig tall i kg.');
       }
 
       const ltp = buildLtp(Number(resolvedAxleCount), allowedLoads, ownWeights, distances, grossOwnWeightWithDriver);
 
       if (!Number.isFinite(technologyWeightKg) || technologyWeightKg < 0) {
-        throw new Error('Batteri-/teknologivekt mÃ¥ vÃ¦re et gyldig tall i kg.');
+        throw new Error('Batteri-/teknologivekt må være et gyldig tall i kg.');
       }
 
       const totalWeight = getVehicleTableWeight(
@@ -1047,14 +1047,14 @@ export default function Home() {
         steps: [
           `1. Tillatt aksellast lest fra vognkort = ${allowedLoads.map((value) => formatNumber(value, 0)).join(' / ')} kg`,
           `2. Egenvekt aksel lest fra vognkort = ${ownWeights.map((value) => formatNumber(value, 0)).join(' / ')} kg`,
-          `3. Egenvekt med fÃ¸rer = ${formatNumber(grossOwnWeightWithDriver, 0)} kg`,
+          `3. Egenvekt med fører = ${formatNumber(grossOwnWeightWithDriver, 0)} kg`,
           `4. Akselavstander lest fra vognkort = ${distances.map((value) => formatNumber(value, 0)).join(' / ')} mm`,
-          `5. KjÃ¸retÃ¸yvekttabell (${getRoadProfileLabel(roadProfile)}) = ${formatNumber(totalWeight.baseWeight, 1)} tonn for ${totalWeight.context}`,
+          `5. Kjøretøyvekttabell (${getRoadProfileLabel(roadProfile)}) = ${formatNumber(totalWeight.baseWeight, 1)} tonn for ${totalWeight.context}`,
           totalWeight.extraTechnologyWeightTons > 0
             ? `6. Tillatt totalvekt = ${formatNumber(totalWeight.baseWeight, 1)} + ${formatNumber(totalWeight.extraTechnologyWeightTons, 1)} = ${formatNumber(totalWeightWithTechnologyTons, 1)} tonn`
             : `6. Tillatt totalvekt = ${formatNumber(totalWeightWithTechnologyTons, 1)} tonn uten fotnotetillegg`,
           ltp.status === 'ready'
-            ? tx(language, `7. LTP = (${formatNumber(ltp.frontPayloadKg ?? 0, 0)} Ã— ${formatNumber(ltp.midpointDistanceMm ?? 0, 0)}) / ${formatNumber(ltp.totalPayloadKg ?? 0, 0)} = ${formatNumber(ltp.rawLtpCm ?? 0)} cm, rundet opp til ${formatNumber(ltp.ltpCm ?? 0, 0)} cm`, `7. LTP = (${formatNumber(ltp.frontPayloadKg ?? 0, 0)} Ã— ${formatNumber(ltp.midpointDistanceMm ?? 0, 0)}) / ${formatNumber(ltp.totalPayloadKg ?? 0, 0)} = ${formatNumber(ltp.rawLtpCm ?? 0)} cm, rounded up to ${formatNumber(ltp.ltpCm ?? 0, 0)} cm`)
+            ? tx(language, `7. LTP = (${formatNumber(ltp.frontPayloadKg ?? 0, 0)} × ${formatNumber(ltp.midpointDistanceMm ?? 0, 0)}) / ${formatNumber(ltp.totalPayloadKg ?? 0, 0)} = ${formatNumber(ltp.rawLtpCm ?? 0)} cm, rundet opp til ${formatNumber(ltp.ltpCm ?? 0, 0)} cm`, `7. LTP = (${formatNumber(ltp.frontPayloadKg ?? 0, 0)} × ${formatNumber(ltp.midpointDistanceMm ?? 0, 0)}) / ${formatNumber(ltp.totalPayloadKg ?? 0, 0)} = ${formatNumber(ltp.rawLtpCm ?? 0)} cm, rounded up to ${formatNumber(ltp.ltpCm ?? 0, 0)} cm`)
             : tx(language, `7. ${ltp.message}`, `7. ${translateRuntimeText(ltp.message, language)}`),
           busPassengerLoad
             ? busPassengerLoad.status === 'ready'
@@ -1112,7 +1112,7 @@ export default function Home() {
         <section className="plate-entry">
           <div className="plate-entry-copy">
             <p className="eyebrow">{tx(language, 'Transportdashboard', 'Transport dashboard')}</p>
-            <h1>{tx(language, 'LTP-beregner for tunge kjÃ¸retÃ¸y', 'LTP calculator for heavy vehicles')}</h1>
+            <h1>{tx(language, 'LTP-beregner for tunge kjøretøy', 'LTP calculator for heavy vehicles')}</h1>
             <p className="hero-text">
               {tx(
                 language,
@@ -1133,13 +1133,13 @@ export default function Home() {
               >
                 <div className="plate-input-grid">
                   <label className="registration-field">
-                    <span>{tx(language, 'Trekkvogn / kjÃ¸retÃ¸y', 'Main vehicle')}</span>
+                    <span>{tx(language, 'Trekkvogn / kjøretøy', 'Main vehicle')}</span>
                     <input
                       className="registration-input"
                       value={registrationNumber}
                       onChange={(event) => setRegistrationNumber(event.target.value)}
                       placeholder={tx(language, 'F.eks. AB12345', 'E.g. AB12345')}
-                      aria-label={tx(language, 'Trekkvogn / kjÃ¸retÃ¸y', 'Main vehicle')}
+                      aria-label={tx(language, 'Trekkvogn / kjøretøy', 'Main vehicle')}
                       autoCapitalize="characters"
                       autoComplete="off"
                       autoFocus
@@ -1227,7 +1227,7 @@ export default function Home() {
             </div>
 
             <button type="button" className="manual-entry-button" onClick={() => setScreen('choose')}>
-              {tx(language, 'Jeg har ikke skilt nr, velg kjÃ¸retÃ¸y selv', 'I do not have a plate number, choose vehicle manually')}
+              {tx(language, 'Jeg har ikke skilt nr, velg kjøretøy selv', 'I do not have a plate number, choose vehicle manually')}
             </button>
           </div>
 
@@ -1253,21 +1253,21 @@ export default function Home() {
         <section className="landing-hero">
           <div className="landing-copy">
             <p className="eyebrow">{tx(language, 'LTP Beregner', 'LTP Calculator')}</p>
-            <h1>{tx(language, 'Velg kjÃ¸retÃ¸y og gÃ¥ videre til riktig kalkulator.', 'Choose vehicle type and continue to the right calculator.')}</h1>
+            <h1>{tx(language, 'Velg kjøretøy og gå videre til riktig kalkulator.', 'Choose vehicle type and continue to the right calculator.')}</h1>
             <p className="hero-text">
               {tx(
                 language,
-                'Start med kjÃ¸retÃ¸ytypen du faktisk jobber med. Da fÃ¥r du en ryddigere kalkulator som passer bedre til vognkortet, akslene og reglene du bruker.',
+                'Start med kjøretøytypen du faktisk jobber med. Da får du en ryddigere kalkulator som passer bedre til vognkortet, akslene og reglene du bruker.',
                 'Start with the vehicle type you are actually working with. That gives you a cleaner calculator that matches the vehicle card, axles and rules.',
               )}
             </p>
             <div className="registration-lookup">
-              <span className="registration-label">{tx(language, 'FÃ¸rste steg', 'First step')}</span>
+              <span className="registration-label">{tx(language, 'Første steg', 'First step')}</span>
               <h2>{tx(language, 'Skriv inn skilt nr', 'Enter plate number')}</h2>
               <p>
                 {tx(
                   language,
-                  'Vi prÃ¸ver Ã¥ hente vognkortdata automatisk. FÃ¥r vi treff, fylles aksler, aksellast, egenvekt og akselavstander inn sÃ¥ langt Vegvesen-dataene gir oss.',
+                  'Vi prøver å hente vognkortdata automatisk. Får vi treff, fylles aksler, aksellast, egenvekt og akselavstander inn så langt Vegvesen-dataene gir oss.',
                   'We try to fetch the vehicle-card data automatically. If we get a match, the key values are filled in where available.',
                 )}
               </p>
@@ -1349,7 +1349,7 @@ export default function Home() {
             <p className="visual-caption">
               {tx(
                 language,
-                'Velg kjÃ¸retÃ¸y fÃ¸rst, sÃ¥ bygger vi resten av skjemaet rundt den typen du har valgt.',
+                'Velg kjøretøy først, så bygger vi resten av skjemaet rundt den typen du har valgt.',
                 'Choose the vehicle first, then the form is built around that vehicle type.',
               )}
             </p>
@@ -1368,7 +1368,7 @@ export default function Home() {
               onClick={() => handleVehicleCardSelect(option.value)}
             >
               <div className="vehicle-choice-top">
-                <span className="vehicle-choice-kicker">{tx(language, 'KjÃ¸retÃ¸ytype', 'Vehicle type')}</span>
+                <span className="vehicle-choice-kicker">{tx(language, 'Kjøretøytype', 'Vehicle type')}</span>
                 <strong>{optionText.label}</strong>
                 <p>{optionText.description}</p>
               </div>
@@ -1389,7 +1389,7 @@ export default function Home() {
           })}
         </section>
 
-        <RouteCheckFutureSection language={language} routeFrom={routeFrom} routeTo={routeTo} prefill={routeCheckPrefill} />
+        {/* Route check preview now appears after calculation results */}
       </main>
     );
   }
@@ -1400,7 +1400,7 @@ export default function Home() {
         <GlobalTopControls language={language} onLanguageChange={setLanguage} theme={theme} onThemeChange={setTheme} />
         <div className="topbar-card">
           <div>
-            <p className="eyebrow">{tx(language, 'Valgt kjÃ¸retÃ¸y', 'Selected vehicle')}</p>
+            <p className="eyebrow">{tx(language, 'Valgt kjøretøy', 'Selected vehicle')}</p>
             <h2>{selectedVehicleText?.label}</h2>
             <p className="topbar-text">{selectedVehicleText?.description}</p>
           </div>
@@ -1409,10 +1409,10 @@ export default function Home() {
               {tx(language, 'Skriv ut / eksporter sammendrag', 'Print / export summary')}
             </button>
             <button type="button" className="secondary-button no-print" onClick={() => void handleResetSearch()}>
-              {tx(language, 'Nullstill sÃ¸k', 'Reset search')}
+              {tx(language, 'Nullstill søk', 'Reset search')}
             </button>
             <button type="button" className="secondary-button" onClick={() => setScreen('choose')}>
-              {tx(language, 'Bytt kjÃ¸retÃ¸y', 'Change vehicle')}
+              {tx(language, 'Bytt kjøretøy', 'Change vehicle')}
             </button>
           </div>
         </div>
@@ -1427,14 +1427,14 @@ export default function Home() {
             </h1>
             <p className="hero-text">
               {isSpecialTransport
-                ? tx(language, 'Spesialtypene ligger for seg: modulvogntog, tÃ¸mmervogntog, dolly med semitrailer og tvangsstyrte varianter.', 'Special types are separated: modular combinations, timber combinations, dolly with semitrailer and forced-steering variants.')
+                ? tx(language, 'Spesialtypene ligger for seg: modulvogntog, tømmervogntog, dolly med semitrailer og tvangsstyrte varianter.', 'Special types are separated: modular combinations, timber combinations, dolly with semitrailer and forced-steering variants.')
                 : tx(language, 'Semi trailer skal ikke presses inn i vanlig lastebil-flyt. Her samler vi trekkvogn, semitrailer, minsteavstand og vegliste som eget oppsett.', 'Semi trailers should not be squeezed into the rigid-truck flow. Here tractor, trailer, minimum distance and road list are handled together.')}
             </p>
             <div className="registration-lookup">
-              <span className="registration-label">{tx(language, 'FÃ¸rste steg', 'First step')}</span>
+              <span className="registration-label">{tx(language, 'Første steg', 'First step')}</span>
               <h2>{tx(language, 'Skriv inn skilt nr', 'Enter plate number')}</h2>
               <p>
-                {tx(language, 'Vi prÃ¸ver Ã¥ hente vognkortdata automatisk. FÃ¥r vi treff, fylles aksler, aksellast, egenvekt og akselavstander inn sÃ¥ langt Vegvesen-dataene gir oss.', 'We try to fetch the vehicle-card data automatically. If we get a match, axles, axle loads, own weight and axle distances are filled where the API provides them.')}
+                {tx(language, 'Vi prøver å hente vognkortdata automatisk. Får vi treff, fylles aksler, aksellast, egenvekt og akselavstander inn så langt Vegvesen-dataene gir oss.', 'We try to fetch the vehicle-card data automatically. If we get a match, axles, axle loads, own weight and axle distances are filled where the API provides them.')}
               </p>
               <form
                 className="registration-lookup-form"
@@ -1519,13 +1519,13 @@ export default function Home() {
             <div className="panel-header">
               <div>
                 <p className="panel-kicker">{tx(language, 'Fra vognkort og vegliste', 'From vehicle card and road list')}</p>
-                <h2>{isSpecialTransport ? tx(language, 'Spesialtype og vegliste', 'Special type and road list') : tx(language, 'FÃ¸rste versjon for semi trailer', 'First semi trailer setup')}</h2>
+                <h2>{isSpecialTransport ? tx(language, 'Spesialtype og vegliste', 'Special type and road list') : tx(language, 'Første versjon for semi trailer', 'First semi trailer setup')}</h2>
               </div>
             </div>
 
             <div className="status-strip">
               <div className="status-chip">
-                <span>{tx(language, 'KjÃ¸retÃ¸y', 'Vehicle')}</span>
+                <span>{tx(language, 'Kjøretøy', 'Vehicle')}</span>
                 <strong>{selectedVehicleText?.label}</strong>
               </div>
               <div className="status-chip">
@@ -1537,15 +1537,15 @@ export default function Home() {
             <section className="step-card step-card--accent">
               <div className="step-head">
                 <div>
-                  <h3>{tx(language, 'Steg 1 â€“ Oppsett', 'Step 1 â€“ Setup')}</h3>
-                  <p>{tx(language, 'Velg akseloppsettet som stÃ¥r i vognkortet.', 'Select the axle configuration from the vehicle card.')}</p>
-                  <small className="step-helper">{tx(language, 'Basert pÃ¥ punkt 8, 9 og 12 i vognkortet.', 'Based on sections 8, 9 and 12 of the vehicle card.')}</small>
+                  <h3>{tx(language, 'Steg 1 – Oppsett', 'Step 1 – Setup')}</h3>
+                  <p>{tx(language, 'Velg akseloppsettet som står i vognkortet.', 'Select the axle configuration from the vehicle card.')}</p>
+                  <small className="step-helper">{tx(language, 'Basert på punkt 8, 9 og 12 i vognkortet.', 'Based on sections 8, 9 and 12 of the vehicle card.')}</small>
                 </div>
               </div>
 
               <div className="selector-grid compact-grid">
                 <label className="select-block">
-                  <span className="select-label">{tx(language, 'Aksler pÃ¥ trekkvogn', 'Axles on tractor')}</span>
+                  <span className="select-label">{tx(language, 'Aksler på trekkvogn', 'Axles on tractor')}</span>
                   <select
                     value={semiTrailerForm.tractorAxles}
                     onChange={(event) =>
@@ -1601,7 +1601,7 @@ export default function Home() {
                     if (specialFamilies.includes(option.value)) {
                       return (
                         <small className="select-note">
-                          {tx(language, 'Bruker aktuell rad i kjÃ¸retÃ¸yvekttabellen.', 'Uses the relevant row in the vehicle weight table.')}
+                          {tx(language, 'Bruker aktuell rad i kjøretøyvekttabellen.', 'Uses the relevant row in the vehicle weight table.')}
                         </small>
                       );
                     }
@@ -1610,7 +1610,7 @@ export default function Home() {
                 </label>
 
                 <label className="select-block">
-                  <span className="select-label">{tx(language, 'Akseloppsett pÃ¥ tilhenger', 'Trailer axle setup')}</span>
+                  <span className="select-label">{tx(language, 'Akseloppsett på tilhenger', 'Trailer axle setup')}</span>
                   <select
                     value={axleVariant}
                     onChange={(event) => {
@@ -1657,7 +1657,7 @@ export default function Home() {
                 <span className="step-badge">{tx(language, 'Steg 2', 'Step 2')}</span>
                 <div>
                   <h3>{tx(language, 'Kortverdier for trekkvogn og trailer', 'Card values for tractor and trailer')}</h3>
-                  <p>{tx(language, 'Fyll inn kortverdiene hver for seg. Da blir det enklere Ã¥ se hva som begrenser vogntoget.', 'Fill in the card values separately. This makes it easier to see what limits the combination.')}</p>
+                  <p>{tx(language, 'Fyll inn kortverdiene hver for seg. Da blir det enklere å se hva som begrenser vogntoget.', 'Fill in the card values separately. This makes it easier to see what limits the combination.')}</p>
                 </div>
               </div>
 
@@ -1675,7 +1675,7 @@ export default function Home() {
                     placeholder={tx(language, 'Eksempel: 3,70', 'Example: 3.70')}
                     className="field-input"
                   />
-                  <span className="field-source">{tx(language, 'Avstand fra bakerste aksel pÃ¥ motorvogn til fÃ¸rste aksel pÃ¥ semitrailer.', 'Distance from the rear axle on the motor vehicle to the first axle on the semitrailer.')}</span>
+                  <span className="field-source">{tx(language, 'Avstand fra bakerste aksel på motorvogn til første aksel på semitrailer.', 'Distance from the rear axle on the motor vehicle to the first axle on the semitrailer.')}</span>
                 </label>
 
                 <label className="field-card">
@@ -1691,7 +1691,7 @@ export default function Home() {
                     placeholder={tx(language, 'Eksempel: 5285', 'Example: 5285')}
                     className="field-input"
                   />
-                  <span className="field-source">{tx(language, 'Bruk avstanden fra kingpin / svingskive til midt pÃ¥ trailerboggien for LTP.', 'Use the distance from kingpin / fifth wheel to the center of the trailer bogie for LTP.')}</span>
+                  <span className="field-source">{tx(language, 'Bruk avstanden fra kingpin / svingskive til midt på trailerboggien for LTP.', 'Use the distance from kingpin / fifth wheel to the center of the trailer bogie for LTP.')}</span>
                 </label>
 
                 <label className="field-card">
@@ -1723,7 +1723,7 @@ export default function Home() {
                     placeholder={tx(language, 'Eksempel: 8200', 'Example: 8200')}
                     className="field-input"
                   />
-                  <span className="field-source">{tx(language, 'Fra trekkvognkortet hvis du vil fÃ¥ nyttelast utregnet.', 'From the tractor card if you want payload calculated.')}</span>
+                  <span className="field-source">{tx(language, 'Fra trekkvognkortet hvis du vil få nyttelast utregnet.', 'From the tractor card if you want payload calculated.')}</span>
                 </label>
 
                 <label className="field-card">
@@ -1773,7 +1773,7 @@ export default function Home() {
                     placeholder={tx(language, 'Eksempel: 7200', 'Example: 7200')}
                     className="field-input"
                   />
-                  <span className="field-source">{tx(language, 'Fra trailerkortet hvis du vil fÃ¥ nyttelast utregnet.', 'From the trailer card if you want payload calculated.')}</span>
+                  <span className="field-source">{tx(language, 'Fra trailerkortet hvis du vil få nyttelast utregnet.', 'From the trailer card if you want payload calculated.')}</span>
                 </label>
 
                 <label className="field-card">
@@ -1817,8 +1817,8 @@ export default function Home() {
             <div className="button-row">
               <button type="button" className="primary-button" onClick={handleCalculate}>
                 {isSpecialTransport
-                  ? tx(language, 'KlargjÃ¸r spesialoppsett', 'Prepare special setup')
-                  : tx(language, 'KlargjÃ¸r semi trailer-oppsett', 'Prepare semi trailer setup')}
+                  ? tx(language, 'Klargjør spesialoppsett', 'Prepare special setup')
+                  : tx(language, 'Klargjør semi trailer-oppsett', 'Prepare semi trailer setup')}
               </button>
               <button type="button" className="secondary-button" onClick={handleReset}>
                 {tx(language, 'Nullstill', 'Reset')}
@@ -1829,8 +1829,8 @@ export default function Home() {
           <article className="result-panel">
             <div className="panel-header">
               <div>
-                <p className="panel-kicker">{tx(language, 'Svar', 'Answer')}</p>
-                <h2>{isSpecialTransport ? tx(language, 'Spesialtyper', 'Special types') : tx(language, 'Semi trailer', 'Semi trailer')}</h2>
+                <p className="panel-kicker">{tx(language, 'Resultat', 'Result')}</p>
+                <h2>{tx(language, 'Resultat', 'Result')}</h2>
               </div>
             </div>
 
@@ -1870,9 +1870,9 @@ export default function Home() {
                           <span>{tx(language, 'Aksel', 'Axle')} {row.axle}</span>
                           <strong>
                             {tx(language, 'Tillatt', 'Allowed')}: {row.allowedKg !== null ? `${formatNumber(row.allowedKg, 0)} kg` : tx(language, 'mangler', 'missing')}
-                            {' Â· '}
+                            {' · '}
                             {tx(language, 'Egenvekt/tara', 'Own/tare')}: {row.ownKg !== null ? `${formatNumber(row.ownKg, 0)} kg` : tx(language, 'mangler', 'missing')}
-                            {row.payloadKg !== null ? ` Â· ${tx(language, 'Rest', 'Remaining')}: ${formatNumber(row.payloadKg, 0)} kg` : ''}
+                            {row.payloadKg !== null ? ` · ${tx(language, 'Rest', 'Remaining')}: ${formatNumber(row.payloadKg, 0)} kg` : ''}
                           </strong>
                         </div>
                       ))
@@ -1934,7 +1934,7 @@ export default function Home() {
                       </strong>
                     </div>
                     <div className="support-row">
-                      <span>{tx(language, 'AvstandsbÃ¥nd', 'Distance band')}</span>
+                      <span>{tx(language, 'Avstandsbånd', 'Distance band')}</span>
                       <strong>{translateRuntimeText(semiTrailerResult.distanceBand, language)}</strong>
                     </div>
                     <div className="support-row">
@@ -2002,7 +2002,7 @@ export default function Home() {
                       </strong>
                     </div>
                     <div className="support-row">
-                      <span>{tx(language, 'Sum kjÃ¸retÃ¸yvekter', 'Sum vehicle weights')}</span>
+                      <span>{tx(language, 'Sum kjøretøyvekter', 'Sum vehicle weights')}</span>
                       <strong>
                         {semiTrailerResult.combinedCardWeightKg !== null
                           ? `${formatNumber(semiTrailerResult.combinedCardWeightKg, 0)} kg`
@@ -2060,14 +2060,16 @@ export default function Home() {
               <div className="empty-state">
                       <p>
                         {isSpecialTransport
-                          ? tx(language, 'Ingen spesialberegning ennÃ¥.', 'No special calculation yet.')
-                          : tx(language, 'Ingen semi trailer-beregning ennÃ¥.', 'No semi trailer calculation yet.')}
+                          ? tx(language, 'Ingen spesialberegning ennå.', 'No special calculation yet.')
+                          : tx(language, 'Ingen semi trailer-beregning ennå.', 'No semi trailer calculation yet.')}
                       </p>
-                <span>{tx(language, 'Legg inn vogntogverdiene og trykk knappen for Ã¥ bygge opp riktig grunnlag.', 'Enter the combination values and press the button to build the correct basis.')}</span>
+                <span>{tx(language, 'Legg inn vogntogverdiene og trykk knappen for å bygge opp riktig grunnlag.', 'Enter the combination values and press the button to build the correct basis.')}</span>
               </div>
             )}
           </article>
         </section>
+        <RouteCheckFutureSection language={language} routeFrom={routeFrom} routeTo={routeTo} prefill={routeCheckPrefill} />
+        <DrivingRestSection language={language} />
       </main>
     );
   }
@@ -2077,7 +2079,7 @@ export default function Home() {
       <GlobalTopControls language={language} onLanguageChange={setLanguage} theme={theme} onThemeChange={setTheme} />
       <div className="topbar-card">
         <div>
-          <p className="eyebrow">{tx(language, 'Valgt kjÃ¸retÃ¸y', 'Selected vehicle')}</p>
+          <p className="eyebrow">{tx(language, 'Valgt kjøretøy', 'Selected vehicle')}</p>
           <h2>{selectedVehicleText?.label}</h2>
           <p className="topbar-text">{selectedVehicleText?.description}</p>
         </div>
@@ -2086,22 +2088,22 @@ export default function Home() {
             {tx(language, 'Skriv ut / eksporter sammendrag', 'Print / export summary')}
           </button>
           <button type="button" className="secondary-button no-print" onClick={() => void handleResetSearch()}>
-            {tx(language, 'Nullstill sÃ¸k', 'Reset search')}
+            {tx(language, 'Nullstill søk', 'Reset search')}
           </button>
           <button type="button" className="secondary-button" onClick={() => setScreen('choose')}>
-            {tx(language, 'Bytt kjÃ¸retÃ¸y', 'Change vehicle')}
+            {tx(language, 'Bytt kjøretøy', 'Change vehicle')}
           </button>
         </div>
       </div>
 
       <section className="hero-card professional-hero">
         <div className="hero-copy">
-          <p className="eyebrow">{tx(language, 'Vognkort inn â†’ svar ut', 'Vehicle data in â†’ answer out')}</p>
-          <h1>{tx(language, 'Fyll inn akkurat det som stÃ¥r i vognkortet.', 'Enter exactly what is shown on the vehicle card.')}</h1>
+          <p className="eyebrow">{tx(language, 'Vognkort inn → svar ut', 'Vehicle data in → answer out')}</p>
+          <h1>{tx(language, 'Fyll inn akkurat det som står i vognkortet.', 'Enter exactly what is shown on the vehicle card.')}</h1>
           <p className="hero-text">
             {tx(
               language,
-              'Du skal ikke skrive inn ekstra regnefelt. Velg kjÃ¸retÃ¸ytype og tabell, og fÃ¸r deretter inn `Tillatt aksellast`, `Egenvekt aksel` og `Akselavstander` slik de stÃ¥r i vognkortet.',
+              'Du skal ikke skrive inn ekstra regnefelt. Velg kjøretøytype og tabell, og før deretter inn `Tillatt aksellast`, `Egenvekt aksel` og `Akselavstander` slik de står i vognkortet.',
               'You should not enter extra calculation fields. Choose vehicle type and table, then enter axle loads, axle own weights and axle distances as shown on the vehicle card.',
             )}
           </p>
@@ -2120,7 +2122,7 @@ export default function Home() {
           <div className="visual-caption">
             {tx(
               language,
-              'Bildet fÃ¸lger kjÃ¸retÃ¸ytypen du har valgt, og feltene under er bygget rundt hvordan verdiene stÃ¥r i vognkortet.',
+              'Bildet følger kjøretøytypen du har valgt, og feltene under er bygget rundt hvordan verdiene står i vognkortet.',
               'The image follows the selected vehicle type, and the fields below match how the values are shown on the vehicle card.',
             )}
           </div>
@@ -2132,13 +2134,13 @@ export default function Home() {
           <div className="panel-header">
             <div>
               <p className="panel-kicker">{tx(language, 'Fra vognkort', 'From vehicle card')}</p>
-              <h2>{tx(language, 'Rolig flyt fra kjÃ¸retÃ¸yvalg til svar', 'Clean flow from vehicle choice to answer')}</h2>
+              <h2>{tx(language, 'Rolig flyt fra kjøretøyvalg til svar', 'Clean flow from vehicle choice to answer')}</h2>
             </div>
           </div>
 
           <div className="status-strip">
             <div className="status-chip">
-              <span>{tx(language, 'KjÃ¸retÃ¸y', 'Vehicle')}</span>
+              <span>{tx(language, 'Kjøretøy', 'Vehicle')}</span>
               <strong>{selectedVehicleText?.label}</strong>
             </div>
             <div className="status-chip">
@@ -2163,15 +2165,15 @@ export default function Home() {
           <section className="step-card">
             <div className="step-head">
               <div>
-                <h3>{tx(language, 'Steg 1 â€“ Oppsett', 'Step 1 â€“ Setup')}</h3>
-                <p>{tx(language, 'Velg akseloppsettet som stÃ¥r i vognkortet.', 'Select the axle configuration from the vehicle card.')}</p>
-                <small className="step-helper">{tx(language, 'Basert pÃ¥ punkt 8, 9 og 12 i vognkortet.', 'Based on sections 8, 9 and 12 of the vehicle card.')}</small>
+                <h3>{tx(language, 'Steg 1 – Oppsett', 'Step 1 – Setup')}</h3>
+                <p>{tx(language, 'Velg akseloppsettet som står i vognkortet.', 'Select the axle configuration from the vehicle card.')}</p>
+                <small className="step-helper">{tx(language, 'Basert på punkt 8, 9 og 12 i vognkortet.', 'Based on sections 8, 9 and 12 of the vehicle card.')}</small>
               </div>
             </div>
 
             <div className="selector-grid compact-grid">
               <label className="select-block">
-                <span className="select-label">{tx(language, 'KjÃ¸retÃ¸ytype', 'Vehicle type')}</span>
+                <span className="select-label">{tx(language, 'Kjøretøytype', 'Vehicle type')}</span>
                 <select value={vehicleType} onChange={handleVehicleChange} className="select-input">
                   {VEHICLE_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -2262,7 +2264,7 @@ export default function Home() {
                 <span className="step-badge">{tx(language, 'Steg 2', 'Step 2')}</span>
               <div>
                 <h3>{tx(language, 'Vognkortverdier', 'Vehicle card values')}</h3>
-                <p>{tx(language, 'Skriv inn linjene akkurat slik de stÃ¥r i vognkortet, med skrÃ¥strek mellom verdiene.', 'Enter the lines exactly as shown on the vehicle card, with slashes between the values.')}</p>
+                <p>{tx(language, 'Skriv inn linjene akkurat slik de står i vognkortet, med skråstrek mellom verdiene.', 'Enter the lines exactly as shown on the vehicle card, with slashes between the values.')}</p>
               </div>
             </div>
 
@@ -2339,13 +2341,13 @@ export default function Home() {
                     className="field-input"
                   />
                   <span className="field-source">
-                    {tx(language, 'Fra vognkort punkt 11: antall sitteplasser i alt minus bussjÃ¥fÃ¸ren.', 'From vehicle card point 11: total seating capacity minus the bus driver.')}
+                    {tx(language, 'Fra vognkort punkt 11: antall sitteplasser i alt minus bussjåføren.', 'From vehicle card point 11: total seating capacity minus the bus driver.')}
                   </span>
                 </label>
 
                 <label className="field-card">
                   <span className="field-header">
-                    <span>{tx(language, 'StÃ¥plasser', 'Standing places')}</span>
+                    <span>{tx(language, 'Ståplasser', 'Standing places')}</span>
                     <span className="field-unit">{tx(language, 'stk', 'pcs')}</span>
                   </span>
                   <input
@@ -2358,7 +2360,7 @@ export default function Home() {
                     placeholder={tx(language, 'Eksempel: 24', 'Example: 24')}
                     className="field-input"
                   />
-                  <span className="field-source">{tx(language, 'Fra vognkort punkt 11: antall stÃ¥plasser hvis det stÃ¥r oppfÃ¸rt.', 'From vehicle card point 11: standing places if listed.')}</span>
+                  <span className="field-source">{tx(language, 'Fra vognkort punkt 11: antall ståplasser hvis det står oppført.', 'From vehicle card point 11: standing places if listed.')}</span>
                 </label>
 
                 <label className="field-card">
@@ -2386,14 +2388,14 @@ export default function Home() {
             <details className="advanced-card">
             <summary className="advanced-summary">
               <span>{tx(language, 'Vis flere regler og hjuloppsett', 'Show more rules and wheel setup')}</span>
-              <span className="advanced-summary-note">{tx(language, 'Fotnoter, luftfjÃ¦ring, hjul og teknologi', 'Footnotes, air suspension, wheels and technology')}</span>
+              <span className="advanced-summary-note">{tx(language, 'Fotnoter, luftfjæring, hjul og teknologi', 'Footnotes, air suspension, wheels and technology')}</span>
             </summary>
 
             <div className="advanced-content">
               {isTruck ? (
               <div className="selector-grid compact-grid">
                 <label className="select-block">
-                  <span className="select-label">{tx(language, 'LuftfjÃ¦ring', 'Air suspension')}</span>
+                  <span className="select-label">{tx(language, 'Luftfjæring', 'Air suspension')}</span>
                   <select
                     value={hasAirSuspension ? 'yes' : 'no'}
                     onChange={(event) => setHasAirSuspension(event.target.value === 'yes')}
@@ -2402,7 +2404,7 @@ export default function Home() {
                     <option value="yes">{tx(language, 'Ja', 'Yes')}</option>
                     <option value="no">{tx(language, 'Nei', 'No')}</option>
                   </select>
-                  <small className="select-note">{tx(language, 'Bruk dette nÃ¥r fotnote 2 krever luftfjÃ¦ring.', 'Use this when footnote 2 requires air suspension.')}</small>
+                  <small className="select-note">{tx(language, 'Bruk dette når fotnote 2 krever luftfjæring.', 'Use this when footnote 2 requires air suspension.')}</small>
                 </label>
 
                 <label className="select-block">
@@ -2460,7 +2462,7 @@ export default function Home() {
                 </label>
 
                 <label className="select-block">
-                  <span className="select-label">{tx(language, 'Begge drivaksler â‰¤ 9,5 t', 'Both drive axles â‰¤ 9.5 t')}</span>
+                  <span className="select-label">{tx(language, 'Begge drivaksler ≤ 9,5 t', 'Both drive axles ≤ 9.5 t')}</span>
                   <select
                     value={allDriveAxlesAtOrUnderNinePointFiveTons ? 'yes' : 'no'}
                     onChange={(event) => setAllDriveAxlesAtOrUnderNinePointFiveTons(event.target.value === 'yes')}
@@ -2470,7 +2472,7 @@ export default function Home() {
                     <option value="no">{tx(language, 'Nei / vet ikke', 'No / unknown')}</option>
                     <option value="yes">{tx(language, 'Ja', 'Yes')}</option>
                   </select>
-                  <small className="select-note">{tx(language, 'Trengs bare nÃ¥r du har to drivaksler.', 'Only needed when you have two drive axles.')}</small>
+                  <small className="select-note">{tx(language, 'Trengs bare når du har to drivaksler.', 'Only needed when you have two drive axles.')}</small>
                 </label>
 
                 <label className="select-block">
@@ -2524,7 +2526,7 @@ export default function Home() {
                 <span className="step-badge">{tx(language, 'Steg 3', 'Step 3')}</span>
               <div>
                 <h3>{tx(language, 'Beregn resultatet', 'Calculate the result')}</h3>
-                <p>{tx(language, 'NÃ¥r du har fylt inn alle feltene, kan du beregne LTP og totalvekt.', 'When all fields are filled in, you can calculate LTP and total weight.')}</p>
+                <p>{tx(language, 'Når du har fylt inn alle feltene, kan du beregne LTP og totalvekt.', 'When all fields are filled in, you can calculate LTP and total weight.')}</p>
               </div>
             </div>
 
@@ -2544,7 +2546,7 @@ export default function Home() {
         <article className="panel-card">
           <div className="panel-header">
             <p className="panel-kicker">{tx(language, 'Resultat', 'Result')}</p>
-            <h2>{tx(language, 'LTP, totalvekt og tillgjengelig last', 'LTP, total weight and available payload')}</h2>
+            <h2>{tx(language, 'Resultat', 'Result')}</h2>
           </div>
 
           {result ? (
@@ -2606,15 +2608,15 @@ export default function Home() {
                       <span>{tx(language, 'Aksel', 'Axle')} {row.axle}</span>
                       <strong>
                         {tx(language, 'Tillatt', 'Allowed')}: {row.allowedKg !== null ? `${formatNumber(row.allowedKg, 0)} kg` : tx(language, 'mangler', 'missing')}
-                        {' Â· '}
+                        {' · '}
                         {tx(language, 'Egenvekt/tara', 'Own/tare')}: {row.ownKg !== null ? `${formatNumber(row.ownKg, 0)} kg` : tx(language, 'mangler', 'missing')}
-                        {row.payloadKg !== null ? ` Â· ${tx(language, 'Rest', 'Remaining')}: ${formatNumber(row.payloadKg, 0)} kg` : ''}
+                        {row.payloadKg !== null ? ` · ${tx(language, 'Rest', 'Remaining')}: ${formatNumber(row.payloadKg, 0)} kg` : ''}
                       </strong>
                     </div>
                   ))}
                   {result.ltp.driverWeightKg > 0 ? (
                     <div className="support-row">
-                      <span>{tx(language, 'FÃ¸rer lagt pÃ¥ foraksel', 'Driver added to front axle')}</span>
+                      <span>{tx(language, 'Fører lagt på foraksel', 'Driver added to front axle')}</span>
                       <strong>{formatNumber(result.ltp.driverWeightKg, 0)} kg</strong>
                     </div>
                   ) : null}
@@ -2632,7 +2634,7 @@ export default function Home() {
                 <h3>{tx(language, 'Oppsett brukt', 'Setup used')}</h3>
                 <div className="support-grid">
                   <div className="support-row">
-                    <span>{tx(language, 'KjÃ¸retÃ¸y', 'Vehicle')}</span>
+                    <span>{tx(language, 'Kjøretøy', 'Vehicle')}</span>
                     <strong>{selectedVehicleText?.label}</strong>
                   </div>
                   <div className="support-row">
@@ -2688,7 +2690,7 @@ export default function Home() {
                 <h2>{tx(language, 'Sammendrag', 'Summary')}</h2>
                 <div>
                   <div><strong>{tx(language, 'Registreringsnummer', 'Registration')}</strong>: {registrationNumber || tx(language, 'Ikke lagt inn', 'Not provided')}</div>
-                  <div><strong>{tx(language, 'KjÃ¸retÃ¸y', 'Vehicle')}</strong>: {selectedVehicleText?.label}</div>
+                  <div><strong>{tx(language, 'Kjøretøy', 'Vehicle')}</strong>: {selectedVehicleText?.label}</div>
                   <div><strong>{tx(language, 'Lastepunkt', 'Loading point')}</strong>: {result.ltp.status === 'ready' ? `${formatNumber(result.ltp.ltpCm ?? 0)} cm` : tx(language, 'Ikke klar', 'Not ready')}</div>
                   <div><strong>{tx(language, 'Sluttvekt', 'Final weight')}</strong>: {formatNumber(result.totalWeightWithTechnologyTons, 1)} {tx(language, 'tonn', 'tons')}</div>
                 </div>
@@ -2705,13 +2707,15 @@ export default function Home() {
           ) : (
             <div className="empty-state">
               <p>
-                {tx(language, 'Ingen beregning ennÃ¥.', 'No calculation yet.')}
+                {tx(language, 'Ingen beregning ennå.', 'No calculation yet.')}
               </p>
-              <span>{tx(language, 'Legg inn vognkortverdiene og trykk knappen for Ã¥ beregne LTP og totalvekt.', 'Enter the vehicle-card values and press the button to calculate LTP and total weight.')}</span>
+              <span>{tx(language, 'Legg inn vognkortverdiene og trykk knappen for å beregne LTP og totalvekt.', 'Enter the vehicle-card values and press the button to calculate LTP and total weight.')}</span>
             </div>
           )}
         </article>
       </section>
+      <RouteCheckFutureSection language={language} routeFrom={routeFrom} routeTo={routeTo} prefill={routeCheckPrefill} />
+      <DrivingRestSection language={language} />
     </main>
     );
   }
