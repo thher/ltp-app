@@ -207,7 +207,8 @@ export function RouteCheckFutureSection({
             selectedWarning={selectedWarning}
           />
           <p className="helper">
-            Ruten er veiledende. Sjekk alltid høyde, vekt, bruksklasse og skilting før kjøring.
+            Rute, tunnel, høyde og trafikkdata er veiledende. Sjekk alltid skilting, vegliste og
+            offisielle kilder før kjøring. Ikke bruk som eneste grunnlag for transport.
           </p>
           <button type="button" className="secondary-button" onClick={checkRouteWarnings} disabled={routeWarningLoading}>
             {routeWarningLoading
