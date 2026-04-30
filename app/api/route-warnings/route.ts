@@ -28,6 +28,7 @@ type RoadworkWarning = {
   description: string;
   lat: number;
   lon: number;
+  distanceKm?: number;
 };
 
 const NVDB_HEIGHT_RESTRICTIONS_URL =
@@ -35,6 +36,7 @@ const NVDB_HEIGHT_RESTRICTIONS_URL =
 const DATEX_SITUATION_URL =
   'https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/GetSituation/pullsnapshotdata';
 const ROUTE_MATCH_DISTANCE_METERS = 500;
+const ROADWORK_ROUTE_MATCH_DISTANCE_METERS = 1000;
 const MAX_TRAFFIC_WARNINGS = 20;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -147,7 +149,11 @@ function haversineMeters(a: Coordinate, b: Coordinate) {
   return 2 * radiusMeters * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
-function routeDistanceKmToNearestPoint(point: Coordinate, route: Coordinate[]) {
+function routeDistanceKmToNearestPoint(
+  point: Coordinate,
+  route: Coordinate[],
+  maxDistanceMeters = ROUTE_MATCH_DISTANCE_METERS,
+) {
   let nearestIndex = -1;
   let nearestDistanceMeters = Infinity;
   let distanceFromStartMeters = 0;
@@ -166,7 +172,7 @@ function routeDistanceKmToNearestPoint(point: Coordinate, route: Coordinate[]) {
     }
   }
 
-  if (nearestIndex === -1 || nearestDistanceMeters >= ROUTE_MATCH_DISTANCE_METERS) return null;
+  if (nearestIndex === -1 || nearestDistanceMeters >= maxDistanceMeters) return null;
   return Math.round((distanceAtNearestMeters / 1000) * 10) / 10;
 }
 
@@ -179,6 +185,7 @@ function buildRoadworkPlaceholder(route?: Coordinate[]): RoadworkWarning[] {
       description: 'Veiarbeid - kommer senere',
       lat,
       lon,
+      distanceKm: routeDistanceKmToNearestPoint([lat, lon], route, ROADWORK_ROUTE_MATCH_DISTANCE_METERS) ?? undefined,
     },
   ];
 }
@@ -248,12 +255,19 @@ async function fetchDatexRoadworkWarnings(route?: Coordinate[]) {
       .map((record): RoadworkWarning | null => {
         const coordinates = extractDatexCoordinate(record);
         if (!coordinates) return null;
+
+        const distanceKm = route
+          ? routeDistanceKmToNearestPoint(coordinates, route, ROADWORK_ROUTE_MATCH_DISTANCE_METERS)
+          : undefined;
+        if (route && distanceKm === null) return null;
+
         const [lat, lon] = coordinates;
         return {
           type: 'roadwork',
           description: extractDatexDescription(record),
           lat,
           lon,
+          distanceKm: distanceKm ?? undefined,
         };
       })
       .filter((warning): warning is RoadworkWarning => warning !== null);
