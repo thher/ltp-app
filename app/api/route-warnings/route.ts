@@ -32,7 +32,10 @@ type RoadworkWarning = {
 
 const NVDB_HEIGHT_RESTRICTIONS_URL =
   'https://nvdbapiles-v3.atlas.vegvesen.no/vegobjekter/591?antall=20&inkluder=alle';
+const DATEX_SITUATION_URL =
+  'https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/GetSituation/pullsnapshotdata';
 const ROUTE_MATCH_DISTANCE_METERS = 500;
+const MAX_TRAFFIC_WARNINGS = 20;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : null;
@@ -180,6 +183,87 @@ function buildRoadworkPlaceholder(route?: Coordinate[]): RoadworkWarning[] {
   ];
 }
 
+function decodeXmlEntities(value: string) {
+  return value
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_, code: string) => String.fromCharCode(Number(code)));
+}
+
+function stripXmlTags(value: string) {
+  return decodeXmlEntities(value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim());
+}
+
+function firstXmlValue(xml: string, tagName: string) {
+  const match = xml.match(new RegExp(`<(?:\\w+:)?${tagName}\\b[^>]*>([\\s\\S]*?)</(?:\\w+:)?${tagName}>`, 'i'));
+  return match ? stripXmlTags(match[1]) : null;
+}
+
+function splitSituationRecords(xml: string) {
+  const matches = xml.match(/<(?:\w+:)?situationRecord\b[\s\S]*?<\/(?:\w+:)?situationRecord>/gi);
+  return matches ?? [];
+}
+
+function extractDatexCoordinate(recordXml: string): Coordinate | null {
+  const latitude = parseNumber(firstXmlValue(recordXml, 'latitude'));
+  const longitude = parseNumber(firstXmlValue(recordXml, 'longitude'));
+  if (latitude !== null && longitude !== null) return [latitude, longitude];
+
+  const pos = firstXmlValue(recordXml, 'pos');
+  if (!pos) return null;
+  const [first, second] = pos.split(/\s+/).map((part) => Number(part));
+  if (!Number.isFinite(first) || !Number.isFinite(second)) return null;
+
+  if (first >= -90 && first <= 90 && second >= -180 && second <= 180) return [first, second];
+  if (second >= -90 && second <= 90 && first >= -180 && first <= 180) return [second, first];
+  return null;
+}
+
+function extractDatexDescription(recordXml: string) {
+  return (
+    firstXmlValue(recordXml, 'description') ??
+    firstXmlValue(recordXml, 'comment') ??
+    firstXmlValue(recordXml, 'value') ??
+    'Trafikkmelding'
+  );
+}
+
+async function fetchDatexRoadworkWarnings(route?: Coordinate[]) {
+  try {
+    const response = await fetch(DATEX_SITUATION_URL, {
+      headers: {
+        Accept: 'application/xml,text/xml',
+        'User-Agent': 'ai-search-app route-warnings test',
+      },
+      next: { revalidate: 300 },
+    });
+    if (!response.ok) throw new Error('DATEX request failed');
+
+    const xml = await response.text();
+    const roadwork = splitSituationRecords(xml)
+      .slice(0, MAX_TRAFFIC_WARNINGS)
+      .map((record): RoadworkWarning | null => {
+        const coordinates = extractDatexCoordinate(record);
+        if (!coordinates) return null;
+        const [lat, lon] = coordinates;
+        return {
+          type: 'roadwork',
+          description: extractDatexDescription(record),
+          lat,
+          lon,
+        };
+      })
+      .filter((warning): warning is RoadworkWarning => warning !== null);
+
+    return roadwork.length > 0 ? roadwork : buildRoadworkPlaceholder(route);
+  } catch {
+    return buildRoadworkPlaceholder(route);
+  }
+}
+
 async function geocodeLocation(query: string): Promise<Coordinate> {
   const response = await fetch(
     `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`,
@@ -260,17 +344,20 @@ async function fetchNvdbHeightWarnings(vehicleHeightMm: number, route?: Coordina
 
 async function fetchNvdbTestWarnings(vehicleHeightMm: number) {
   try {
-    const warnings = await fetchNvdbHeightWarnings(vehicleHeightMm);
+    const [warnings, roadwork] = await Promise.all([
+      fetchNvdbHeightWarnings(vehicleHeightMm),
+      fetchDatexRoadworkWarnings(),
+    ]);
     return NextResponse.json({
       warnings,
-      roadwork: [],
+      roadwork,
       source: 'nvdb-test',
       message: 'Høydebegrensninger hentet fra NVDB testutvalg',
     });
   } catch {
     return NextResponse.json({
       warnings: [],
-      roadwork: [],
+      roadwork: await fetchDatexRoadworkWarnings(),
       source: 'nvdb-test',
       message: 'NVDB var ikke tilgjengelig. Ingen varsler funnet i foreløpig sjekk.',
     });
@@ -294,7 +381,7 @@ export async function POST(request: NextRequest) {
   if (vehicleHeightMm === null) {
     return NextResponse.json({
       warnings: [],
-      roadwork: [],
+      roadwork: await fetchDatexRoadworkWarnings(),
       source: 'nvdb-test',
       message: 'Kjøretøyhøyde mangler. Ingen høydevarsler filtrert.',
     });
@@ -307,11 +394,14 @@ export async function POST(request: NextRequest) {
   try {
     const [fromCoord, toCoord] = await Promise.all([geocodeLocation(from), geocodeLocation(to)]);
     const route = await fetchOsrmRoute(fromCoord, toCoord);
-    const warnings = await fetchNvdbHeightWarnings(vehicleHeightMm, route);
+    const [warnings, roadwork] = await Promise.all([
+      fetchNvdbHeightWarnings(vehicleHeightMm, route),
+      fetchDatexRoadworkWarnings(route),
+    ]);
 
     return NextResponse.json({
       warnings,
-      roadwork: buildRoadworkPlaceholder(route),
+      roadwork,
       source: 'nvdb-route',
       message: 'Høydebegrensninger hentet fra NVDB testutvalg og filtrert mot rute',
     });
