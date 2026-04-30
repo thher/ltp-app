@@ -58,6 +58,7 @@ type RoadworkWarning = {
   description: string;
   lat: number;
   lon: number;
+  distanceKm?: number;
 };
 
 type RouteWarningResponse = {
@@ -269,7 +270,35 @@ export function RouteCheckFutureSection({
               </p>
               <div style={{ marginTop: '1rem', display: 'grid', gap: '0.5rem' }}>
                 <h3>{tx(language, 'Veiarbeid og trafikk', 'Roadwork and traffic')}</h3>
-                <p>{tx(language, 'Kommer snart', 'Coming soon')}</p>
+                {routeWarningResult.roadwork.length === 0 ? (
+                  <p>{tx(language, 'Ingen veiarbeid eller trafikkmeldinger funnet langs ruten', 'No roadwork or traffic incidents found along the route')}</p>
+                ) : (
+                  <div style={{ display: 'grid', gap: '0.75rem' }}>
+                    {routeWarningResult.roadwork.map((incident, index) => (
+                      <div
+                        key={`roadwork-${incident.lat}-${incident.lon}-${index}`}
+                        style={{
+                          border: '1px solid rgba(14, 165, 233, 0.35)',
+                          background: 'rgba(14, 165, 233, 0.1)',
+                          borderRadius: '14px',
+                          padding: '0.85rem 1rem',
+                          display: 'grid',
+                          gap: '0.35rem',
+                        }}
+                      >
+                        <strong>{incident.description}</strong>
+                        {typeof incident.distanceKm === 'number' ? (
+                          <div className="helper" style={{ margin: 0 }}>
+                            {incident.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
+                              maximumFractionDigits: 1,
+                            })}{' '}
+                            {tx(language, 'km frem', 'km ahead')}
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ) : null}
