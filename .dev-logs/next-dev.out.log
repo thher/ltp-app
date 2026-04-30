@@ -1,0 +1,89 @@
+
+> ai-search-app@0.1.0 dev
+> next dev
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.70:3000
+- Environments: .env.local
+
+✓ Starting...
+Creating turbopack project { dir: 'C:\\Users\\thher\\New folder\\ai-search-app', testMode: true }
+✓ Ready in 1296ms
+ GET / 200 in 825ms (compile: 663ms, render: 162ms)
+ GET / 200 in 71ms (compile: 6ms, render: 65ms)
+ GET / 200 in 55ms (compile: 5ms, render: 51ms)
+ GET / 200 in 55ms (compile: 4ms, render: 51ms)
+ GET / 200 in 56ms (compile: 4ms, render: 52ms)
+ GET / 200 in 54ms (compile: 3ms, render: 51ms)
+✓ Compiled in 48ms
+✓ Compiled in 46ms
+ GET / 200 in 232ms (compile: 93ms, render: 139ms)
+✓ Compiled in 49ms
+✓ Compiled in 28ms
+✓ Compiled in 50ms
+ GET / 200 in 234ms (compile: 100ms, render: 134ms)
+ GET / 200 in 60ms (compile: 6ms, render: 54ms)
+ GET / 200 in 45ms (compile: 4ms, render: 41ms)
+✓ Compiled in 51ms
+✓ Compiled in 28ms
+✓ Compiled in 22ms
+ GET / 200 in 245ms (compile: 116ms, render: 129ms)
+✓ Compiled in 39ms
+✓ Compiled in 36ms
+✓ Compiled in 47ms
+✓ Compiled in 50ms
+✓ Compiled in 61ms
+ GET / 200 in 246ms (compile: 122ms, render: 124ms)
+✓ Compiled in 36ms
+✓ Compiled in 70ms
+✓ Compiled in 37ms
+✓ Compiled in 67ms
+✓ Compiled in 75ms
+✓ Compiled in 67ms
+ GET / 200 in 211ms (compile: 86ms, render: 124ms)
+✓ Compiled in 42ms
+✓ Compiled in 42ms
+✓ Compiled in 39ms
+✓ Compiled in 69ms
+✓ Compiled in 27ms
+✓ Compiled in 23ms
+✓ Compiled in 39ms
+✓ Compiled in 44ms
+✓ Compiled in 37ms
+✓ Compiled in 69ms
+✓ Compiled in 90ms
+✓ Compiled in 73ms
+✓ Compiled in 43ms
+✓ Compiled in 41ms
+✓ Compiled in 44ms
+✓ Compiled in 42ms
+✓ Compiled in 42ms
+✓ Compiled in 73ms
+✓ Compiled in 71ms
+✓ Compiled in 78ms
+✓ Compiled in 74ms
+✓ Compiled in 82ms
+✓ Compiled in 43ms
+✓ Compiled in 44ms
+✓ Compiled in 45ms
+✓ Compiled in 40ms
+✓ Compiled in 46ms
+✓ Compiled in 48ms
+✓ Compiled in 46ms
+✓ Compiled in 41ms
+✓ Compiled in 85ms
+✓ Compiled in 45ms
+✓ Compiled in 43ms
+✓ Compiled in 91ms
+✓ Compiled in 85ms
+✓ Compiled in 81ms
+✓ Compiled in 45ms
+✓ Compiled in 44ms
+✓ Compiled in 80ms
+✓ Compiled in 78ms
+✓ Compiled in 81ms
+✓ Compiled in 52ms
+✓ Compiled in 84ms
+✓ Compiled in 91ms
+✓ Compiled in 89ms

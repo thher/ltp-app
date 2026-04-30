@@ -1,0 +1,274 @@
+Error: Can't resolve 'tailwindcss' in 'C:\Users\thher\New folder'
+    [2m[at finishWithoutResolve (C:\Users\thher\New folder\ai-search-app\node_modules\enhanced-resolve\lib\Resolver.js:586:18)][0m
+    [2m[at C:\Users\thher\New folder\ai-search-app\node_modules\enhanced-resolve\lib\Resolver.js:678:14][0m
+    [2m[at C:\Users\thher\New folder\ai-search-app\node_modules\enhanced-resolve\lib\Resolver.js:739:5][0m
+    [2m[at eval (eval at create (C:\Users\thher\New folder\ai-search-app\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thher\New folder\ai-search-app\node_modules\enhanced-resolve\lib\Resolver.js:739:5][0m
+    [2m[at eval (eval at create (C:\Users\thher\New folder\ai-search-app\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)][0m
+    [2m[at C:\Users\thher\New folder\ai-search-app\node_modules\enhanced-resolve\lib\Resolver.js:739:5][0m
+    [2m[at eval (eval at create (C:\Users\thher\New folder\ai-search-app\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thher\New folder\ai-search-app\node_modules\enhanced-resolve\lib\Resolver.js:739:5][0m
+    [2m[at eval (eval at create (C:\Users\thher\New folder\ai-search-app\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m {
+  details: "resolve 'tailwindcss' in 'C:\\Users\\thher\\New folder'\n" +
+    '  Parsed request is a module\n' +
+    '  No description file found in C:\\Users\\thher\\New folder or above\n' +
+    '  resolve as module\n' +
+    "    C:\\Users\\thher\\New folder\\node_modules doesn't exist or is not a directory\n" +
+    "    C:\\Users\\thher\\node_modules doesn't exist or is not a directory\n" +
+    "    C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "    C:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tailwindcss' in 'C:\Users\thher\New folder'
+    [2m[at finishWithoutResolve (C:\Users\thher\New folder\ai-search-app\node_modules\enhanced-resolve\lib\Resolver.js:586:18)][0m
+    [2m[at C:\Users\thher\New folder\ai-search-app\node_modules\enhanced-resolve\lib\Resolver.js:678:14][0m
+    [2m[at C:\Users\thher\New folder\ai-search-app\node_modules\enhanced-resolve\lib\Resolver.js:739:5][0m
+    [2m[at eval (eval at create (C:\Users\thher\New folder\ai-search-app\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thher\New folder\ai-search-app\node_modules\enhanced-resolve\lib\Resolver.js:739:5][0m
+    [2m[at eval (eval at create (C:\Users\thher\New folder\ai-search-app\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)][0m
+    [2m[at C:\Users\thher\New folder\ai-search-app\node_modules\enhanced-resolve\lib\Resolver.js:739:5][0m
+    [2m[at eval (eval at create (C:\Users\thher\New folder\ai-search-app\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thher\New folder\ai-search-app\node_modules\enhanced-resolve\lib\Resolver.js:739:5][0m
+    [2m[at eval (eval at create (C:\Users\thher\New folder\ai-search-app\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m {
+  details: "resolve 'tailwindcss' in 'C:\\Users\\thher\\New folder'\n" +
+    '  Parsed request is a module\n' +
+    '  No description file found in C:\\Users\\thher\\New folder or above\n' +
+    '  resolve as module\n' +
+    "    C:\\Users\\thher\\New folder\\node_modules doesn't exist or is not a directory\n" +
+    "    C:\\Users\\thher\\node_modules doesn't exist or is not a directory\n" +
+    "    C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "    C:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tailwindcss' in 'C:\Users\thher\New folder'
+    [2m[at finishWithoutResolve (C:\Users\thher\New folder\ai-search-app\node_modules\enhanced-resolve\lib\Resolver.js:586:18)][0m
+    [2m[at C:\Users\thher\New folder\ai-search-app\node_modules\enhanced-resolve\lib\Resolver.js:678:14][0m
+    [2m[at C:\Users\thher\New folder\ai-search-app\node_modules\enhanced-resolve\lib\Resolver.js:739:5][0m
+    [2m[at eval (eval at create (C:\Users\thher\New folder\ai-search-app\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thher\New folder\ai-search-app\node_modules\enhanced-resolve\lib\Resolver.js:739:5][0m
+    [2m[at eval (eval at create (C:\Users\thher\New folder\ai-search-app\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)][0m
+    [2m[at C:\Users\thher\New folder\ai-search-app\node_modules\enhanced-resolve\lib\Resolver.js:739:5][0m
+    [2m[at eval (eval at create (C:\Users\thher\New folder\ai-search-app\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thher\New folder\ai-search-app\node_modules\enhanced-resolve\lib\Resolver.js:739:5][0m
+    [2m[at eval (eval at create (C:\Users\thher\New folder\ai-search-app\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m {
+  details: "resolve 'tailwindcss' in 'C:\\Users\\thher\\New folder'\n" +
+    '  Parsed request is a module\n' +
+    '  No description file found in C:\\Users\\thher\\New folder or above\n' +
+    '  resolve as module\n' +
+    "    C:\\Users\\thher\\New folder\\node_modules doesn't exist or is not a directory\n" +
+    "    C:\\Users\\thher\\node_modules doesn't exist or is not a directory\n" +
+    "    C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "    C:\\node_modules doesn't exist or is not a directory"
+}
+⚠ Cross origin request detected from 127.0.0.1 to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+⨯ ReferenceError: ROAD_CLASSES is not defined
+    at Home (app\page.tsx:741:18)
+  739 |                 className="select-input"
+  740 |               >
+> 741 |                 {ROAD_CLASSES.map((option) => (
+      |                  ^
+  742 |                   <option key={option.value} value={option.value}>
+  743 |                     {option.label}
+  744 |                   </option> {
+  digest: '1105980335'
+}
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⨯ ReferenceError: ROAD_CLASSES is not defined
+    at Home (app\page.tsx:745:18)
+  743 |                 className="select-input"
+  744 |               >
+> 745 |                 {ROAD_CLASSES.map((option) => (
+      |                  ^
+  746 |                   <option key={option.value} value={option.value}>
+  747 |                     {option.label}
+  748 |                   </option> {
+  digest: '2913515208'
+}
+⨯ ReferenceError: ROAD_CLASSES is not defined
+    at Home (app\page.tsx:745:18)
+  743 |                 className="select-input"
+  744 |               >
+> 745 |                 {ROAD_CLASSES.map((option) => (
+      |                  ^
+  746 |                   <option key={option.value} value={option.value}>
+  747 |                     {option.label}
+  748 |                   </option> {
+  digest: '2913515208'
+}
+⨯ ReferenceError: ROAD_CLASSES is not defined
+    at Home (app\page.tsx:745:18)
+  743 |                 className="select-input"
+  744 |               >
+> 745 |                 {ROAD_CLASSES.map((option) => (
+      |                  ^
+  746 |                   <option key={option.value} value={option.value}>
+  747 |                     {option.label}
+  748 |                   </option> {
+  digest: '2913515208'
+}
+⨯ ReferenceError: ROAD_CLASSES is not defined
+    at Home (app\page.tsx:745:18)
+  743 |                 className="select-input"
+  744 |               >
+> 745 |                 {ROAD_CLASSES.map((option) => (
+      |                  ^
+  746 |                   <option key={option.value} value={option.value}>
+  747 |                     {option.label}
+  748 |                   </option> {
+  digest: '2913515208'
+}
+⨯ ReferenceError: ROAD_CLASSES is not defined
+    at Home (app\page.tsx:745:18)
+  743 |                 className="select-input"
+  744 |               >
+> 745 |                 {ROAD_CLASSES.map((option) => (
+      |                  ^
+  746 |                   <option key={option.value} value={option.value}>
+  747 |                     {option.label}
+  748 |                   </option> {
+  digest: '2913515208'
+}
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⨯ ReferenceError: ROAD_CLASSES is not defined
+    at Home (app\page.tsx:792:18)
+  790 |                 className="select-input"
+  791 |               >
+> 792 |                 {ROAD_CLASSES.map((option) => (
+      |                  ^
+  793 |                   <option key={option.value} value={option.value}>
+  794 |                     {option.label}
+  795 |                   </option> {
+  digest: '2188530184'
+}
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⨯ ReferenceError: ROAD_CLASSES is not defined
+    at Home (app\page.tsx:800:18)
+  798 |                 className="select-input"
+  799 |               >
+> 800 |                 {ROAD_CLASSES.map((option) => (
+      |                  ^
+  801 |                   <option key={option.value} value={option.value}>
+  802 |                     {option.label}
+  803 |                   </option> {
+  digest: '344100491'
+}
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⨯ ReferenceError: ROAD_CLASSES is not defined
+    at Home (app\page.tsx:815:18)
+  813 |                 className="select-input"
+  814 |               >
+> 815 |                 {ROAD_CLASSES.map((option) => (
+      |                  ^
+  816 |                   <option key={option.value} value={option.value}>
+  817 |                     {option.label}
+  818 |                   </option> {
+  digest: '320127234'
+}
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⨯ ReferenceError: ROAD_CLASSES is not defined
+    at Home (app\page.tsx:842:18)
+  840 |                 className="select-input"
+  841 |               >
+> 842 |                 {ROAD_CLASSES.map((option) => (
+      |                  ^
+  843 |                   <option key={option.value} value={option.value}>
+  844 |                     {option.label}
+  845 |                   </option> {
+  digest: '744249861'
+}
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⨯ ReferenceError: ROAD_CLASSES is not defined
+    at Home (app\page.tsx:867:18)
+  865 |                 className="select-input"
+  866 |               >
+> 867 |                 {ROAD_CLASSES.map((option) => (
+      |                  ^
+  868 |                   <option key={option.value} value={option.value}>
+  869 |                     {option.label}
+  870 |                   </option> {
+  digest: '1564170550'
+}
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⨯ ReferenceError: ROAD_CLASSES is not defined
+    at Home (app\page.tsx:886:18)
+  884 |                 className="select-input"
+  885 |               >
+> 886 |                 {ROAD_CLASSES.map((option) => (
+      |                  ^
+  887 |                   <option key={option.value} value={option.value}>
+  888 |                     {option.label}
+  889 |                   </option> {
+  digest: '2614332884'
+}
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⨯ ReferenceError: ROAD_CLASSES is not defined
+    at Home (app\page.tsx:900:18)
+  898 |                 className="select-input"
+  899 |               >
+> 900 |                 {ROAD_CLASSES.map((option) => (
+      |                  ^
+  901 |                   <option key={option.value} value={option.value}>
+  902 |                     {option.label}
+  903 |                   </option> {
+  digest: '1476526005'
+}
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⨯ ReferenceError: ROAD_CLASSES is not defined
+    at Home (app\page.tsx:915:18)
+  913 |                 className="select-input"
+  914 |               >
+> 915 |                 {ROAD_CLASSES.map((option) => (
+      |                  ^
+  916 |                   <option key={option.value} value={option.value}>
+  917 |                     {option.label}
+  918 |                   </option> {
+  digest: '2421085334'
+}
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⨯ ReferenceError: ROAD_CLASSES is not defined
+    at Home (app\page.tsx:930:18)
+  928 |                 className="select-input"
+  929 |               >
+> 930 |                 {ROAD_CLASSES.map((option) => (
+      |                  ^
+  931 |                   <option key={option.value} value={option.value}>
+  932 |                     {option.label}
+  933 |                   </option> {
+  digest: '1068604407'
+}
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⨯ ReferenceError: ROAD_CLASSES is not defined
+    at Home (app\page.tsx:945:18)
+  943 |                 className="select-input"
+  944 |               >
+> 945 |                 {ROAD_CLASSES.map((option) => (
+      |                  ^
+  946 |                   <option key={option.value} value={option.value}>
+  947 |                     {option.label}
+  948 |                   </option> {
+  digest: '2780061012'
+}
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⨯ ReferenceError: ROAD_CLASSES is not defined
+    at Home (app\page.tsx:960:18)
+  958 |                 className="select-input"
+  959 |               >
+> 960 |                 {ROAD_CLASSES.map((option) => (
+      |                  ^
+  961 |                   <option key={option.value} value={option.value}>
+  962 |                     {option.label}
+  963 |                   </option> {
+  digest: '1039111516'
+}
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⨯ ReferenceError: roadClass is not defined
+    at Home (app\page.tsx:961:24)
+  959 |               <span className="select-label">Bruksklasse / tabell</span>
+  960 |               <select
+> 961 |                 value={roadClass}
+      |                        ^
+  962 |                 onChange={(event) => setRoadClass(event.target.value as RoadClass)}
+  963 |                 className="select-input"
+  964 |               > {
+  digest: '2559404245'
+}
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
