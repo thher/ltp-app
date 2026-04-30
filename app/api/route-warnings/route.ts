@@ -23,6 +23,13 @@ type HeightWarning = {
   coordinates?: Coordinate;
 };
 
+type RoadworkWarning = {
+  type: 'roadwork';
+  description: string;
+  lat: number;
+  lon: number;
+};
+
 const NVDB_HEIGHT_RESTRICTIONS_URL =
   'https://nvdbapiles-v3.atlas.vegvesen.no/vegobjekter/591?antall=20&inkluder=alle';
 const ROUTE_MATCH_DISTANCE_METERS = 500;
@@ -160,6 +167,19 @@ function routeDistanceKmToNearestPoint(point: Coordinate, route: Coordinate[]) {
   return Math.round((distanceAtNearestMeters / 1000) * 10) / 10;
 }
 
+function buildRoadworkPlaceholder(route?: Coordinate[]): RoadworkWarning[] {
+  if (!route || route.length === 0) return [];
+  const [lat, lon] = route[Math.floor(route.length / 2)];
+  return [
+    {
+      type: 'roadwork',
+      description: 'Veiarbeid - kommer senere',
+      lat,
+      lon,
+    },
+  ];
+}
+
 async function geocodeLocation(query: string): Promise<Coordinate> {
   const response = await fetch(
     `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`,
@@ -243,12 +263,14 @@ async function fetchNvdbTestWarnings(vehicleHeightMm: number) {
     const warnings = await fetchNvdbHeightWarnings(vehicleHeightMm);
     return NextResponse.json({
       warnings,
+      roadwork: [],
       source: 'nvdb-test',
       message: 'Høydebegrensninger hentet fra NVDB testutvalg',
     });
   } catch {
     return NextResponse.json({
       warnings: [],
+      roadwork: [],
       source: 'nvdb-test',
       message: 'NVDB var ikke tilgjengelig. Ingen varsler funnet i foreløpig sjekk.',
     });
@@ -272,6 +294,7 @@ export async function POST(request: NextRequest) {
   if (vehicleHeightMm === null) {
     return NextResponse.json({
       warnings: [],
+      roadwork: [],
       source: 'nvdb-test',
       message: 'Kjøretøyhøyde mangler. Ingen høydevarsler filtrert.',
     });
@@ -288,6 +311,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       warnings,
+      roadwork: buildRoadworkPlaceholder(route),
       source: 'nvdb-route',
       message: 'Høydebegrensninger hentet fra NVDB testutvalg og filtrert mot rute',
     });

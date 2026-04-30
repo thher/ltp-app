@@ -53,8 +53,16 @@ type RouteWarning = {
   distanceKm?: number;
 };
 
+type RoadworkWarning = {
+  type: 'roadwork';
+  description: string;
+  lat: number;
+  lon: number;
+};
+
 type RouteWarningResponse = {
   warnings: RouteWarning[];
+  roadwork: RoadworkWarning[];
   source: string;
   message: string;
 };
@@ -259,6 +267,10 @@ export function RouteCheckFutureSection({
               <p className="helper">
                 Foreløpig funksjon. Sjekk alltid skilting og offisielle kilder.
               </p>
+              <div style={{ marginTop: '1rem', display: 'grid', gap: '0.5rem' }}>
+                <h3>{tx(language, 'Veiarbeid og trafikk', 'Roadwork and traffic')}</h3>
+                <p>{tx(language, 'Kommer snart', 'Coming soon')}</p>
+              </div>
             </div>
           ) : null}
         </div>
