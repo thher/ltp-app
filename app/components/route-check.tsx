@@ -43,16 +43,18 @@ type RouteCheckPrefill = {
   roadClass?: RoadProfile;
 };
 
+type RouteWarning = {
+  type: 'height';
+  value: number;
+  description: string;
+  lat: number;
+  lon: number;
+  severity: 'critical' | 'caution';
+  distanceKm?: number;
+};
+
 type RouteWarningResponse = {
-  warnings: Array<{
-    type: 'height';
-    value: number;
-    description: string;
-    lat: number;
-    lon: number;
-    severity: 'critical' | 'caution';
-    distanceKm?: number;
-  }>;
+  warnings: RouteWarning[];
   source: string;
   message: string;
 };
@@ -85,6 +87,7 @@ export function RouteCheckFutureSection({
   const [routeWarningResult, setRouteWarningResult] = useState<RouteWarningResponse | null>(null);
   const [routeWarningLoading, setRouteWarningLoading] = useState(false);
   const [routeWarningError, setRouteWarningError] = useState('');
+  const [selectedWarning, setSelectedWarning] = useState<RouteWarning | null>(null);
   const sortedHeightWarnings = useMemo(
     () =>
       [...(routeWarningResult?.warnings ?? [])].sort((a, b) => {
@@ -115,6 +118,7 @@ export function RouteCheckFutureSection({
       if (!response.ok) throw new Error('Route warning request failed');
       const json = (await response.json()) as RouteWarningResponse;
       setRouteWarningResult(json);
+      setSelectedWarning(null);
     } catch {
       setRouteWarningError(
         tx(language, 'Kunne ikke gjennomføre foreløpig rutesjekk.', 'Could not run the preliminary route check.'),
@@ -190,6 +194,7 @@ export function RouteCheckFutureSection({
             routeFrom={routeFrom}
             routeTo={routeTo}
             warnings={routeWarningResult?.warnings ?? []}
+            selectedWarning={selectedWarning}
           />
           <p className="helper">
             Ruten er veiledende. Sjekk alltid høyde, vekt, bruksklasse og skilting før kjøring.
@@ -210,8 +215,10 @@ export function RouteCheckFutureSection({
                   {sortedHeightWarnings.map((warning, index) => {
                     const isCritical = warning.severity === 'critical';
                     return (
-                      <div
+                      <button
+                        type="button"
                         key={`height-warning-list-${warning.lat}-${warning.lon}-${index}`}
+                        onClick={() => setSelectedWarning(warning)}
                         style={{
                           border: `1px solid ${isCritical ? 'rgba(220, 38, 38, 0.45)' : 'rgba(245, 158, 11, 0.5)'}`,
                           background: isCritical ? 'rgba(220, 38, 38, 0.1)' : 'rgba(245, 158, 11, 0.12)',
@@ -219,6 +226,11 @@ export function RouteCheckFutureSection({
                           padding: '0.85rem 1rem',
                           display: 'grid',
                           gap: '0.35rem',
+                          color: 'inherit',
+                          cursor: 'pointer',
+                          font: 'inherit',
+                          textAlign: 'left',
+                          width: '100%',
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
@@ -239,7 +251,7 @@ export function RouteCheckFutureSection({
                             : tx(language, 'Nær grense', 'Near limit')}{' '}
                           · {tx(language, 'langs ruten', 'along the route')}
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>

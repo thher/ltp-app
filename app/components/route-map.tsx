@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { tx, type Language } from '../lib/i18n';
 
 const DEFAULT_NORWAY_CENTER: [number, number] = [64.0, 11.0];
@@ -27,22 +27,38 @@ type RouteMapWarning = {
   severity: 'critical' | 'caution';
 };
 
+type LeafletMapInstance = {
+  setView: (center: [number, number], zoom: number) => void;
+};
+
+type LeafletMarkerInstance = {
+  openPopup: () => void;
+};
+
+function warningKey(warning: RouteMapWarning) {
+  return `${warning.lat}-${warning.lon}-${warning.severity}-${warning.description}`;
+}
+
 export default function RouteMap({
   language,
   routeFrom,
   routeTo,
   warnings = [],
+  selectedWarning = null,
 }: {
   language: Language;
   routeFrom: string;
   routeTo: string;
   warnings?: RouteMapWarning[];
+  selectedWarning?: RouteMapWarning | null;
 }) {
   const [fromCoord, setFromCoord] = useState<[number, number] | null>(null);
   const [toCoord, setToCoord] = useState<[number, number] | null>(null);
   const [routePath, setRoutePath] = useState<[number, number][] | null>(null);
 
   const [LeafletComponents, setLeafletComponents] = useState<LeafletComponentsType | null>(null);
+  const mapRef = useRef<LeafletMapInstance | null>(null);
+  const warningMarkerRefs = useRef<Map<string, LeafletMarkerInstance>>(new Map());
 
   useEffect(() => {
     let mounted = true;
@@ -185,11 +201,20 @@ export default function RouteMap({
     return DEFAULT_NORWAY_CENTER;
   }, [fromCoord, toCoord]);
 
+  useEffect(() => {
+    if (!selectedWarning || !Number.isFinite(selectedWarning.lat) || !Number.isFinite(selectedWarning.lon)) return;
+
+    const center: [number, number] = [selectedWarning.lat, selectedWarning.lon];
+    mapRef.current?.setView(center, 15);
+    warningMarkerRefs.current.get(warningKey(selectedWarning))?.openPopup();
+  }, [selectedWarning]);
+
   return (
     <div className="route-check-map" aria-label={tx(language, 'Kart', 'Map')}>
       {LeafletComponents ? (
         <>
           <LeafletComponents.MapContainer
+            ref={mapRef}
             center={mapCenter as unknown}
             zoom={6}
             scrollWheelZoom={false}
@@ -208,6 +233,14 @@ export default function RouteMap({
               <LeafletComponents.Marker
                 key={`height-warning-${warning.lat}-${warning.lon}-${index}`}
                 position={[warning.lat, warning.lon] as [number, number]}
+                ref={(marker: LeafletMarkerInstance | null) => {
+                  const key = warningKey(warning);
+                  if (marker) {
+                    warningMarkerRefs.current.set(key, marker);
+                  } else {
+                    warningMarkerRefs.current.delete(key);
+                  }
+                }}
                 icon={LeafletComponents.L.divIcon({
                   className: '',
                   html: `<span style="display:block;width:18px;height:18px;border-radius:999px;background:${warning.severity === 'critical' ? '#dc2626' : '#f59e0b'};border:3px solid #fff;box-shadow:0 8px 18px rgba(0,0,0,.28);"></span>`,
