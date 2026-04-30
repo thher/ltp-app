@@ -27,6 +27,14 @@ type RouteMapWarning = {
   severity: 'critical' | 'caution';
 };
 
+type RouteMapRoadwork = {
+  type: 'roadwork';
+  description: string;
+  lat: number;
+  lon: number;
+  distanceKm?: number;
+};
+
 type LeafletMapInstance = {
   setView: (center: [number, number], zoom: number) => void;
 };
@@ -44,12 +52,14 @@ export default function RouteMap({
   routeFrom,
   routeTo,
   warnings = [],
+  roadwork = [],
   selectedWarning = null,
 }: {
   language: Language;
   routeFrom: string;
   routeTo: string;
   warnings?: RouteMapWarning[];
+  roadwork?: RouteMapRoadwork[];
   selectedWarning?: RouteMapWarning | null;
 }) {
   const [fromCoord, setFromCoord] = useState<[number, number] | null>(null);
@@ -254,6 +264,33 @@ export default function RouteMap({
                   <span>
                     {tx(language, 'Alvorlighetsgrad', 'Severity')}: {warning.severity}
                   </span>
+                </LeafletComponents.Popup>
+              </LeafletComponents.Marker>
+            ))}
+            {roadwork.map((incident, index) => (
+              <LeafletComponents.Marker
+                key={`roadwork-${incident.lat}-${incident.lon}-${index}`}
+                position={[incident.lat, incident.lon] as [number, number]}
+                icon={LeafletComponents.L.divIcon({
+                  className: '',
+                  html: '<span style="display:block;width:20px;height:20px;border-radius:6px;background:#0ea5e9;border:3px solid #fef08a;box-shadow:0 8px 18px rgba(0,0,0,.28);"></span>',
+                  iconSize: [20, 20],
+                  iconAnchor: [10, 10],
+                })}
+              >
+                <LeafletComponents.Popup>
+                  <strong>{incident.description}</strong>
+                  {typeof incident.distanceKm === 'number' ? (
+                    <>
+                      <br />
+                      <span>
+                        {incident.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
+                          maximumFractionDigits: 1,
+                        })}{' '}
+                        {tx(language, 'km frem', 'km ahead')}
+                      </span>
+                    </>
+                  ) : null}
                 </LeafletComponents.Popup>
               </LeafletComponents.Marker>
             ))}

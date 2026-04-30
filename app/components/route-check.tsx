@@ -203,6 +203,7 @@ export function RouteCheckFutureSection({
             routeFrom={routeFrom}
             routeTo={routeTo}
             warnings={routeWarningResult?.warnings ?? []}
+            roadwork={routeWarningResult?.roadwork ?? []}
             selectedWarning={selectedWarning}
           />
           <p className="helper">
