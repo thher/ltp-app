@@ -51,6 +51,7 @@ type RouteWarningResponse = {
     lat: number;
     lon: number;
     severity: 'critical' | 'caution';
+    distanceKm?: number;
   }>;
   source: string;
   message: string;
@@ -84,6 +85,14 @@ export function RouteCheckFutureSection({
   const [routeWarningResult, setRouteWarningResult] = useState<RouteWarningResponse | null>(null);
   const [routeWarningLoading, setRouteWarningLoading] = useState(false);
   const [routeWarningError, setRouteWarningError] = useState('');
+  const sortedHeightWarnings = useMemo(
+    () =>
+      [...(routeWarningResult?.warnings ?? [])].sort((a, b) => {
+        if (a.severity === b.severity) return 0;
+        return a.severity === 'critical' ? -1 : 1;
+      }),
+    [routeWarningResult],
+  );
 
   async function checkRouteWarnings() {
     setRouteWarningLoading(true);
@@ -194,15 +203,47 @@ export function RouteCheckFutureSection({
           {routeWarningResult ? (
             <div className="route-warning-list">
               <h3>{tx(language, 'Foreløpig tunnelsjekk', 'Preliminary tunnel check')}</h3>
-              <p>
-                {routeWarningResult.warnings.length === 0
-                  ? tx(
-                      language,
-                      'Ingen varsler funnet i foreløpig sjekk',
-                      'No warnings found in the preliminary check',
-                    )
-                  : routeWarningResult.message}
-              </p>
+              {sortedHeightWarnings.length === 0 ? (
+                <p>{tx(language, 'Ingen høydevarsler funnet langs ruten', 'No height warnings found along the route')}</p>
+              ) : (
+                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                  {sortedHeightWarnings.map((warning, index) => {
+                    const isCritical = warning.severity === 'critical';
+                    return (
+                      <div
+                        key={`height-warning-list-${warning.lat}-${warning.lon}-${index}`}
+                        style={{
+                          border: `1px solid ${isCritical ? 'rgba(220, 38, 38, 0.45)' : 'rgba(245, 158, 11, 0.5)'}`,
+                          background: isCritical ? 'rgba(220, 38, 38, 0.1)' : 'rgba(245, 158, 11, 0.12)',
+                          borderRadius: '14px',
+                          padding: '0.85rem 1rem',
+                          display: 'grid',
+                          gap: '0.35rem',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                          <span aria-hidden="true">{isCritical ? '🚫' : '⚠️'}</span>
+                          <strong>{warning.description}</strong>
+                        </div>
+                        {typeof warning.distanceKm === 'number' ? (
+                          <div className="helper" style={{ margin: 0 }}>
+                            {warning.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
+                              maximumFractionDigits: 1,
+                            })}{' '}
+                            {tx(language, 'km frem', 'km ahead')}
+                          </div>
+                        ) : null}
+                        <div className="helper" style={{ margin: 0 }}>
+                          {isCritical
+                            ? tx(language, 'Kritisk', 'Critical')
+                            : tx(language, 'Nær grense', 'Near limit')}{' '}
+                          · {tx(language, 'langs ruten', 'along the route')}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
               <p className="helper">
                 Foreløpig funksjon. Sjekk alltid skilting og offisielle kilder.
               </p>

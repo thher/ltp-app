@@ -18,6 +18,7 @@ type HeightWarning = {
   description: string;
   lat: number;
   lon: number;
+  distanceKm?: number;
   location?: string;
   coordinates?: Coordinate;
 };
@@ -95,7 +96,11 @@ function extractCoordinates(objekt: Record<string, unknown>): Coordinate | undef
   return [lat, lon];
 }
 
-function mapNvdbWarning(objekt: Record<string, unknown>, vehicleHeightMm: number): HeightWarning | null {
+function mapNvdbWarning(
+  objekt: Record<string, unknown>,
+  vehicleHeightMm: number,
+  distanceKm?: number,
+): HeightWarning | null {
   const height = extractHeightMeters(objekt);
   if (height === null) return null;
 
@@ -113,6 +118,7 @@ function mapNvdbWarning(objekt: Record<string, unknown>, vehicleHeightMm: number
     description: `Høydebegrensning ${height.toLocaleString('nb-NO')} meter`,
     lat,
     lon,
+    distanceKm,
     location: extractLocation(objekt),
     coordinates,
   };
@@ -131,8 +137,27 @@ function haversineMeters(a: Coordinate, b: Coordinate) {
   return 2 * radiusMeters * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
-function isCloseToRoute(point: Coordinate, route: Coordinate[]) {
-  return route.some((routePoint) => haversineMeters(point, routePoint) < ROUTE_MATCH_DISTANCE_METERS);
+function routeDistanceKmToNearestPoint(point: Coordinate, route: Coordinate[]) {
+  let nearestIndex = -1;
+  let nearestDistanceMeters = Infinity;
+  let distanceFromStartMeters = 0;
+  let distanceAtNearestMeters = 0;
+
+  for (let index = 0; index < route.length; index += 1) {
+    if (index > 0) {
+      distanceFromStartMeters += haversineMeters(route[index - 1], route[index]);
+    }
+
+    const distanceToPointMeters = haversineMeters(point, route[index]);
+    if (distanceToPointMeters < nearestDistanceMeters) {
+      nearestDistanceMeters = distanceToPointMeters;
+      nearestIndex = index;
+      distanceAtNearestMeters = distanceFromStartMeters;
+    }
+  }
+
+  if (nearestIndex === -1 || nearestDistanceMeters >= ROUTE_MATCH_DISTANCE_METERS) return null;
+  return Math.round((distanceAtNearestMeters / 1000) * 10) / 10;
 }
 
 async function geocodeLocation(query: string): Promise<Coordinate> {
@@ -201,12 +226,15 @@ async function fetchNvdbHeightWarnings(vehicleHeightMm: number, route?: Coordina
   return objekter
     .map((objekt) => asRecord(objekt))
     .filter((objekt): objekt is Record<string, unknown> => objekt !== null)
-    .filter((objekt) => {
-      if (!route) return true;
+    .map((objekt) => {
+      if (!route) return { objekt, distanceKm: undefined };
       const coordinates = extractCoordinates(objekt);
-      return coordinates ? isCloseToRoute(coordinates, route) : false;
+      if (!coordinates) return null;
+      const distanceKm = routeDistanceKmToNearestPoint(coordinates, route);
+      return distanceKm !== null ? { objekt, distanceKm } : null;
     })
-    .map((objekt) => mapNvdbWarning(objekt, vehicleHeightMm))
+    .filter((match): match is { objekt: Record<string, unknown>; distanceKm?: number } => match !== null)
+    .map(({ objekt, distanceKm }) => mapNvdbWarning(objekt, vehicleHeightMm, distanceKm))
     .filter((warning): warning is HeightWarning => warning !== null);
 }
 
