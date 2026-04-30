@@ -11,6 +11,7 @@ type RouteWarningRequest = {
 
 type HeightWarning = {
   type: 'height';
+  severity: 'critical' | 'caution';
   value: number;
   description: string;
   location?: string;
@@ -29,6 +30,11 @@ function parseNumber(value: unknown) {
   if (typeof value !== 'string') return null;
   const parsed = Number(value.replace(',', '.').replace(/[^\d.-]/g, ''));
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseVehicleHeightMm(value: unknown) {
+  const parsed = parseNumber(value);
+  return parsed !== null && parsed > 0 ? Math.round(parsed) : null;
 }
 
 function normalizeHeightMeters(value: number) {
@@ -78,12 +84,16 @@ function extractCoordinates(objekt: Record<string, unknown>): [number, number] |
   return Number.isFinite(lat) && Number.isFinite(lon) ? [lat, lon] : undefined;
 }
 
-function mapNvdbWarning(objekt: Record<string, unknown>): HeightWarning | null {
+function mapNvdbWarning(objekt: Record<string, unknown>, vehicleHeightMm: number): HeightWarning | null {
   const height = extractHeightMeters(objekt);
   if (height === null) return null;
 
+  const restrictionHeightMm = Math.round(height * 1000);
+  if (restrictionHeightMm > vehicleHeightMm + 200) return null;
+
   return {
     type: 'height',
+    severity: restrictionHeightMm < vehicleHeightMm ? 'critical' : 'caution',
     value: height,
     description: `Høydebegrensning ${height.toLocaleString('nb-NO')} meter`,
     location: extractLocation(objekt),
@@ -92,11 +102,21 @@ function mapNvdbWarning(objekt: Record<string, unknown>): HeightWarning | null {
 }
 
 export async function POST(request: NextRequest) {
+  let vehicleHeightMm: number | null = null;
+
   try {
     const body = (await request.json()) as RouteWarningRequest;
-    void body;
+    vehicleHeightMm = parseVehicleHeightMm(body.vehicleHeightMm);
   } catch {
     // Request fields are accepted now, but route filtering is intentionally added later.
+  }
+
+  if (vehicleHeightMm === null) {
+    return NextResponse.json({
+      warnings: [],
+      source: 'nvdb-test',
+      message: 'Kjøretøyhøyde mangler. Ingen høydevarsler filtrert.',
+    });
   }
 
   try {
@@ -116,7 +136,7 @@ export async function POST(request: NextRequest) {
     const warnings = objekter
       .map((objekt) => {
         const record = asRecord(objekt);
-        return record ? mapNvdbWarning(record) : null;
+        return record ? mapNvdbWarning(record, vehicleHeightMm) : null;
       })
       .filter((warning): warning is HeightWarning => warning !== null);
 
