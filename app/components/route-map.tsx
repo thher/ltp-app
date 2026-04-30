@@ -12,19 +12,31 @@ type LeafletComponentsType = {
   MapContainer: any;
   TileLayer: any;
   Marker: any;
+  Popup: any;
   Polyline: any;
   L: any;
 };
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
+type RouteMapWarning = {
+  type: 'height';
+  value: number;
+  description: string;
+  lat: number;
+  lon: number;
+  severity: 'critical' | 'caution';
+};
+
 export default function RouteMap({
   language,
   routeFrom,
   routeTo,
+  warnings = [],
 }: {
   language: Language;
   routeFrom: string;
   routeTo: string;
+  warnings?: RouteMapWarning[];
 }) {
   const [fromCoord, setFromCoord] = useState<[number, number] | null>(null);
   const [toCoord, setToCoord] = useState<[number, number] | null>(null);
@@ -36,7 +48,7 @@ export default function RouteMap({
     let mounted = true;
     (async () => {
       try {
-        const [{ MapContainer, TileLayer, Marker, Polyline }, L] = await Promise.all([
+        const [{ MapContainer, TileLayer, Marker, Popup, Polyline }, L] = await Promise.all([
           import('react-leaflet'),
           import('leaflet'),
         ]);
@@ -50,7 +62,7 @@ export default function RouteMap({
           shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
         });
 
-        if (mounted) setLeafletComponents({ MapContainer, TileLayer, Marker, Polyline, L });
+        if (mounted) setLeafletComponents({ MapContainer, TileLayer, Marker, Popup, Polyline, L });
       } catch {
         if (mounted) setLeafletComponents(null);
       }
@@ -192,6 +204,26 @@ export default function RouteMap({
             ) : null}
             {fromCoord && <LeafletComponents.Marker position={fromCoord as [number, number]} />}
             {toCoord && <LeafletComponents.Marker position={toCoord as [number, number]} />}
+            {warnings.map((warning, index) => (
+              <LeafletComponents.Marker
+                key={`height-warning-${warning.lat}-${warning.lon}-${index}`}
+                position={[warning.lat, warning.lon] as [number, number]}
+                icon={LeafletComponents.L.divIcon({
+                  className: '',
+                  html: `<span style="display:block;width:18px;height:18px;border-radius:999px;background:${warning.severity === 'critical' ? '#dc2626' : '#f59e0b'};border:3px solid #fff;box-shadow:0 8px 18px rgba(0,0,0,.28);"></span>`,
+                  iconSize: [18, 18],
+                  iconAnchor: [9, 9],
+                })}
+              >
+                <LeafletComponents.Popup>
+                  <strong>{warning.description}</strong>
+                  <br />
+                  <span>
+                    {tx(language, 'Alvorlighetsgrad', 'Severity')}: {warning.severity}
+                  </span>
+                </LeafletComponents.Popup>
+              </LeafletComponents.Marker>
+            ))}
           </LeafletComponents.MapContainer>
           <div className="route-check-map-caption">
             <strong>{tx(language, 'Kart (enkel forhåndsvisning)', 'Map (simple preview)')}</strong>

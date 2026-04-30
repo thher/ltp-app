@@ -44,7 +44,14 @@ type RouteCheckPrefill = {
 };
 
 type RouteWarningResponse = {
-  warnings: string[];
+  warnings: Array<{
+    type: 'height';
+    value: number;
+    description: string;
+    lat: number;
+    lon: number;
+    severity: 'critical' | 'caution';
+  }>;
   source: string;
   message: string;
 };
@@ -169,7 +176,12 @@ export function RouteCheckFutureSection({
         </div>
 
         <div>
-          <RouteMap language={language} routeFrom={routeFrom} routeTo={routeTo} />
+          <RouteMap
+            language={language}
+            routeFrom={routeFrom}
+            routeTo={routeTo}
+            warnings={routeWarningResult?.warnings ?? []}
+          />
           <p className="helper">
             Ruten er veiledende. Sjekk alltid høyde, vekt, bruksklasse og skilting før kjøring.
           </p>

@@ -16,6 +16,8 @@ type HeightWarning = {
   severity: 'critical' | 'caution';
   value: number;
   description: string;
+  lat: number;
+  lon: number;
   location?: string;
   coordinates?: Coordinate;
 };
@@ -97,16 +99,22 @@ function mapNvdbWarning(objekt: Record<string, unknown>, vehicleHeightMm: number
   const height = extractHeightMeters(objekt);
   if (height === null) return null;
 
+  const coordinates = extractCoordinates(objekt);
+  if (!coordinates) return null;
+
   const restrictionHeightMm = Math.round(height * 1000);
   if (restrictionHeightMm > vehicleHeightMm + 200) return null;
 
+  const [lat, lon] = coordinates;
   return {
     type: 'height',
     severity: restrictionHeightMm < vehicleHeightMm ? 'critical' : 'caution',
     value: height,
     description: `Høydebegrensning ${height.toLocaleString('nb-NO')} meter`,
+    lat,
+    lon,
     location: extractLocation(objekt),
-    coordinates: extractCoordinates(objekt),
+    coordinates,
   };
 }
 
