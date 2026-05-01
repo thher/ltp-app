@@ -127,7 +127,7 @@ export function RouteCheckFutureSection({
     () =>
       [...(routeWarningResult?.warnings ?? [])].sort((a, b) => {
         const distanceDelta = (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity);
-        if (Math.abs(distanceDelta) > 0.5) return distanceDelta;
+        if (distanceDelta !== 0) return distanceDelta;
         if (a.severity !== b.severity) return a.severity === 'critical' ? -1 : 1;
         return a.value - b.value;
       }),
@@ -135,7 +135,8 @@ export function RouteCheckFutureSection({
   );
   const criticalWarningCount = (routeWarningResult?.warnings ?? []).filter((warning) => warning.severity === 'critical').length;
   const cautionWarningCount = (routeWarningResult?.warnings ?? []).filter((warning) => warning.severity === 'caution').length;
-  const roadworkCount = routeWarningResult?.roadwork.length ?? 0;
+  const realRoadwork = routeWarningResult?.roadwork ?? [];
+  const roadworkCount = realRoadwork.length;
 
   const checkRouteWarnings = useCallback(async () => {
     setRouteWarningLoading(true);
@@ -205,7 +206,7 @@ export function RouteCheckFutureSection({
             routeFrom={routeFrom}
             routeTo={routeTo}
             warnings={routeWarningResult?.warnings ?? []}
-            roadwork={routeWarningResult?.roadwork ?? []}
+            roadwork={realRoadwork}
             selectedWarning={selectedWarning}
           />
           <p className="helper">
@@ -265,14 +266,13 @@ export function RouteCheckFutureSection({
                         const diffMm =
                           checkedVehicleHeightMm !== null ? checkedVehicleHeightMm - restrictionHeightMm : null;
                         const diffCm = diffMm !== null ? Math.round(Math.abs(diffMm) / 10) : null;
-                        const statusText =
-                          diffMm !== null && diffCm !== null
-                            ? diffMm > 0
-                              ? tx(language, `Du er ${diffCm} cm for høy`, `You are ${diffCm} cm too high`)
-                              : tx(language, `Kun ${diffCm} cm klaring`, `Only ${diffCm} cm clearance`)
-                            : isCritical
-                              ? tx(language, 'Kritisk høydebegrensning', 'Critical height restriction')
-                              : tx(language, 'Nær høydegrense', 'Near height limit');
+                        const statusText = isCritical
+                          ? diffCm !== null
+                            ? tx(language, `FOR HØY +${diffCm} cm`, `TOO HIGH +${diffCm} cm`)
+                            : tx(language, 'FOR HØY', 'TOO HIGH')
+                          : diffCm !== null
+                            ? tx(language, `LAV KLARING ${diffCm} cm`, `LOW CLEARANCE ${diffCm} cm`)
+                            : tx(language, 'LAV KLARING', 'LOW CLEARANCE');
                         return (
                           <button
                             type="button"
@@ -293,23 +293,22 @@ export function RouteCheckFutureSection({
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                              <span aria-hidden="true">{isCritical ? '🚫' : '⚠️'}</span>
                               <strong>{statusText}</strong>
                             </div>
                             <div className={isCritical ? 'height-warning-detail height-warning-detail--critical' : 'height-warning-detail height-warning-detail--caution'}>
-                              {tx(language, 'Skiltet høyde', 'Posted height')}: {formatHeightMeters(warning.value, language)} m
+                              {tx(language, 'Skilt', 'Sign')}: {formatHeightMeters(warning.value, language)} m
                             </div>
                             {typeof warning.distanceKm === 'number' ? (
                               <div className="helper" style={{ margin: 0 }}>
                                 {warning.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
                                   maximumFractionDigits: 1,
                                 })}{' '}
-                                {tx(language, 'km frem langs ruten', 'km ahead along the route')}
+                                {tx(language, 'km frem', 'km ahead')}
                               </div>
                             ) : null}
                             {isCritical ? (
                               <strong className="height-warning-stop">
-                                {tx(language, 'STOPP - finn omkjøring', 'STOP - find an alternate route')}
+                                {tx(language, 'STOPP - ruten må endres', 'STOP - route must be changed')}
                               </strong>
                             ) : null}
                           </button>
@@ -318,11 +317,11 @@ export function RouteCheckFutureSection({
                     </div>
                   )}
                   <h3>{tx(language, 'Veiarbeid og trafikk', 'Roadwork and traffic')}</h3>
-                  {routeWarningResult.roadwork.length === 0 ? (
-                    <p>{tx(language, 'Ingen registrerte veiarbeid/trafikkmeldinger funnet langs ruten akkurat nå.', 'No registered roadwork/traffic incidents found along the route right now.')}</p>
+                  {realRoadwork.length === 0 ? (
+                    <p>{tx(language, 'Ingen registrerte veiarbeid eller trafikkmeldinger langs ruten akkurat nå.', 'No registered roadwork or traffic incidents along the route right now.')}</p>
                   ) : (
                     <div style={{ display: 'grid', gap: '0.75rem' }}>
-                      {routeWarningResult.roadwork.map((incident, index) => (
+                      {realRoadwork.map((incident, index) => (
                         <div
                           key={`roadwork-${incident.lat}-${incident.lon}-${index}`}
                           style={{
@@ -334,7 +333,8 @@ export function RouteCheckFutureSection({
                             gap: '0.35rem',
                           }}
                         >
-                          <strong>{incident.description}</strong>
+                          <strong>{tx(language, 'Veiarbeid / trafikk', 'Roadwork / traffic')}</strong>
+                          <span>{incident.description}</span>
                           {typeof incident.distanceKm === 'number' ? (
                             <div className="helper" style={{ margin: 0 }}>
                               {incident.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
@@ -347,6 +347,14 @@ export function RouteCheckFutureSection({
                       ))}
                     </div>
                   )}
+                  <h3>{tx(language, 'Hvileplasser', 'Rest stops')}</h3>
+                  <p className="helper">
+                    {tx(
+                      language,
+                      'Hvileplasser vises her når en reell datakilde for tungbilparkering kobles til.',
+                      'Truck rest stops will appear here when a real heavy-vehicle parking data source is connected.',
+                    )}
+                  </p>
                 </>
               ) : (
                 <p>{tx(language, 'Varsler sjekkes automatisk når ruten er klar.', 'Warnings are checked automatically when the route is ready.')}</p>

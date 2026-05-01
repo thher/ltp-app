@@ -46,7 +46,8 @@ const DATEX_SITUATION_URL =
   'https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/GetSituation/pullsnapshotdata';
 const ROUTE_MATCH_DISTANCE_METERS = 300;
 const ROADWORK_ROUTE_MATCH_DISTANCE_METERS = 1000;
-const MAX_TRAFFIC_WARNINGS = 20;
+const MAX_TRAFFIC_WARNINGS = 10;
+const MAX_DATEX_RECORDS = 200;
 
 function createDebug(usedRouteFilter: boolean): RouteWarningDebug {
   return {
@@ -298,20 +299,6 @@ function buildNvdbBbox(route: Coordinate[]) {
   return `${minLon},${minLat},${maxLon},${maxLat}`;
 }
 
-function buildRoadworkPlaceholder(route?: Coordinate[]): RoadworkWarning[] {
-  if (!route || route.length === 0) return [];
-  const [lat, lon] = route[Math.floor(route.length / 2)];
-  return [
-    {
-      type: 'roadwork',
-      description: 'Veiarbeid - kommer senere',
-      lat,
-      lon,
-      distanceKm: routeDistanceKmToNearestPoint([lat, lon], route, ROADWORK_ROUTE_MATCH_DISTANCE_METERS) ?? undefined,
-    },
-  ];
-}
-
 function decodeXmlEntities(value: string) {
   return value
     .replace(/&amp;/g, '&')
@@ -372,7 +359,7 @@ async function fetchDatexRoadworkWarnings(route: Coordinate[] | undefined, debug
     if (!response.ok) throw new Error('DATEX request failed');
 
     const xml = await response.text();
-    const records = splitSituationRecords(xml).slice(0, MAX_TRAFFIC_WARNINGS);
+    const records = splitSituationRecords(xml).slice(0, MAX_DATEX_RECORDS);
     debug.datexFetchedCount = records.length;
 
     const roadwork = records
@@ -394,14 +381,16 @@ async function fetchDatexRoadworkWarnings(route: Coordinate[] | undefined, debug
           distanceKm: distanceKm ?? undefined,
         };
       })
-      .filter((warning): warning is RoadworkWarning => warning !== null);
+      .filter((warning): warning is RoadworkWarning => warning !== null)
+      .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
+      .slice(0, MAX_TRAFFIC_WARNINGS);
 
     debug.datexMatchedRouteCount = route ? roadwork.length : 0;
-    return roadwork.length > 0 ? roadwork : buildRoadworkPlaceholder(route);
+    return roadwork;
   } catch {
     debug.datexFetchedCount = 0;
     debug.datexMatchedRouteCount = 0;
-    return buildRoadworkPlaceholder(route);
+    return [];
   }
 }
 

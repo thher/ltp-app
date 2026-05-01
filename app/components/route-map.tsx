@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { tx, type Language } from '../lib/i18n';
 
 const DEFAULT_NORWAY_CENTER: [number, number] = [64.0, 11.0];
-const ROUTE_LINE_REAL = { color: '#0ea5e9', weight: 5, opacity: 0.9 };
+const ROUTE_LINE_REAL = { color: '#3b82f6', weight: 4 };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type LeafletComponentsType = {
@@ -36,6 +36,7 @@ type RouteMapRoadwork = {
 
 type LeafletMapInstance = {
   setView: (center: [number, number], zoom: number) => void;
+  fitBounds: (bounds: [number, number][], options?: { padding?: [number, number] }) => void;
 };
 
 type LeafletMarkerInstance = {
@@ -44,6 +45,27 @@ type LeafletMarkerInstance = {
 
 function warningKey(warning: RouteMapWarning) {
   return `${warning.lat}-${warning.lon}-${warning.severity}-${warning.description}`;
+}
+
+function simplifyRoute(points: [number, number][], step = 10) {
+  return points.filter((_, i) => i % step === 0);
+}
+
+function nearestRoutePoint(point: [number, number], route: [number, number][]) {
+  if (route.length === 0) return point;
+
+  let nearest = point;
+  let nearestDistance = Infinity;
+  for (const routePoint of route) {
+    const latDelta = routePoint[0] - point[0];
+    const lonDelta = routePoint[1] - point[1];
+    const distance = latDelta * latDelta + lonDelta * lonDelta;
+    if (distance < nearestDistance) {
+      nearest = routePoint;
+      nearestDistance = distance;
+    }
+  }
+  return nearest;
 }
 
 export default function RouteMap({
@@ -69,6 +91,28 @@ export default function RouteMap({
   const [LeafletComponents, setLeafletComponents] = useState<LeafletComponentsType | null>(null);
   const mapRef = useRef<LeafletMapInstance | null>(null);
   const warningMarkerRefs = useRef<Map<string, LeafletMarkerInstance>>(new Map());
+  const hasRouteInput = Boolean(routeFrom.trim() && routeTo.trim());
+  const simplifiedRoute = useMemo(() => {
+    if (!routePath || routePath.length === 0) return [];
+    const simplified = simplifyRoute(routePath, routePath.length > 10000 ? 15 : 5);
+    return simplified.length > 1 ? simplified : routePath;
+  }, [routePath]);
+  const snappedHeightWarnings = useMemo(
+    () =>
+      warnings.map((warning) => ({
+        ...warning,
+        mapPosition: nearestRoutePoint([warning.lat, warning.lon], simplifiedRoute),
+      })),
+    [simplifiedRoute, warnings],
+  );
+  const snappedRoadwork = useMemo(
+    () =>
+      roadwork.map((incident) => ({
+        ...incident,
+        mapPosition: nearestRoutePoint([incident.lat, incident.lon], simplifiedRoute),
+      })),
+    [roadwork, simplifiedRoute],
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -101,7 +145,7 @@ export default function RouteMap({
 
   useEffect(() => {
     let mounted = true;
-    async function geocode(q: string, setter: (c: [number, number] | null) => void) {
+    async function geocode(label: 'From' | 'To', q: string, setter: (c: [number, number] | null) => void) {
       if (!q || !q.trim()) return setter(null);
       try {
         const res = await fetch(
@@ -109,6 +153,7 @@ export default function RouteMap({
           { headers: { 'User-Agent': 'ai-search-app/1.0 (email@example.com)' } },
         );
         const json = (await res.json()) as unknown;
+        console.log(`RouteMap geocoded ${label} result:`, json);
         if (!mounted) return;
         if (Array.isArray(json) && json.length > 0) {
           const first = json[0] as Record<string, unknown> | undefined;
@@ -130,8 +175,8 @@ export default function RouteMap({
       }
     }
 
-    geocode(routeFrom, setFromCoord);
-    geocode(routeTo, setToCoord);
+    geocode('From', routeFrom, setFromCoord);
+    geocode('To', routeTo, setToCoord);
 
     return () => {
       mounted = false;
@@ -153,10 +198,10 @@ export default function RouteMap({
         setRouteStatus('loading');
         const [fromLat, fromLon] = fromCoord;
         const [toLat, toLon] = toCoord;
-        const res = await fetch(
-          `https://router.project-osrm.org/route/v1/driving/${fromLon},${fromLat};${toLon},${toLat}?overview=full&geometries=geojson`,
-          { signal: controller.signal },
-        );
+        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${fromLon},${fromLat};${toLon},${toLat}?overview=full&geometries=geojson`;
+        console.log('RouteMap OSRM request URL:', osrmUrl);
+        const res = await fetch(osrmUrl, { signal: controller.signal });
+        console.log('RouteMap OSRM response status:', res.status);
         if (!res.ok) throw new Error('OSRM route request failed');
 
         const json = (await res.json()) as unknown;
@@ -186,6 +231,7 @@ export default function RouteMap({
             })
             .filter((coord): coord is [number, number] => coord !== null);
 
+          console.log('RouteMap OSRM geometry point count:', path.length);
           setRoutePath(path.length > 1 ? path : null);
           setRouteStatus(path.length > 1 ? 'ready' : 'failed');
           return;
@@ -193,10 +239,12 @@ export default function RouteMap({
 
         setRoutePath(null);
         setRouteStatus('failed');
+        console.log('RouteMap OSRM geometry point count:', 0);
       } catch {
         if (mounted && !controller.signal.aborted) {
           setRoutePath(null);
           setRouteStatus('failed');
+          console.log('RouteMap OSRM geometry point count:', 0);
         }
       }
     }
@@ -226,6 +274,34 @@ export default function RouteMap({
     warningMarkerRefs.current.get(warningKey(selectedWarning))?.openPopup();
   }, [selectedWarning]);
 
+  useEffect(() => {
+    if (simplifiedRoute.length > 1) {
+      mapRef.current?.fitBounds(simplifiedRoute, { padding: [32, 32] });
+      return;
+    }
+
+    if (fromCoord && toCoord) {
+      mapRef.current?.fitBounds([fromCoord, toCoord], { padding: [32, 32] });
+    }
+  }, [fromCoord, simplifiedRoute, toCoord]);
+
+  const routeCaption = (() => {
+    if (hasRouteInput && routeStatus === 'loading') {
+      return tx(language, 'Henter rute og kartdata…', 'Fetching route and map data…');
+    }
+    if (fromCoord && toCoord && routeStatus === 'failed') {
+      return tx(
+        language,
+        'Kunne ikke hente rute. Sjekk fra/til eller prøv igjen.',
+        'Could not fetch the route. Check from/to or try again.',
+      );
+    }
+    if (routeStatus === 'ready') {
+      return tx(language, 'Ruten er tegnet med veilinje.', 'The route is drawn with road geometry.');
+    }
+    return tx(language, 'Henter rute og kartdata…', 'Fetching route and map data…');
+  })();
+
   return (
     <div className="route-check-map" aria-label={tx(language, 'Kart', 'Map')}>
       {LeafletComponents ? (
@@ -238,18 +314,18 @@ export default function RouteMap({
             style={{ height: 'min(58vh, 560px)', width: '100%' }}
           >
             <LeafletComponents.TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            {fromCoord && toCoord && routePath ? (
+            {fromCoord && toCoord && simplifiedRoute.length > 1 ? (
               <LeafletComponents.Polyline
-                positions={routePath}
+                positions={simplifiedRoute}
                 pathOptions={ROUTE_LINE_REAL}
               />
             ) : null}
             {fromCoord && <LeafletComponents.Marker position={fromCoord as [number, number]} />}
             {toCoord && <LeafletComponents.Marker position={toCoord as [number, number]} />}
-            {warnings.map((warning, index) => (
+            {snappedHeightWarnings.map((warning, index) => (
               <LeafletComponents.Marker
                 key={`height-warning-${warning.lat}-${warning.lon}-${index}`}
-                position={[warning.lat, warning.lon] as [number, number]}
+                position={warning.mapPosition}
                 ref={(marker: LeafletMarkerInstance | null) => {
                   const key = warningKey(warning);
                   if (marker) {
@@ -274,10 +350,10 @@ export default function RouteMap({
                 </LeafletComponents.Popup>
               </LeafletComponents.Marker>
             ))}
-            {roadwork.map((incident, index) => (
+            {snappedRoadwork.map((incident, index) => (
               <LeafletComponents.Marker
                 key={`roadwork-${incident.lat}-${incident.lon}-${index}`}
-                position={[incident.lat, incident.lon] as [number, number]}
+                position={incident.mapPosition}
                 icon={LeafletComponents.L.divIcon({
                   className: '',
                   html: '<span style="display:block;width:20px;height:20px;border-radius:6px;background:#0ea5e9;border:3px solid #fef08a;box-shadow:0 8px 18px rgba(0,0,0,.28);"></span>',
@@ -304,11 +380,13 @@ export default function RouteMap({
           </LeafletComponents.MapContainer>
           <div className="route-check-map-caption">
             <strong>{tx(language, 'Rutekart', 'Route map')}</strong>
-            <span>
-              {fromCoord && toCoord && routeStatus === 'failed'
-                ? tx(language, 'Kunne ikke hente rutelinje akkurat nå. Markørene vises, men veilinjen er ikke tegnet.', 'Could not fetch the route line right now. Markers are shown, but the road line is not drawn.')
-                : tx(language, 'Ruten tegnes når veilinjen er hentet.', 'The route is drawn when the road geometry is loaded.')}
-            </span>
+            <span>{routeCaption}</span>
+            <div className="route-map-debug">
+              <span>{tx(language, 'From coordinate found', 'From coordinate found')}: {fromCoord ? 'yes' : 'no'}</span>
+              <span>{tx(language, 'To coordinate found', 'To coordinate found')}: {toCoord ? 'yes' : 'no'}</span>
+              <span>{tx(language, 'OSRM route fetched', 'OSRM route fetched')}: {routeStatus === 'ready' ? 'yes' : 'no'}</span>
+              <span>{tx(language, 'Route point count', 'Route point count')}: {routePath?.length ?? 0}</span>
+            </div>
           </div>
         </>
       ) : (
@@ -317,8 +395,8 @@ export default function RouteMap({
           <div className="route-map-line route-map-line--secondary" />
           <div className="route-map-node route-map-node--from" />
           <div className="route-map-node route-map-node--to" />
-          <strong>{tx(language, 'Kart kommer senere', 'Map coming later')}</strong>
-          <span>{tx(language, 'Ingen eksterne kart- eller rutedata er koblet til ennå.', 'No external map or route data is connected yet.')}</span>
+          <strong>{hasRouteInput ? tx(language, 'Henter rute og kartdata…', 'Fetching route and map data…') : tx(language, 'Kart', 'Map')}</strong>
+          <span>{hasRouteInput ? tx(language, 'Kartet lastes inn.', 'The map is loading.') : tx(language, 'Legg inn fra og til for å vise rute.', 'Enter from and to locations to show a route.')}</span>
         </div>
       )}
     </div>

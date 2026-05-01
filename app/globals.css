@@ -1044,6 +1044,22 @@ select {
   border-top: 1px solid rgba(215, 232, 224, 0.12);
 }
 
+.route-map-debug {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(215, 232, 224, 0.1);
+}
+
+.route-map-debug span {
+  max-width: none;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
 .route-check-rest {
   display: grid;
   gap: 12px;
@@ -1445,6 +1461,10 @@ select {
 [data-theme="light"] .route-check-map-caption {
   background: rgba(255, 255, 255, 0.92);
   border-top-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .route-map-debug {
+  border-top-color: rgba(0, 0, 0, 0.08);
 }
 
 [data-theme="light"] .route-check-map {
@@ -3732,6 +3752,10 @@ select {
   }
 
   .route-warning-list ul {
+    grid-template-columns: 1fr;
+  }
+
+  .route-map-debug {
     grid-template-columns: 1fr;
   }
 
