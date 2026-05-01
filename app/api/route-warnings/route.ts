@@ -199,6 +199,28 @@ function routeDistanceKmToNearestPoint(
   return Math.round((distanceAtNearestMeters / 1000) * 10) / 10;
 }
 
+function prioritizeHeightWarnings(warnings: HeightWarning[]) {
+  const sorted = [...warnings].sort((a, b) => {
+    if (a.value !== b.value) return a.value - b.value;
+    return (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity);
+  });
+
+  const merged: HeightWarning[] = [];
+  for (const warning of sorted) {
+    const isNearExisting = merged.some(
+      (existing) => haversineMeters([warning.lat, warning.lon], [existing.lat, existing.lon]) < 500,
+    );
+    if (!isNearExisting) merged.push(warning);
+  }
+
+  return merged
+    .sort((a, b) => {
+      if (a.value !== b.value) return a.value - b.value;
+      return (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity);
+    })
+    .slice(0, 10);
+}
+
 function buildNvdbBbox(route: Coordinate[]) {
   const padding = 0.1;
   const lats = route.map(([lat]) => lat);
@@ -424,7 +446,7 @@ async function fetchNvdbHeightWarnings(
       .filter((warning): warning is HeightWarning => warning !== null);
     debug.nvdbHeightFilteredCount = warnings.length;
 
-    return warnings;
+    return prioritizeHeightWarnings(warnings);
   } catch (error) {
     console.error('NVDB height warning fetch failed:', error);
     debug.nvdbFetchedCount = 0;
