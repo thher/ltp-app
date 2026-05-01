@@ -158,7 +158,7 @@ export function RouteCheckFutureSection({
   );
   const criticalWarningCount = (routeWarningResult?.warnings ?? []).filter((warning) => warning.severity === 'critical').length;
   const cautionWarningCount = (routeWarningResult?.warnings ?? []).filter((warning) => warning.severity === 'caution').length;
-  const realRoadwork = routeWarningResult?.roadwork ?? [];
+  const realRoadwork = useMemo(() => routeWarningResult?.roadwork ?? [], [routeWarningResult]);
   const restStops = useMemo(() => routeWarningResult?.restStops ?? [], [routeWarningResult]);
   const roadworkCount = realRoadwork.length;
   const estimatedStopDistanceKm = useMemo(() => {
@@ -183,6 +183,57 @@ export function RouteCheckFutureSection({
     estimatedStopDistanceKm !== null &&
     typeof recommendedRestStop.distanceKm === 'number' &&
     recommendedRestStop.distanceKm > estimatedStopDistanceKm + 50;
+  const nextCriticalWarning = useMemo(
+    () =>
+      [...(routeWarningResult?.warnings ?? [])]
+        .filter((warning) => warning.severity === 'critical')
+        .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))[0] ?? null,
+    [routeWarningResult],
+  );
+  const liveStatusMessages = useMemo(() => {
+    const messages: Array<{ tone: 'critical' | 'warning' | 'info'; text: string }> = [];
+
+    if (nextCriticalWarning) {
+      const restrictionHeightMm = Math.round(nextCriticalWarning.value * 1000);
+      const diffMm =
+        checkedVehicleHeightMm !== null ? checkedVehicleHeightMm - restrictionHeightMm : null;
+      const diffCm = diffMm !== null ? Math.max(Math.round(diffMm / 10), 0) : null;
+      const distanceText =
+        typeof nextCriticalWarning.distanceKm === 'number'
+          ? ` - ${nextCriticalWarning.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
+              maximumFractionDigits: 1,
+            })} ${tx(language, 'km frem', 'km ahead')}`
+          : '';
+      messages.push({
+        tone: 'critical',
+        text:
+          diffCm !== null
+            ? `${tx(language, 'FOR HØY', 'TOO HIGH')} +${diffCm} cm${distanceText}`
+            : `${tx(language, 'FOR HØY', 'TOO HIGH')}${distanceText}`,
+      });
+    }
+
+    if (estimatedTimeToStop !== null && estimatedTimeToStop < 0.25) {
+      messages.push({
+        tone: 'critical',
+        text: tx(language, 'STOPP snart - hviletid nærmer seg', 'STOP soon - rest time is approaching'),
+      });
+    } else if (estimatedTimeToStop !== null && estimatedTimeToStop < 0.5) {
+      messages.push({
+        tone: 'warning',
+        text: tx(language, 'Pause snart nødvendig', 'Break needed soon'),
+      });
+    }
+
+    if (realRoadwork.some((incident) => typeof incident.distanceKm === 'number' && incident.distanceKm <= 50)) {
+      messages.push({
+        tone: 'info',
+        text: tx(language, 'Veiarbeid nærmer seg', 'Roadwork ahead'),
+      });
+    }
+
+    return messages.slice(0, 3);
+  }, [checkedVehicleHeightMm, estimatedTimeToStop, language, nextCriticalWarning, realRoadwork]);
 
   const checkRouteWarnings = useCallback(async () => {
     setRouteWarningLoading(true);
@@ -260,6 +311,36 @@ export function RouteCheckFutureSection({
             Rute, tunnel, høyde og trafikkdata er veiledende. Sjekk alltid skilting, vegliste og
             offisielle kilder før kjøring. Ikke bruk som eneste grunnlag for transport.
           </p>
+          {liveStatusMessages.length > 0 ? (
+            <div style={{ display: 'grid', gap: '0.5rem' }}>
+              <strong>{tx(language, 'Status nå', 'Status now')}</strong>
+              <div style={{ display: 'grid', gap: '0.5rem' }}>
+                {liveStatusMessages.map((message, index) => (
+                  <div
+                    key={`live-status-${message.tone}-${index}`}
+                    style={{
+                      border:
+                        message.tone === 'critical'
+                          ? '1px solid rgba(220, 38, 38, 0.45)'
+                          : message.tone === 'warning'
+                            ? '1px solid rgba(245, 158, 11, 0.5)'
+                            : '1px solid rgba(148, 163, 184, 0.35)',
+                      background:
+                        message.tone === 'critical'
+                          ? 'rgba(220, 38, 38, 0.1)'
+                          : message.tone === 'warning'
+                            ? 'rgba(245, 158, 11, 0.12)'
+                            : 'rgba(148, 163, 184, 0.1)',
+                      borderRadius: '12px',
+                      padding: '0.65rem 0.8rem',
+                    }}
+                  >
+                    <span>{message.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="trip-status-grid">
             <div className="trip-status-card">
               <span>LTP</span>
@@ -522,10 +603,12 @@ export function DrivingRestSection({
   language,
   plannedDeparture = '',
   drivingUsedTodayHours = '0',
+  restStops = [],
 }: {
   language: Language;
   plannedDeparture?: string;
   drivingUsedTodayHours?: string;
+  restStops?: RestStop[];
 }) {
   const [departure, setDeparture] = useState<string>(plannedDeparture);
   const [drivingUsedHours, setDrivingUsedHours] = useState<string>(drivingUsedTodayHours || '0');
@@ -631,7 +714,26 @@ export function DrivingRestSection({
           </div>
           <div>
             <strong>{tx(language, 'Anbefalte stoppesteder', 'Recommended stops')}</strong>
-            <div>{tx(language, 'Anbefalte stoppesteder kommer når rutedata kobles til', 'Recommended stops appear when route data is connected')}</div>
+            {restStops.length > 0 ? (
+              <div style={{ display: 'grid', gap: '0.35rem' }}>
+                {restStops.slice(0, 3).map((stop, index) => (
+                  <div key={`driving-rest-stop-${stop.lat}-${stop.lon}-${index}`}>
+                    <span>{stop.name}</span>
+                    {typeof stop.distanceKm === 'number' ? (
+                      <div className="helper" style={{ margin: 0 }}>
+                        ≈{' '}
+                        {stop.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
+                          maximumFractionDigits: 0,
+                        })}{' '}
+                        {tx(language, 'km frem', 'km ahead')}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div>{tx(language, 'Ingen hvileplasser funnet langs ruten', 'No rest stops found along the route')}</div>
+            )}
           </div>
         </div>
       </div>
