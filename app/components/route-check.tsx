@@ -116,8 +116,10 @@ export function RouteCheckFutureSection({
   const sortedHeightWarnings = useMemo(
     () =>
       [...(routeWarningResult?.warnings ?? [])].sort((a, b) => {
-        if (a.severity === b.severity) return 0;
-        return a.severity === 'critical' ? -1 : 1;
+        const distanceDelta = (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity);
+        if (Math.abs(distanceDelta) > 0.5) return distanceDelta;
+        if (a.severity !== b.severity) return a.severity === 'critical' ? -1 : 1;
+        return a.value - b.value;
       }),
     [routeWarningResult],
   );
@@ -283,23 +285,8 @@ export function RouteCheckFutureSection({
                           <span aria-hidden="true">{isCritical ? '🚫' : '⚠️'}</span>
                           <strong>{statusText}</strong>
                         </div>
-                        <div
-                          style={{
-                            display: 'grid',
-                            gap: '0.25rem',
-                            color: isCritical ? '#fecaca' : '#fed7aa',
-                          }}
-                        >
-                          <span>
-                            {tx(language, 'Høyde', 'Height')}: {formatHeightMeters(warning.value, language)} m
-                          </span>
-                          {diffMm !== null && diffCm !== null ? (
-                            <strong>
-                              {diffMm > 0
-                                ? tx(language, `Du er ${diffCm} cm for høy`, `You are ${diffCm} cm too high`)
-                                : tx(language, `Kun ${diffCm} cm klaring`, `Only ${diffCm} cm clearance`)}
-                            </strong>
-                          ) : null}
+                        <div style={{ color: isCritical ? '#fecaca' : '#fed7aa' }}>
+                          {tx(language, 'Skiltet høyde', 'Posted height')}: {formatHeightMeters(warning.value, language)} m
                         </div>
                         {typeof warning.distanceKm === 'number' ? (
                           <div className="helper" style={{ margin: 0 }}>
@@ -308,6 +295,11 @@ export function RouteCheckFutureSection({
                             })}{' '}
                             {tx(language, 'km frem langs ruten', 'km ahead along the route')}
                           </div>
+                        ) : null}
+                        {isCritical ? (
+                          <strong style={{ color: '#fecaca' }}>
+                            {tx(language, 'STOPP - finn omkjøring', 'STOP - find an alternate route')}
+                          </strong>
                         ) : null}
                       </button>
                     );

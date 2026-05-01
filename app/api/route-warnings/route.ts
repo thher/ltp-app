@@ -258,23 +258,31 @@ function routeDistanceKmToNearbySegment(point: Coordinate, route: Coordinate[]) 
 }
 
 function prioritizeHeightWarnings(warnings: HeightWarning[]) {
-  const sorted = [...warnings].sort((a, b) => {
-    if (a.value !== b.value) return a.value - b.value;
-    return (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity);
-  });
+  const sorted = [...warnings].sort(
+    (a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity),
+  );
 
   const merged: HeightWarning[] = [];
   for (const warning of sorted) {
-    const isNearExisting = merged.some(
-      (existing) => haversineMeters([warning.lat, warning.lon], [existing.lat, existing.lon]) < 500,
+    const similarExistingIndex = merged.findIndex(
+      (existing) =>
+        haversineMeters([warning.lat, warning.lon], [existing.lat, existing.lon]) < 1000 &&
+        Math.abs(existing.value - warning.value) <= 0.2,
     );
-    if (!isNearExisting) merged.push(warning);
+    if (similarExistingIndex === -1) {
+      merged.push(warning);
+    } else if (warning.value < merged[similarExistingIndex].value) {
+      merged[similarExistingIndex] = warning;
+    }
   }
 
   return merged
     .sort((a, b) => {
+      const distanceDelta = (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity);
+      if (Math.abs(distanceDelta) > 0.5) return distanceDelta;
+      if (a.severity !== b.severity) return a.severity === 'critical' ? -1 : 1;
       if (a.value !== b.value) return a.value - b.value;
-      return (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity);
+      return distanceDelta;
     })
     .slice(0, 10);
 }
