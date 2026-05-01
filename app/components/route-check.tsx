@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ROAD_PROFILES } from '../constants';
 import type { RoadProfile } from '../types';
 import { tx, type Language } from '../lib/i18n';
@@ -165,13 +165,13 @@ export function RouteCheckFutureSection({
   return (
     <section className="route-check-section" aria-labelledby="route-check-title">
       <div className="route-check-copy">
-        <p className="eyebrow">{tx(language, 'Fremtidig funksjon', 'Future feature')}</p>
+        <p className="eyebrow">{tx(language, 'Rute og kart', 'Route and map')}</p>
         <h2 id="route-check-title">Rutesjekk</h2>
         <p>
           {tx(
             language,
-            'Planlagt rutesjekk for høyde, lengde, totalvekt, bruksklasse og vegliste. Dette er bare en visuell forhåndsvisning.',
-            'Planned route check for height, length, total weight, road class and road list. This is only a visual preview.',
+            'Kontroller rute, kjøretøydata og foreløpige varsler før turen.',
+            'Check the route, vehicle data and preliminary warnings before the trip.',
           )}
         </p>
       </div>
@@ -285,7 +285,7 @@ export function RouteCheckFutureSection({
                           <span aria-hidden="true">{isCritical ? '🚫' : '⚠️'}</span>
                           <strong>{statusText}</strong>
                         </div>
-                        <div style={{ color: isCritical ? '#fecaca' : '#fed7aa' }}>
+                        <div className={isCritical ? 'height-warning-detail height-warning-detail--critical' : 'height-warning-detail height-warning-detail--caution'}>
                           {tx(language, 'Skiltet høyde', 'Posted height')}: {formatHeightMeters(warning.value, language)} m
                         </div>
                         {typeof warning.distanceKm === 'number' ? (
@@ -297,7 +297,7 @@ export function RouteCheckFutureSection({
                           </div>
                         ) : null}
                         {isCritical ? (
-                          <strong style={{ color: '#fecaca' }}>
+                          <strong className="height-warning-stop">
                             {tx(language, 'STOPP - finn omkjøring', 'STOP - find an alternate route')}
                           </strong>
                         ) : null}
@@ -370,23 +370,31 @@ export function RouteCheckFutureSection({
           ) : null}
         </div>
 
-        <div className="route-warning-list">
-          <h3>{tx(language, 'Varsler som skal vises her', 'Warnings planned for this area')}</h3>
+        <details className="route-warning-list route-warning-list--details">
+          <summary>{tx(language, 'Andre varsler som kommer senere', 'Other warnings coming later')}</summary>
           <ul>
             <li>{tx(language, 'Tunnelhøydevarsler', 'Tunnel height warnings')}</li>
             <li>{tx(language, 'Vegarbeid / trafikkmeldinger', 'Road work / traffic messages')}</li>
             <li>{tx(language, 'Bruksklassevarsler', 'Road class warnings')}</li>
             <li>{tx(language, 'Rutevegliste', 'Route road list')}</li>
           </ul>
-        </div>
+        </details>
       </div>
     </section>
   );
 }
 
-export function DrivingRestSection({ language }: { language: Language }) {
-  const [departure, setDeparture] = useState<string>('');
-  const [drivingUsedHours, setDrivingUsedHours] = useState<string>('0');
+export function DrivingRestSection({
+  language,
+  plannedDeparture = '',
+  drivingUsedTodayHours = '0',
+}: {
+  language: Language;
+  plannedDeparture?: string;
+  drivingUsedTodayHours?: string;
+}) {
+  const [departure, setDeparture] = useState<string>(plannedDeparture);
+  const [drivingUsedHours, setDrivingUsedHours] = useState<string>(drivingUsedTodayHours || '0');
   const [maxDrivingBeforeBreakHours, setMaxDrivingBeforeBreakHours] = useState<string>('4.5');
   const [dailyLimitHours, setDailyLimitHours] = useState<string>('9');
   const [extendedDay, setExtendedDay] = useState<boolean>(false);
@@ -404,6 +412,14 @@ export function DrivingRestSection({ language }: { language: Language }) {
     () => computeDailyRestBy(departure, parsedDrivingUsed, parsedDailyLimit, extendedDay),
     [departure, parsedDrivingUsed, parsedDailyLimit, extendedDay],
   );
+
+  useEffect(() => {
+    setDeparture(plannedDeparture);
+  }, [plannedDeparture]);
+
+  useEffect(() => {
+    setDrivingUsedHours(drivingUsedTodayHours || '0');
+  }, [drivingUsedTodayHours]);
 
   return (
     <section className="route-check-section" aria-labelledby="driving-rest-title">

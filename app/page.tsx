@@ -354,6 +354,8 @@ export default function Home() {
   const [registrationNumber, setRegistrationNumber] = useState('');
   const [routeFrom, setRouteFrom] = useState('');
   const [routeTo, setRouteTo] = useState('');
+  const [plannedDeparture, setPlannedDeparture] = useState('');
+  const [drivingUsedTodayHours, setDrivingUsedTodayHours] = useState('0');
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupMessage, setLookupMessage] = useState('');
   const [lookupNotes, setLookupNotes] = useState<string[]>([]);
@@ -1122,8 +1124,8 @@ export default function Home() {
             </p>
 
             <div className="registration-lookup registration-lookup--standalone">
-              <span className="registration-label">{tx(language, 'Automatisk oppslag', 'Automatic lookup')}</span>
-              <h2>{tx(language, 'Hent vognkortdata', 'Fetch vehicle-card data')}</h2>
+              <span className="registration-label">{tx(language, 'Steg 1', 'Step 1')}</span>
+              <h2>{tx(language, 'Tur og kjøretøy', 'Trip and vehicle')}</h2>
               <form
                 className="registration-lookup-form registration-lookup-form--stacked"
                 onSubmit={(event) => {
@@ -1180,12 +1182,35 @@ export default function Home() {
                       autoComplete="off"
                     />
                   </label>
+                  <label className="registration-field">
+                    <span>{tx(language, 'Planlagt avgang', 'Planned departure')}</span>
+                    <input
+                      className="registration-input"
+                      type="datetime-local"
+                      value={plannedDeparture}
+                      onChange={(event) => setPlannedDeparture(event.target.value)}
+                      aria-label={tx(language, 'Planlagt avgang', 'Planned departure')}
+                    />
+                  </label>
+                  <label className="registration-field">
+                    <span>{tx(language, 'Tid kjørt allerede i dag', 'Driving time already today')}</span>
+                    <input
+                      className="registration-input"
+                      type="number"
+                      min="0"
+                      step="0.25"
+                      value={drivingUsedTodayHours}
+                      onChange={(event) => setDrivingUsedTodayHours(event.target.value)}
+                      placeholder="0"
+                      aria-label={tx(language, 'Tid kjørt allerede i dag', 'Driving time already today')}
+                    />
+                  </label>
                 </div>
                 <p className="registration-helper">
                   {tx(language, 'Legg til tilhenger hvis du skal beregne vogntog.', 'Add a trailer if you want to calculate a vehicle combination.')}
                 </p>
                 <button type="submit" className="registration-button registration-button--wide" disabled={lookupLoading || trailerLookupLoading}>
-                  {lookupLoading || trailerLookupLoading ? tx(language, 'Henter...', 'Fetching...') : tx(language, 'Hent vognkort', 'Fetch vehicle data')}
+                  {lookupLoading || trailerLookupLoading ? tx(language, 'Henter...', 'Fetching...') : tx(language, 'Start beregning', 'Start calculation')}
                 </button>
               </form>
               <label className="select-block plate-road-profile">
@@ -1262,8 +1287,8 @@ export default function Home() {
               )}
             </p>
             <div className="registration-lookup">
-              <span className="registration-label">{tx(language, 'Første steg', 'First step')}</span>
-              <h2>{tx(language, 'Skriv inn skilt nr', 'Enter plate number')}</h2>
+              <span className="registration-label">{tx(language, 'Steg 1', 'Step 1')}</span>
+              <h2>{tx(language, 'Tur og kjøretøy', 'Trip and vehicle')}</h2>
               <p>
                 {tx(
                   language,
@@ -1313,9 +1338,32 @@ export default function Home() {
                       autoComplete="off"
                     />
                   </label>
+                  <label className="registration-field">
+                    <span>{tx(language, 'Planlagt avgang', 'Planned departure')}</span>
+                    <input
+                      className="registration-input"
+                      type="datetime-local"
+                      value={plannedDeparture}
+                      onChange={(event) => setPlannedDeparture(event.target.value)}
+                      aria-label={tx(language, 'Planlagt avgang', 'Planned departure')}
+                    />
+                  </label>
+                  <label className="registration-field">
+                    <span>{tx(language, 'Tid kjørt allerede i dag', 'Driving time already today')}</span>
+                    <input
+                      className="registration-input"
+                      type="number"
+                      min="0"
+                      step="0.25"
+                      value={drivingUsedTodayHours}
+                      onChange={(event) => setDrivingUsedTodayHours(event.target.value)}
+                      placeholder="0"
+                      aria-label={tx(language, 'Tid kjørt allerede i dag', 'Driving time already today')}
+                    />
+                  </label>
                 </div>
                 <button type="submit" className="registration-button" disabled={lookupLoading}>
-                  {lookupLoading ? tx(language, 'Henter...', 'Fetching...') : tx(language, 'Hent vognkort', 'Fetch vehicle data')}
+                  {lookupLoading ? tx(language, 'Henter...', 'Fetching...') : tx(language, 'Start beregning', 'Start calculation')}
                 </button>
               </form>
               {lookupMessage ? <p className="registration-message">{lookupMessage}</p> : null}
@@ -1324,6 +1372,17 @@ export default function Home() {
                   {lookupNotes.slice(0, 3).map((note) => (
                     <span key={note}>{translateRuntimeText(note, language)}</span>
                   ))}
+                </div>
+              ) : null}
+              {routeCheckPrefill.vehicleHeight || routeCheckPrefill.vehicleLength || routeCheckPrefill.vehicleWidth || routeCheckPrefill.totalWeight ? (
+                <div className="driver-vehicle-prefill" aria-label={tx(language, 'Kjøretøydata fra vognkort', 'Vehicle data from vehicle card')}>
+                  <span>{tx(language, 'Kjøretøydata fra vognkort', 'Vehicle data from vehicle card')}</span>
+                  <div>
+                    <strong>{tx(language, 'Høyde', 'Height')}: {routeCheckPrefill.vehicleHeight || tx(language, 'Mangler', 'Missing')}</strong>
+                    <strong>{tx(language, 'Lengde', 'Length')}: {routeCheckPrefill.vehicleLength || tx(language, 'Mangler', 'Missing')}</strong>
+                    <strong>{tx(language, 'Bredde', 'Width')}: {routeCheckPrefill.vehicleWidth || tx(language, 'Mangler', 'Missing')}</strong>
+                    <strong>{tx(language, 'Totalvekt', 'Total weight')}: {routeCheckPrefill.totalWeight || tx(language, 'Mangler', 'Missing')}</strong>
+                  </div>
                 </div>
               ) : null}
             </div>
@@ -2068,8 +2127,31 @@ export default function Home() {
             )}
           </article>
         </section>
-        <RouteCheckFutureSection language={language} routeFrom={routeFrom} routeTo={routeTo} prefill={routeCheckPrefill} />
-        <DrivingRestSection language={language} />
+        <section className="driver-results-flow" aria-label={tx(language, 'Steg 2: Resultater', 'Step 2: Results')}>
+          <div className="workflow-section-heading">
+            <p className="eyebrow">{tx(language, 'Steg 2', 'Step 2')}</p>
+            <h2>{tx(language, 'Resultater', 'Results')}</h2>
+            <p>
+              {tx(
+                language,
+                'Se LTP, rute, varsler og kjøre-/hviletid i egne kort etter beregningen.',
+                'Review LTP, route, warnings and driving/rest time in separate cards after calculation.',
+              )}
+            </p>
+          </div>
+          <div className="workflow-tab-strip" aria-hidden="true">
+            <span>LTP</span>
+            <span>{tx(language, 'Rute og kart', 'Route and map')}</span>
+            <span>{tx(language, 'Varsler', 'Warnings')}</span>
+            <span>{tx(language, 'Kjøre- og hviletid', 'Driving and rest time')}</span>
+          </div>
+          <RouteCheckFutureSection language={language} routeFrom={routeFrom} routeTo={routeTo} prefill={routeCheckPrefill} />
+          <DrivingRestSection
+            language={language}
+            plannedDeparture={plannedDeparture}
+            drivingUsedTodayHours={drivingUsedTodayHours}
+          />
+        </section>
       </main>
     );
   }
@@ -2714,8 +2796,31 @@ export default function Home() {
           )}
         </article>
       </section>
-      <RouteCheckFutureSection language={language} routeFrom={routeFrom} routeTo={routeTo} prefill={routeCheckPrefill} />
-      <DrivingRestSection language={language} />
+      <section className="driver-results-flow" aria-label={tx(language, 'Steg 2: Resultater', 'Step 2: Results')}>
+        <div className="workflow-section-heading">
+          <p className="eyebrow">{tx(language, 'Steg 2', 'Step 2')}</p>
+          <h2>{tx(language, 'Resultater', 'Results')}</h2>
+          <p>
+            {tx(
+              language,
+              'Se LTP, rute, varsler og kjøre-/hviletid i egne kort etter beregningen.',
+              'Review LTP, route, warnings and driving/rest time in separate cards after calculation.',
+            )}
+          </p>
+        </div>
+        <div className="workflow-tab-strip" aria-hidden="true">
+          <span>LTP</span>
+          <span>{tx(language, 'Rute og kart', 'Route and map')}</span>
+          <span>{tx(language, 'Varsler', 'Warnings')}</span>
+          <span>{tx(language, 'Kjøre- og hviletid', 'Driving and rest time')}</span>
+        </div>
+        <RouteCheckFutureSection language={language} routeFrom={routeFrom} routeTo={routeTo} prefill={routeCheckPrefill} />
+        <DrivingRestSection
+          language={language}
+          plannedDeparture={plannedDeparture}
+          drivingUsedTodayHours={drivingUsedTodayHours}
+        />
+      </section>
     </main>
     );
   }

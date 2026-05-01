@@ -732,6 +732,91 @@ select {
   box-shadow: var(--shadow);
 }
 
+.driver-results-flow {
+  display: grid;
+  gap: 18px;
+  margin-top: 28px;
+}
+
+.driver-results-flow .route-check-section {
+  margin-top: 0;
+}
+
+.workflow-section-heading {
+  display: grid;
+  gap: 8px;
+  padding: 22px 24px;
+  border: 1px solid rgba(215, 232, 224, 0.13);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow: var(--shadow);
+}
+
+.workflow-section-heading h2 {
+  margin: 0;
+  font-size: clamp(1.65rem, 3vw, 2.35rem);
+  letter-spacing: -0.035em;
+}
+
+.workflow-section-heading p {
+  margin: 0;
+  max-width: 760px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.workflow-tab-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.workflow-tab-strip span {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 13px;
+  border: 1px solid rgba(103, 198, 164, 0.22);
+  border-radius: 999px;
+  background: rgba(103, 198, 164, 0.08);
+  color: var(--foreground);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.driver-vehicle-prefill {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid rgba(103, 198, 164, 0.2);
+  border-radius: 16px;
+  background: rgba(103, 198, 164, 0.08);
+}
+
+.driver-vehicle-prefill > span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.driver-vehicle-prefill div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.driver-vehicle-prefill strong {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(215, 232, 224, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--foreground);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
 .route-check-copy {
   max-width: 780px;
   margin-bottom: 20px;
@@ -826,7 +911,7 @@ select {
 .route-check-map {
   width: 100%;
   min-width: 0;
-  min-height: 360px;
+  min-height: 420px;
   border: 1px solid rgba(103, 198, 164, 0.22);
   border-radius: 20px;
   background:
@@ -844,8 +929,7 @@ select {
 
 .route-check-map .leaflet-container {
   width: 100% !important;
-  min-height: 360px !important;
-  height: 360px !important;
+  min-height: 420px !important;
   border-radius: 20px;
   overflow: hidden;
   z-index: 0;
@@ -854,7 +938,7 @@ select {
 .route-map-placeholder {
   position: relative;
   flex: 1;
-  min-height: 360px;
+  min-height: 420px;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -1004,6 +1088,29 @@ select {
   font-size: 1rem;
 }
 
+.route-warning-list--details summary {
+  cursor: pointer;
+  color: var(--foreground);
+  font-weight: 850;
+}
+
+.route-warning-list--details ul {
+  margin-top: 12px;
+}
+
+.height-warning-detail {
+  font-weight: 800;
+}
+
+.height-warning-detail--critical,
+.height-warning-stop {
+  color: #fca5a5;
+}
+
+.height-warning-detail--caution {
+  color: #fdba74;
+}
+
 .route-warning-list ul {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1032,6 +1139,29 @@ select {
   background: linear-gradient(180deg, #ffffff 0%, #f7fbfa 100%);
   border-color: rgba(0, 0, 0, 0.06);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .workflow-section-heading {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .workflow-tab-strip span {
+  background: rgba(31, 138, 112, 0.08);
+  border-color: rgba(31, 138, 112, 0.18);
+  color: #12332c;
+}
+
+[data-theme="light"] .driver-vehicle-prefill {
+  background: rgba(31, 138, 112, 0.06);
+  border-color: rgba(31, 138, 112, 0.16);
+}
+
+[data-theme="light"] .driver-vehicle-prefill strong {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.035);
 }
 
 [data-theme="light"] .route-check-form label,
@@ -1068,6 +1198,15 @@ select {
 [data-theme="light"] .route-warning-list li {
   background: rgba(31, 138, 112, 0.06);
   border-color: rgba(31, 138, 112, 0.14);
+}
+
+[data-theme="light"] .height-warning-detail--critical,
+[data-theme="light"] .height-warning-stop {
+  color: #b91c1c;
+}
+
+[data-theme="light"] .height-warning-detail--caution {
+  color: #b45309;
 }
 
 .topbar-card {
@@ -3318,8 +3457,12 @@ select {
     grid-template-columns: 1fr;
   }
 
+  .driver-vehicle-prefill div {
+    grid-template-columns: 1fr;
+  }
+
   .route-warning-list ul {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .two-columns {

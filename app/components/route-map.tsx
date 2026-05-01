@@ -228,7 +228,7 @@ export default function RouteMap({
             center={mapCenter as unknown}
             zoom={6}
             scrollWheelZoom={false}
-            style={{ height: 'min(40vh, 400px)', width: '100%' }}
+            style={{ height: 'min(58vh, 560px)', width: '100%' }}
           >
             <LeafletComponents.TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             {fromCoord && toCoord ? (
