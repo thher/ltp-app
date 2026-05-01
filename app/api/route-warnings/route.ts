@@ -44,7 +44,7 @@ const NVDB_HEIGHT_RESTRICTIONS_URL =
   'https://nvdbapiles-v3.atlas.vegvesen.no/vegobjekter/591?antall=500&inkluder=alle&srid=4326';
 const DATEX_SITUATION_URL =
   'https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/GetSituation/pullsnapshotdata';
-const ROUTE_MATCH_DISTANCE_METERS = 2000;
+const ROUTE_MATCH_DISTANCE_METERS = 300;
 const ROADWORK_ROUTE_MATCH_DISTANCE_METERS = 1000;
 const MAX_TRAFFIC_WARNINGS = 20;
 
@@ -172,6 +172,27 @@ function haversineMeters(a: Coordinate, b: Coordinate) {
   return 2 * radiusMeters * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
+function pointToSegmentDistanceMeters(point: Coordinate, start: Coordinate, end: Coordinate) {
+  const averageLatRadians = ((start[0] + end[0] + point[0]) / 3) * (Math.PI / 180);
+  const metersPerDegreeLat = 111320;
+  const metersPerDegreeLon = 111320 * Math.cos(averageLatRadians);
+  const px = point[1] * metersPerDegreeLon;
+  const py = point[0] * metersPerDegreeLat;
+  const ax = start[1] * metersPerDegreeLon;
+  const ay = start[0] * metersPerDegreeLat;
+  const bx = end[1] * metersPerDegreeLon;
+  const by = end[0] * metersPerDegreeLat;
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lengthSquared = dx * dx + dy * dy;
+  if (lengthSquared === 0) return Math.hypot(px - ax, py - ay);
+
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lengthSquared));
+  const closestX = ax + t * dx;
+  const closestY = ay + t * dy;
+  return Math.hypot(px - closestX, py - closestY);
+}
+
 function routeDistanceKmToNearestPoint(
   point: Coordinate,
   route: Coordinate[],
@@ -196,6 +217,43 @@ function routeDistanceKmToNearestPoint(
   }
 
   if (nearestIndex === -1 || nearestDistanceMeters >= maxDistanceMeters) return null;
+  return Math.round((distanceAtNearestMeters / 1000) * 10) / 10;
+}
+
+function routeDistanceKmToNearbySegment(point: Coordinate, route: Coordinate[]) {
+  if (route.length < 2) return null;
+
+  let nearestSegmentIndex = -1;
+  let nearestSegmentDistanceMeters = Infinity;
+  let distanceFromStartMeters = 0;
+  let distanceAtNearestMeters = 0;
+  const nearbyRoutePointCount = route.filter(
+    (routePoint) => haversineMeters(point, routePoint) < ROUTE_MATCH_DISTANCE_METERS,
+  ).length;
+
+  for (let index = 1; index < route.length; index += 1) {
+    const segmentStart = route[index - 1];
+    const segmentEnd = route[index];
+    const segmentLengthMeters = haversineMeters(segmentStart, segmentEnd);
+    const segmentDistanceMeters = pointToSegmentDistanceMeters(point, segmentStart, segmentEnd);
+
+    if (segmentDistanceMeters < nearestSegmentDistanceMeters) {
+      nearestSegmentDistanceMeters = segmentDistanceMeters;
+      nearestSegmentIndex = index;
+      distanceAtNearestMeters = distanceFromStartMeters;
+    }
+
+    distanceFromStartMeters += segmentLengthMeters;
+  }
+
+  if (
+    nearestSegmentIndex === -1 ||
+    nearestSegmentDistanceMeters >= ROUTE_MATCH_DISTANCE_METERS ||
+    nearbyRoutePointCount < 2
+  ) {
+    return null;
+  }
+
   return Math.round((distanceAtNearestMeters / 1000) * 10) / 10;
 }
 
@@ -435,11 +493,13 @@ async function fetchNvdbHeightWarnings(
         if (!route) return { objekt, distanceKm: undefined };
         const coordinates = extractCoordinates(objekt);
         if (!coordinates) return null;
-        const distanceKm = routeDistanceKmToNearestPoint(coordinates, route);
+        const distanceKm = routeDistanceKmToNearbySegment(coordinates, route);
         return distanceKm !== null ? { objekt, distanceKm } : null;
       })
       .filter((match): match is { objekt: Record<string, unknown>; distanceKm?: number } => match !== null);
 
+    console.log('NVDB height route candidates before filtering:', objekter.length);
+    console.log('NVDB height route matches after filtering:', routeMatches.length);
     debug.nvdbMatchedRouteCount = route ? routeMatches.length : 0;
     const warnings = routeMatches
       .map(({ objekt, distanceKm }) => mapNvdbWarning(objekt, vehicleHeightMm, distanceKm))
