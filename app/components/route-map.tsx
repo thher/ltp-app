@@ -4,7 +4,6 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { tx, type Language } from '../lib/i18n';
 
 const DEFAULT_NORWAY_CENTER: [number, number] = [64.0, 11.0];
-const ROUTE_LINE_FALLBACK = { color: '#16a071', weight: 5, opacity: 0.85 };
 const ROUTE_LINE_REAL = { color: '#0ea5e9', weight: 5, opacity: 0.9 };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -65,6 +64,7 @@ export default function RouteMap({
   const [fromCoord, setFromCoord] = useState<[number, number] | null>(null);
   const [toCoord, setToCoord] = useState<[number, number] | null>(null);
   const [routePath, setRoutePath] = useState<[number, number][] | null>(null);
+  const [routeStatus, setRouteStatus] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle');
 
   const [LeafletComponents, setLeafletComponents] = useState<LeafletComponentsType | null>(null);
   const mapRef = useRef<LeafletMapInstance | null>(null);
@@ -145,10 +145,12 @@ export default function RouteMap({
     async function fetchRoute() {
       if (!fromCoord || !toCoord) {
         setRoutePath(null);
+        setRouteStatus('idle');
         return;
       }
 
       try {
+        setRouteStatus('loading');
         const [fromLat, fromLon] = fromCoord;
         const [toLat, toLon] = toCoord;
         const res = await fetch(
@@ -185,12 +187,17 @@ export default function RouteMap({
             .filter((coord): coord is [number, number] => coord !== null);
 
           setRoutePath(path.length > 1 ? path : null);
+          setRouteStatus(path.length > 1 ? 'ready' : 'failed');
           return;
         }
 
         setRoutePath(null);
+        setRouteStatus('failed');
       } catch {
-        if (mounted && !controller.signal.aborted) setRoutePath(null);
+        if (mounted && !controller.signal.aborted) {
+          setRoutePath(null);
+          setRouteStatus('failed');
+        }
       }
     }
 
@@ -231,10 +238,10 @@ export default function RouteMap({
             style={{ height: 'min(58vh, 560px)', width: '100%' }}
           >
             <LeafletComponents.TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            {fromCoord && toCoord ? (
+            {fromCoord && toCoord && routePath ? (
               <LeafletComponents.Polyline
-                positions={routePath ?? [fromCoord, toCoord]}
-                pathOptions={routePath ? ROUTE_LINE_REAL : ROUTE_LINE_FALLBACK}
+                positions={routePath}
+                pathOptions={ROUTE_LINE_REAL}
               />
             ) : null}
             {fromCoord && <LeafletComponents.Marker position={fromCoord as [number, number]} />}
@@ -296,8 +303,12 @@ export default function RouteMap({
             ))}
           </LeafletComponents.MapContainer>
           <div className="route-check-map-caption">
-            <strong>{tx(language, 'Kart (enkel forhåndsvisning)', 'Map (simple preview)')}</strong>
-            <span>{tx(language, 'Plasser og anbefalinger vises når rutedata er koblet til.', 'Places and recommendations appear when route data is connected.')}</span>
+            <strong>{tx(language, 'Rutekart', 'Route map')}</strong>
+            <span>
+              {fromCoord && toCoord && routeStatus === 'failed'
+                ? tx(language, 'Kunne ikke hente rutelinje akkurat nå. Markørene vises, men veilinjen er ikke tegnet.', 'Could not fetch the route line right now. Markers are shown, but the road line is not drawn.')
+                : tx(language, 'Ruten tegnes når veilinjen er hentet.', 'The route is drawn when the road geometry is loaded.')}
+            </span>
           </div>
         </>
       ) : (

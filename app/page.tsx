@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { ChangeEvent, useState, useEffect } from 'react';
+import { ChangeEvent, useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import type {
   VehicleType,
@@ -356,6 +356,9 @@ export default function Home() {
   const [routeTo, setRouteTo] = useState('');
   const [plannedDeparture, setPlannedDeparture] = useState('');
   const [drivingUsedTodayHours, setDrivingUsedTodayHours] = useState('0');
+  const [pendingTripCalculation, setPendingTripCalculation] = useState(false);
+  const [tripCalculationKey, setTripCalculationKey] = useState(0);
+  const handleCalculateRef = useRef<() => void>(() => undefined);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupMessage, setLookupMessage] = useState('');
   const [lookupNotes, setLookupNotes] = useState<string[]>([]);
@@ -448,6 +451,7 @@ export default function Home() {
     setVehicleType(nextType);
     setResult(null);
     setSemiTrailerResult(null);
+    setTripCalculationKey(0);
     setError('');
     setTruckLayout('standard');
     setHasTwoSteeringAxles(false);
@@ -475,6 +479,7 @@ export default function Home() {
     setVehicleType(nextType);
     setResult(null);
     setSemiTrailerResult(null);
+    setTripCalculationKey(0);
     setError('');
 
     if (nextType === 'bus') {
@@ -522,7 +527,7 @@ export default function Home() {
     if (!normalizedRegistration) {
       setLookupMessage(tx(language, 'Skriv inn registreringsnummer først.', 'Enter registration number first.'));
       setLookupNotes([]);
-      return;
+      return false;
     }
 
     setLookupLoading(true);
@@ -538,7 +543,7 @@ export default function Home() {
       if (!response.ok || !('vehicle' in payload) || !payload.vehicle) {
         setLookupMessage(translateRuntimeText(payload.message ?? tx(language, 'Fant ikke kjøretøydata for dette registreringsnummeret.', 'No vehicle data found for this registration number.'), language));
         setLookupNotes(payload.notes ?? []);
-        return;
+        return false;
       }
 
       const vehicle = payload.vehicle;
@@ -634,9 +639,11 @@ export default function Home() {
       setScreen('calculator');
       setLookupMessage(tx(language, `Data hentet for ${vehicle.registration}. Feltene er fylt inn så langt API-et ga treff.`, `Data fetched for ${vehicle.registration}. Fields were filled as far as the API provided matches.`));
       setLookupNotes(vehicle.notes);
+      return true;
     } catch {
       setLookupMessage(tx(language, 'Kunne ikke hente kjøretøydata akkurat nå.', 'Could not fetch vehicle data right now.'));
       setLookupNotes([]);
+      return false;
     } finally {
       setLookupLoading(false);
     }
@@ -725,7 +732,10 @@ export default function Home() {
       await handleTrailerLookup();
     }
 
-    await handleRegistrationLookup();
+    const lookupSucceeded = await handleRegistrationLookup();
+    if (lookupSucceeded) {
+      setPendingTripCalculation(true);
+    }
   };
 
   function translateErrorMessage(message: string, lang: Language) {
@@ -974,6 +984,7 @@ export default function Home() {
         });
         setResult(null);
         setError('');
+        setTripCalculationKey((current) => current + 1);
         return;
       }
 
@@ -1067,12 +1078,28 @@ export default function Home() {
       });
       setSemiTrailerResult(null);
       setError('');
+      setTripCalculationKey((current) => current + 1);
     } catch (buildError) {
       setResult(null);
       setSemiTrailerResult(null);
       setError(translateErrorMessage((buildError as Error).message, language));
     }
   };
+
+  handleCalculateRef.current = handleCalculate;
+
+  useEffect(() => {
+    if (!pendingTripCalculation || screen !== 'calculator') return;
+    setPendingTripCalculation(false);
+    handleCalculateRef.current();
+  }, [pendingTripCalculation, screen]);
+
+  useEffect(() => {
+    if (tripCalculationKey <= 0) return;
+    window.requestAnimationFrame(() => {
+      document.getElementById('trip-main-view')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [tripCalculationKey]);
 
   const handleReset = () => {
     setForm(INITIAL_FORM);
@@ -1104,8 +1131,100 @@ export default function Home() {
     setHasTwoSteeringAxles(false);
     setResult(null);
     setSemiTrailerResult(null);
+    setTripCalculationKey(0);
     setError('');
   };
+
+  const renderVehicleDataSummary = () => (
+    <div className="driver-vehicle-prefill driver-vehicle-prefill--details" aria-label={tx(language, 'Kjøretøydata', 'Vehicle data')}>
+      <span>{tx(language, 'Kjøretøydata', 'Vehicle data')}</span>
+      <div>
+        <strong>{tx(language, 'Høyde', 'Height')}: {routeCheckPrefill.vehicleHeight || tx(language, 'Mangler', 'Missing')}</strong>
+        <strong>{tx(language, 'Lengde', 'Length')}: {routeCheckPrefill.vehicleLength || tx(language, 'Mangler', 'Missing')}</strong>
+        <strong>{tx(language, 'Bredde', 'Width')}: {routeCheckPrefill.vehicleWidth || tx(language, 'Mangler', 'Missing')}</strong>
+        <strong>{tx(language, 'Totalvekt', 'Total weight')}: {routeCheckPrefill.totalWeight || tx(language, 'Mangler', 'Missing')}</strong>
+      </div>
+    </div>
+  );
+
+  const getTripLtpSummary = () => {
+    const ltp = result?.ltp ?? semiTrailerResult?.ltp ?? null;
+    if (!ltp) return tx(language, 'Sjekk detaljer', 'Check details');
+    if (ltp.status !== 'ready') return tx(language, 'Sjekk detaljer', 'Check details');
+    return tx(language, `OK - ${formatNumber(ltp.ltpCm ?? 0, 0)} cm`, `OK - ${formatNumber(ltp.ltpCm ?? 0, 0)} cm`);
+  };
+
+  const getNextBreakSummary = () => {
+    if (!plannedDeparture) return tx(language, 'Avgang ikke satt', 'Departure not set');
+    const departure = new Date(plannedDeparture);
+    const usedHours = Number(drivingUsedTodayHours.replace(',', '.'));
+    if (!Number.isFinite(departure.getTime()) || !Number.isFinite(usedHours)) {
+      return tx(language, 'Sjekk detaljer', 'Check details');
+    }
+    const remainingHours = Math.max(4.5 - usedHours, 0);
+    const nextBreak = new Date(departure.getTime() + Math.round(remainingHours * 60 * 60 * 1000));
+    return new Intl.DateTimeFormat(language === 'no' ? 'nb-NO' : 'en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(nextBreak);
+  };
+
+  const renderTripMainView = () => (
+    <section id="trip-main-view" className="driver-results-flow driver-results-flow--map-first" aria-label={tx(language, 'Steg 2: Hovedvisning for turen', 'Step 2: Main trip view')}>
+      <div className="workflow-section-heading">
+        <h2>{tx(language, 'Hovedvisning for turen', 'Main trip view')}</h2>
+      </div>
+
+      <RouteCheckFutureSection
+        language={language}
+        routeFrom={routeFrom}
+        routeTo={routeTo}
+        prefill={routeCheckPrefill}
+        autoCheckKey={tripCalculationKey}
+        ltpSummary={getTripLtpSummary()}
+        nextBreakSummary={getNextBreakSummary()}
+      />
+
+      <div className="workflow-section-heading workflow-section-heading--compact">
+        <h2>{tx(language, 'Detaljer', 'Details')}</h2>
+      </div>
+
+      <div className="trip-detail-grid">
+        <details className="trip-detail-card">
+          <summary>LTP</summary>
+          <div>
+            {result ? (
+              <>
+                <strong>{result.ltp.status === 'ready' ? `${formatNumber(result.ltp.ltpCm ?? 0, 0)} cm` : tx(language, 'Ikke klar', 'Not ready')}</strong>
+                <p>{translateRuntimeText(result.ltp.message, language)}</p>
+              </>
+            ) : semiTrailerResult ? (
+              <>
+                <strong>{semiTrailerResult.ltp.status === 'ready' ? `${formatNumber(semiTrailerResult.ltp.ltpCm ?? 0, 0)} cm` : tx(language, 'Ikke klar', 'Not ready')}</strong>
+                <p>{translateRuntimeText(semiTrailerResult.ltp.message, language)}</p>
+              </>
+            ) : (
+              <p>{tx(language, 'Beregningen vises her når grunnlaget er klart.', 'The calculation appears here when the basis is ready.')}</p>
+            )}
+          </div>
+        </details>
+
+        <details className="trip-detail-card">
+          <summary>{tx(language, 'Kjøre- og hviletid', 'Driving and rest time')}</summary>
+          <DrivingRestSection
+            language={language}
+            plannedDeparture={plannedDeparture}
+            drivingUsedTodayHours={drivingUsedTodayHours}
+          />
+        </details>
+
+        <details className="trip-detail-card">
+          <summary>{tx(language, 'Kjøretøydata', 'Vehicle data')}</summary>
+          {renderVehicleDataSummary()}
+        </details>
+      </div>
+    </section>
+  );
 
   if (screen === 'plate') {
     return (
@@ -1113,13 +1232,13 @@ export default function Home() {
         <GlobalTopControls language={language} onLanguageChange={setLanguage} theme={theme} onThemeChange={setTheme} />
         <section className="plate-entry">
           <div className="plate-entry-copy">
-            <p className="eyebrow">{tx(language, 'Transportdashboard', 'Transport dashboard')}</p>
-            <h1>{tx(language, 'LTP-beregner for tunge kjøretøy', 'LTP calculator for heavy vehicles')}</h1>
+            <p className="eyebrow">{tx(language, 'Turassistent', 'Trip assistant')}</p>
+            <h1>{tx(language, 'Planlegg tungbil-turen', 'Plan your heavy vehicle trip')}</h1>
             <p className="hero-text">
               {tx(
                 language,
-                'Skriv inn registreringsnummeret, hent vognkortdata og beregn LTP, aksellast og totalvekt raskere.',
-                'Enter a registration number, fetch vehicle-card data, and calculate LTP, axle loads and total weight faster.',
+                'Skriv inn turen, trykk start, og få kart, LTP og varsler samlet.',
+                'Enter the trip, press start, and get the map, LTP and warnings together.',
               )}
             </p>
 
@@ -1135,29 +1254,17 @@ export default function Home() {
               >
                 <div className="plate-input-grid">
                   <label className="registration-field">
-                    <span>{tx(language, 'Trekkvogn / kjøretøy', 'Main vehicle')}</span>
+                    <span>{tx(language, 'Skiltnummer', 'Registration number')}</span>
                     <input
                       className="registration-input"
                       value={registrationNumber}
                       onChange={(event) => setRegistrationNumber(event.target.value)}
                       placeholder={tx(language, 'F.eks. AB12345', 'E.g. AB12345')}
-                      aria-label={tx(language, 'Trekkvogn / kjøretøy', 'Main vehicle')}
+                      aria-label={tx(language, 'Skiltnummer', 'Registration number')}
                       autoCapitalize="characters"
                       autoComplete="off"
                       autoFocus
                       required
-                    />
-                  </label>
-                  <label className="registration-field">
-                    <span>{tx(language, 'Tilhenger (valgfri)', 'Trailer (optional)')}</span>
-                    <input
-                      className="registration-input"
-                      value={trailerRegistrationNumber}
-                      onChange={(event) => setTrailerRegistrationNumber(event.target.value)}
-                      placeholder={tx(language, 'F.eks. AB12345', 'E.g. AB12345')}
-                      aria-label={tx(language, 'Tilhenger (valgfri)', 'Trailer (optional)')}
-                      autoCapitalize="characters"
-                      autoComplete="off"
                     />
                   </label>
                   <label className="registration-field">
@@ -1210,29 +1317,46 @@ export default function Home() {
                   {tx(language, 'Legg til tilhenger hvis du skal beregne vogntog.', 'Add a trailer if you want to calculate a vehicle combination.')}
                 </p>
                 <button type="submit" className="registration-button registration-button--wide" disabled={lookupLoading || trailerLookupLoading}>
-                  {lookupLoading || trailerLookupLoading ? tx(language, 'Henter...', 'Fetching...') : tx(language, 'Start beregning', 'Start calculation')}
+                  {lookupLoading || trailerLookupLoading ? tx(language, 'Henter...', 'Fetching...') : tx(language, 'Start turberegning', 'Start trip calculation')}
                 </button>
               </form>
-              <label className="select-block plate-road-profile">
-                <span className="select-label">{tx(language, 'Vegliste / bruksklasse', 'Road list / road class')}</span>
-                <select
-                  value={roadProfile}
-                  onChange={(event) => setRoadProfile(event.target.value as RoadProfile)}
-                  className="select-input"
-                >
-                  {ROAD_PROFILES.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {tx(language, option.label, option.labelEn ?? option.label)}
-                    </option>
-                  ))}
-                </select>
-                <small className="select-note">
-                  {(() => {
-                    const option = ROAD_PROFILES.find((item) => item.value === roadProfile);
-                    return option ? tx(language, option.description, option.descriptionEn ?? option.description) : '';
-                  })()}
-                </small>
-              </label>
+              <details className="manual-values-panel">
+                <summary>{tx(language, 'Vis manuelle kjøretøyverdier', 'Show manual vehicle values')}</summary>
+                <div className="manual-values-grid">
+                  <label className="registration-field">
+                    <span>{tx(language, 'Tilhenger (valgfri)', 'Trailer (optional)')}</span>
+                    <input
+                      className="registration-input"
+                      value={trailerRegistrationNumber}
+                      onChange={(event) => setTrailerRegistrationNumber(event.target.value)}
+                      placeholder={tx(language, 'F.eks. AB12345', 'E.g. AB12345')}
+                      aria-label={tx(language, 'Tilhenger (valgfri)', 'Trailer (optional)')}
+                      autoCapitalize="characters"
+                      autoComplete="off"
+                    />
+                  </label>
+                  <label className="select-block plate-road-profile">
+                    <span className="select-label">{tx(language, 'Vegliste / bruksklasse', 'Road list / road class')}</span>
+                    <select
+                      value={roadProfile}
+                      onChange={(event) => setRoadProfile(event.target.value as RoadProfile)}
+                      className="select-input"
+                    >
+                      {ROAD_PROFILES.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {tx(language, option.label, option.labelEn ?? option.label)}
+                        </option>
+                      ))}
+                    </select>
+                    <small className="select-note">
+                      {(() => {
+                        const option = ROAD_PROFILES.find((item) => item.value === roadProfile);
+                        return option ? tx(language, option.description, option.descriptionEn ?? option.description) : '';
+                      })()}
+                    </small>
+                  </label>
+                </div>
+              </details>
               {lookupMessage ? <p className="registration-message">{lookupMessage}</p> : null}
               {trailerLookupMessage ? <p className="registration-message">{trailerLookupMessage}</p> : null}
               {lookupNotes.length > 0 ? (
@@ -1300,7 +1424,7 @@ export default function Home() {
                 className="registration-lookup-form registration-lookup-form--stacked"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  void handleRegistrationLookup();
+                  void handlePlateEntrySubmit();
                 }}
               >
                 <div className="plate-input-grid">
@@ -1363,7 +1487,7 @@ export default function Home() {
                   </label>
                 </div>
                 <button type="submit" className="registration-button" disabled={lookupLoading}>
-                  {lookupLoading ? tx(language, 'Henter...', 'Fetching...') : tx(language, 'Start beregning', 'Start calculation')}
+                  {lookupLoading ? tx(language, 'Henter...', 'Fetching...') : tx(language, 'Start turberegning', 'Start trip calculation')}
                 </button>
               </form>
               {lookupMessage ? <p className="registration-message">{lookupMessage}</p> : null}
@@ -1476,6 +1600,10 @@ export default function Home() {
           </div>
         </div>
 
+        {tripCalculationKey > 0 ? renderTripMainView() : null}
+
+        <details className="advanced-calculation-shell" open={tripCalculationKey === 0}>
+          <summary>{tx(language, 'Avansert beregning', 'Advanced calculation')}</summary>
         <section className="hero-card professional-hero">
           <div className="hero-copy">
             <p className="eyebrow">{isSpecialTransport ? tx(language, 'Spesialtype inn', 'Special type in') : tx(language, 'Vogntog inn', 'Combination in')}</p>
@@ -2127,31 +2255,7 @@ export default function Home() {
             )}
           </article>
         </section>
-        <section className="driver-results-flow" aria-label={tx(language, 'Steg 2: Resultater', 'Step 2: Results')}>
-          <div className="workflow-section-heading">
-            <p className="eyebrow">{tx(language, 'Steg 2', 'Step 2')}</p>
-            <h2>{tx(language, 'Resultater', 'Results')}</h2>
-            <p>
-              {tx(
-                language,
-                'Se LTP, rute, varsler og kjøre-/hviletid i egne kort etter beregningen.',
-                'Review LTP, route, warnings and driving/rest time in separate cards after calculation.',
-              )}
-            </p>
-          </div>
-          <div className="workflow-tab-strip" aria-hidden="true">
-            <span>LTP</span>
-            <span>{tx(language, 'Rute og kart', 'Route and map')}</span>
-            <span>{tx(language, 'Varsler', 'Warnings')}</span>
-            <span>{tx(language, 'Kjøre- og hviletid', 'Driving and rest time')}</span>
-          </div>
-          <RouteCheckFutureSection language={language} routeFrom={routeFrom} routeTo={routeTo} prefill={routeCheckPrefill} />
-          <DrivingRestSection
-            language={language}
-            plannedDeparture={plannedDeparture}
-            drivingUsedTodayHours={drivingUsedTodayHours}
-          />
-        </section>
+        </details>
       </main>
     );
   }
@@ -2178,6 +2282,10 @@ export default function Home() {
         </div>
       </div>
 
+      {tripCalculationKey > 0 ? renderTripMainView() : null}
+
+      <details className="advanced-calculation-shell" open={tripCalculationKey === 0}>
+        <summary>{tx(language, 'Avansert beregning', 'Advanced calculation')}</summary>
       <section className="hero-card professional-hero">
         <div className="hero-copy">
           <p className="eyebrow">{tx(language, 'Vognkort inn → svar ut', 'Vehicle data in → answer out')}</p>
@@ -2796,31 +2904,7 @@ export default function Home() {
           )}
         </article>
       </section>
-      <section className="driver-results-flow" aria-label={tx(language, 'Steg 2: Resultater', 'Step 2: Results')}>
-        <div className="workflow-section-heading">
-          <p className="eyebrow">{tx(language, 'Steg 2', 'Step 2')}</p>
-          <h2>{tx(language, 'Resultater', 'Results')}</h2>
-          <p>
-            {tx(
-              language,
-              'Se LTP, rute, varsler og kjøre-/hviletid i egne kort etter beregningen.',
-              'Review LTP, route, warnings and driving/rest time in separate cards after calculation.',
-            )}
-          </p>
-        </div>
-        <div className="workflow-tab-strip" aria-hidden="true">
-          <span>LTP</span>
-          <span>{tx(language, 'Rute og kart', 'Route and map')}</span>
-          <span>{tx(language, 'Varsler', 'Warnings')}</span>
-          <span>{tx(language, 'Kjøre- og hviletid', 'Driving and rest time')}</span>
-        </div>
-        <RouteCheckFutureSection language={language} routeFrom={routeFrom} routeTo={routeTo} prefill={routeCheckPrefill} />
-        <DrivingRestSection
-          language={language}
-          plannedDeparture={plannedDeparture}
-          drivingUsedTodayHours={drivingUsedTodayHours}
-        />
-      </section>
+      </details>
     </main>
     );
   }

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ROAD_PROFILES } from '../constants';
 import type { RoadProfile } from '../types';
 import { tx, type Language } from '../lib/i18n';
@@ -96,11 +96,17 @@ export function RouteCheckFutureSection({
   routeFrom,
   routeTo,
   prefill,
+  autoCheckKey = 0,
+  ltpSummary,
+  nextBreakSummary,
 }: {
   language: Language;
   routeFrom: string;
   routeTo: string;
   prefill?: RouteCheckPrefill;
+  autoCheckKey?: number;
+  ltpSummary?: string;
+  nextBreakSummary?: string;
 }) {
   const sourceHelper = tx(language, 'Hentes fra vognkort når tilgjengelig', 'Fetched from vehicle card when available');
   const emptyRouteText = tx(language, 'Ikke lagt inn ennå', 'Not entered yet');
@@ -123,8 +129,11 @@ export function RouteCheckFutureSection({
       }),
     [routeWarningResult],
   );
+  const criticalWarningCount = (routeWarningResult?.warnings ?? []).filter((warning) => warning.severity === 'critical').length;
+  const cautionWarningCount = (routeWarningResult?.warnings ?? []).filter((warning) => warning.severity === 'caution').length;
+  const roadworkCount = routeWarningResult?.roadwork.length ?? 0;
 
-  async function checkRouteWarnings() {
+  const checkRouteWarnings = useCallback(async () => {
     setRouteWarningLoading(true);
     setRouteWarningError('');
 
@@ -160,20 +169,18 @@ export function RouteCheckFutureSection({
     } finally {
       setRouteWarningLoading(false);
     }
-  }
+  }, [language, routeFrom, routeTo]);
+
+  useEffect(() => {
+    if (!autoCheckKey || !routeFrom.trim() || !routeTo.trim()) return;
+    void checkRouteWarnings();
+  }, [autoCheckKey, checkRouteWarnings, routeFrom, routeTo]);
 
   return (
-    <section className="route-check-section" aria-labelledby="route-check-title">
+    <section className="route-check-section route-check-section--main-trip" aria-labelledby="route-check-title">
       <div className="route-check-copy">
-        <p className="eyebrow">{tx(language, 'Rute og kart', 'Route and map')}</p>
-        <h2 id="route-check-title">Rutesjekk</h2>
-        <p>
-          {tx(
-            language,
-            'Kontroller rute, kjøretøydata og foreløpige varsler før turen.',
-            'Check the route, vehicle data and preliminary warnings before the trip.',
-          )}
-        </p>
+        <p className="eyebrow">{tx(language, 'Rutekart', 'Route map')}</p>
+        <h2 id="route-check-title">{tx(language, 'Hovedvisning for turen', 'Main trip view')}</h2>
       </div>
 
       <div className="route-check-layout">
@@ -188,41 +195,44 @@ export function RouteCheckFutureSection({
           </div>
         </div>
 
-        <div className="route-check-form" aria-label={tx(language, 'Kjøretøydata for rutesjekk', 'Vehicle data for route check')}>
-          <label>
-            <span>{tx(language, 'Kjøretøyhøyde', 'Vehicle height')}</span>
-            <input ref={heightRef} type="text" defaultValue={prefill?.vehicleHeight ?? ''} placeholder="4,20 m" />
-            <small>{sourceHelper}</small>
-          </label>
-          <label>
-            <span>{tx(language, 'Kjøretøylengde', 'Vehicle length')}</span>
-            <input ref={lengthRef} type="text" defaultValue={prefill?.vehicleLength ?? ''} placeholder="19,50 m" />
-            <small>{sourceHelper}</small>
-          </label>
-          <label>
-            <span>{tx(language, 'Kjøretøybredde', 'Vehicle width')}</span>
-            <input ref={widthRef} type="text" defaultValue={prefill?.vehicleWidth ?? ''} placeholder="2,55 m" />
-            <small>{sourceHelper}</small>
-          </label>
-          <label>
-            <span>{tx(language, 'Totalvekt', 'Total weight')}</span>
-            <input ref={totalWeightRef} type="text" defaultValue={prefill?.totalWeight ?? ''} placeholder="50 000 kg" />
-            <small>{sourceHelper}</small>
-          </label>
-          <label>
-            <span>{tx(language, 'Bruksklasse', 'Road class')}</span>
-            <select defaultValue={prefill?.roadClass ?? 'Bk10_50'}>
-              {ROAD_PROFILES.map((option) => (
-                <option key={`route-${option.value}`} value={option.value}>
-                  {tx(language, option.label, option.labelEn ?? option.label)}
-                </option>
-              ))}
-            </select>
-            <small>{sourceHelper}</small>
-          </label>
-        </div>
+        <details className="route-check-form route-check-form--details" aria-label={tx(language, 'Kjøretøydata for rutesjekk', 'Vehicle data for route check')}>
+          <summary>{tx(language, 'Kjøretøydata', 'Vehicle data')}</summary>
+          <div className="route-check-form-fields">
+            <label>
+              <span>{tx(language, 'Kjøretøyhøyde', 'Vehicle height')}</span>
+              <input ref={heightRef} type="text" defaultValue={prefill?.vehicleHeight ?? ''} placeholder="4,20 m" />
+              <small>{sourceHelper}</small>
+            </label>
+            <label>
+              <span>{tx(language, 'Kjøretøylengde', 'Vehicle length')}</span>
+              <input ref={lengthRef} type="text" defaultValue={prefill?.vehicleLength ?? ''} placeholder="19,50 m" />
+              <small>{sourceHelper}</small>
+            </label>
+            <label>
+              <span>{tx(language, 'Kjøretøybredde', 'Vehicle width')}</span>
+              <input ref={widthRef} type="text" defaultValue={prefill?.vehicleWidth ?? ''} placeholder="2,55 m" />
+              <small>{sourceHelper}</small>
+            </label>
+            <label>
+              <span>{tx(language, 'Totalvekt', 'Total weight')}</span>
+              <input ref={totalWeightRef} type="text" defaultValue={prefill?.totalWeight ?? ''} placeholder="50 000 kg" />
+              <small>{sourceHelper}</small>
+            </label>
+            <label>
+              <span>{tx(language, 'Bruksklasse', 'Road class')}</span>
+              <select defaultValue={prefill?.roadClass ?? 'Bk10_50'}>
+                {ROAD_PROFILES.map((option) => (
+                  <option key={`route-${option.value}`} value={option.value}>
+                    {tx(language, option.label, option.labelEn ?? option.label)}
+                  </option>
+                ))}
+              </select>
+              <small>{sourceHelper}</small>
+            </label>
+          </div>
+        </details>
 
-        <div>
+        <div className="route-check-map-panel">
           <RouteMap
             language={language}
             routeFrom={routeFrom}
@@ -235,15 +245,44 @@ export function RouteCheckFutureSection({
             Rute, tunnel, høyde og trafikkdata er veiledende. Sjekk alltid skilting, vegliste og
             offisielle kilder før kjøring. Ikke bruk som eneste grunnlag for transport.
           </p>
-          <button type="button" className="secondary-button" onClick={checkRouteWarnings} disabled={routeWarningLoading}>
-            {routeWarningLoading
-              ? tx(language, 'Sjekker...', 'Checking...')
-              : tx(language, 'Sjekk tunnel og høyde', 'Check tunnel and height')}
-          </button>
+          <div className="trip-status-grid">
+            <div className="trip-status-card">
+              <span>LTP</span>
+              <strong>{ltpSummary ?? tx(language, 'Sjekk detaljer', 'Check details')}</strong>
+            </div>
+            <div className="trip-status-card">
+              <span>{tx(language, 'Tunnel/høyde', 'Tunnel/height')}</span>
+              <strong>
+                {routeWarningLoading
+                  ? tx(language, 'Sjekker...', 'Checking...')
+                  : `${criticalWarningCount} ${tx(language, 'kritisk', 'critical')}, ${cautionWarningCount} ${tx(language, 'nær grense', 'caution')}`}
+              </strong>
+            </div>
+            <div className="trip-status-card">
+              <span>{tx(language, 'Veiarbeid', 'Roadwork')}</span>
+              <strong>
+                {routeWarningLoading ? tx(language, 'Sjekker...', 'Checking...') : `${roadworkCount} ${tx(language, 'hendelser', 'incidents')}`}
+              </strong>
+            </div>
+            <div className="trip-status-card">
+              <span>{tx(language, 'Neste pause', 'Next break')}</span>
+              <strong>{nextBreakSummary ?? tx(language, 'Avgang ikke satt', 'Departure not set')}</strong>
+            </div>
+          </div>
+          {routeWarningLoading ? (
+            <p className="route-check-loading">{tx(language, 'Sjekker høydevarsler og trafikk langs ruten...', 'Checking height warnings and traffic along the route...')}</p>
+          ) : null}
           {routeWarningError ? <p className="helper">{routeWarningError}</p> : null}
-          {routeWarningResult ? (
-            <div className="route-warning-list">
-              <h3>{tx(language, 'Foreløpig tunnelsjekk', 'Preliminary tunnel check')}</h3>
+          <details className="route-warning-list route-warning-list--details">
+            <summary>{tx(language, 'Varsler', 'Warnings')}</summary>
+            <button type="button" className="secondary-button secondary-button--compact" onClick={checkRouteWarnings} disabled={routeWarningLoading}>
+              {routeWarningLoading
+                ? tx(language, 'Oppdaterer...', 'Updating...')
+                : tx(language, 'Oppdater varsler', 'Refresh warnings')}
+            </button>
+            {routeWarningResult ? (
+              <>
+              <h3>{tx(language, 'Tunnel og høyde', 'Tunnel and height')}</h3>
               {sortedHeightWarnings.length === 0 ? (
                 <p>{tx(language, 'Ingen høydebegrensninger funnet langs ruten for valgt kjøretøyhøyde.', 'No height restrictions found along the route for the selected vehicle height.')}</p>
               ) : (
@@ -366,8 +405,11 @@ export function RouteCheckFutureSection({
                   </div>
                 </details>
               ) : null}
-            </div>
-          ) : null}
+              </>
+            ) : (
+              <p>{tx(language, 'Varsler sjekkes automatisk når ruten er klar.', 'Warnings are checked automatically when the route is ready.')}</p>
+            )}
+          </details>
         </div>
 
         <details className="route-warning-list route-warning-list--details">

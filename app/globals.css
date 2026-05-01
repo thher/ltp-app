@@ -738,6 +738,10 @@ select {
   margin-top: 28px;
 }
 
+.driver-results-flow--map-first {
+  margin-bottom: 22px;
+}
+
 .driver-results-flow .route-check-section {
   margin-top: 0;
 }
@@ -765,23 +769,46 @@ select {
   line-height: 1.55;
 }
 
-.workflow-tab-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.workflow-section-heading--compact {
+  padding: 16px 18px;
+  margin-top: 4px;
 }
 
-.workflow-tab-strip span {
-  min-height: 36px;
-  display: inline-flex;
+.workflow-section-heading--compact h2 {
+  font-size: clamp(1.25rem, 2vw, 1.7rem);
+}
+
+.manual-values-panel,
+.advanced-calculation-shell {
+  margin-top: 16px;
+  border: 1px solid rgba(215, 232, 224, 0.13);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.manual-values-panel summary,
+.advanced-calculation-shell summary {
+  min-height: 54px;
+  display: flex;
   align-items: center;
-  padding: 0 13px;
-  border: 1px solid rgba(103, 198, 164, 0.22);
-  border-radius: 999px;
-  background: rgba(103, 198, 164, 0.08);
+  padding: 0 16px;
   color: var(--foreground);
-  font-size: 0.85rem;
-  font-weight: 800;
+  cursor: pointer;
+  font-weight: 850;
+}
+
+.manual-values-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 16px 16px;
+}
+
+.advanced-calculation-shell > .hero-card,
+.advanced-calculation-shell > .workspace-grid {
+  margin: 16px;
 }
 
 .driver-vehicle-prefill {
@@ -842,6 +869,10 @@ select {
   min-width: 0;
 }
 
+.route-check-section--main-trip .route-check-layout {
+  gap: 16px;
+}
+
 .route-check-route-preview {
   grid-column: 1 / -1;
   display: grid;
@@ -870,11 +901,47 @@ select {
   font-size: 1rem;
 }
 
+.route-check-map-panel {
+  order: -1;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.route-check-section--main-trip .route-check-route-preview {
+  display: none;
+}
+
+.route-check-section--main-trip .route-check-form {
+  order: 2;
+}
+
 .route-check-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   min-width: 0;
+}
+
+.route-check-form--details {
+  display: block;
+  padding: 16px;
+  border: 1px solid rgba(215, 232, 224, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.route-check-form--details summary {
+  cursor: pointer;
+  color: var(--foreground);
+  font-weight: 850;
+}
+
+.route-check-form-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
 }
 
 .route-check-form label {
@@ -884,6 +951,10 @@ select {
   border: 1px solid rgba(215, 232, 224, 0.12);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.045);
+  min-width: 0;
+}
+
+.route-check-form-fields label {
   min-width: 0;
 }
 
@@ -927,12 +998,20 @@ select {
   padding: 0;
 }
 
+.route-check-section--main-trip .route-check-map {
+  min-height: 520px;
+}
+
 .route-check-map .leaflet-container {
   width: 100% !important;
   min-height: 420px !important;
   border-radius: 20px;
   overflow: hidden;
   z-index: 0;
+}
+
+.route-check-section--main-trip .route-check-map .leaflet-container {
+  min-height: 520px !important;
 }
 
 .route-map-placeholder {
@@ -1075,6 +1154,123 @@ select {
   box-shadow: 0 0 0 8px rgba(244, 211, 127, 0.14);
 }
 
+.route-check-loading {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(103, 198, 164, 0.18);
+  border-radius: 14px;
+  background: rgba(103, 198, 164, 0.09);
+  color: var(--foreground);
+  font-size: 0.92rem;
+  font-weight: 750;
+}
+
+.trip-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.trip-status-card {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  min-height: 82px;
+  padding: 14px;
+  border: 1px solid rgba(215, 232, 224, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.trip-status-card span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.trip-status-card strong {
+  color: var(--foreground);
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.trip-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.trip-detail-card {
+  min-width: 0;
+  border: 1px solid rgba(215, 232, 224, 0.13);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.trip-detail-card summary {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px;
+  color: var(--foreground);
+  cursor: pointer;
+  font-weight: 850;
+}
+
+.trip-detail-card summary::after {
+  content: '+';
+  color: var(--accent-strong);
+  font-size: 1.1rem;
+}
+
+.trip-detail-card[open] summary::after {
+  content: '–';
+}
+
+.trip-detail-card > div,
+.trip-detail-card > p,
+.trip-detail-card > .route-check-section {
+  margin: 0;
+  padding: 0 16px 16px;
+}
+
+.trip-detail-card[open] summary::after {
+  content: '-';
+}
+
+.trip-detail-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.trip-detail-card strong {
+  color: var(--foreground);
+}
+
+.trip-detail-card .route-check-section {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0 16px 16px;
+}
+
+.trip-detail-card .route-check-copy {
+  display: none;
+}
+
+.secondary-button--compact {
+  width: auto;
+  min-height: 42px;
+  margin: 8px 0 16px;
+  padding: 0 14px;
+  font-size: 0.88rem;
+}
+
 .route-warning-list {
   grid-column: 1 / -1;
   padding: 16px;
@@ -1147,10 +1343,11 @@ select {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
 }
 
-[data-theme="light"] .workflow-tab-strip span {
-  background: rgba(31, 138, 112, 0.08);
-  border-color: rgba(31, 138, 112, 0.18);
-  color: #12332c;
+[data-theme="light"] .manual-values-panel,
+[data-theme="light"] .advanced-calculation-shell {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
 }
 
 [data-theme="light"] .driver-vehicle-prefill {
@@ -1164,11 +1361,29 @@ select {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.035);
 }
 
+[data-theme="light"] .trip-detail-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .route-check-loading {
+  background: rgba(31, 138, 112, 0.07);
+  border-color: rgba(31, 138, 112, 0.14);
+}
+
 [data-theme="light"] .route-check-form label,
+[data-theme="light"] .route-check-form--details,
 [data-theme="light"] .route-check-route-preview div,
 [data-theme="light"] .route-check-rest,
 [data-theme="light"] .route-check-rest-result,
 [data-theme="light"] .route-warning-list {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.035);
+}
+
+[data-theme="light"] .trip-status-card {
   background: #ffffff;
   border-color: rgba(0, 0, 0, 0.06);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.035);
@@ -3453,11 +3668,21 @@ select {
   .plate-input-grid,
   .route-check-layout,
   .route-check-route-preview,
-  .route-check-form {
+  .route-check-form,
+  .route-check-form-fields,
+  .trip-status-grid {
     grid-template-columns: 1fr;
   }
 
   .driver-vehicle-prefill div {
+    grid-template-columns: 1fr;
+  }
+
+  .manual-values-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .trip-detail-grid {
     grid-template-columns: 1fr;
   }
 
