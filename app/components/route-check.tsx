@@ -84,6 +84,13 @@ function parseVehicleMeasure(value: string, unit: 'mm' | 'kg') {
   return Math.round(parsed);
 }
 
+function formatHeightMeters(valueMeters: number, language: Language) {
+  return valueMeters.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+}
+
 export function RouteCheckFutureSection({
   language,
   routeFrom,
@@ -105,6 +112,7 @@ export function RouteCheckFutureSection({
   const [routeWarningLoading, setRouteWarningLoading] = useState(false);
   const [routeWarningError, setRouteWarningError] = useState('');
   const [selectedWarning, setSelectedWarning] = useState<RouteWarning | null>(null);
+  const [checkedVehicleHeightMm, setCheckedVehicleHeightMm] = useState<number | null>(null);
   const sortedHeightWarnings = useMemo(
     () =>
       [...(routeWarningResult?.warnings ?? [])].sort((a, b) => {
@@ -119,10 +127,11 @@ export function RouteCheckFutureSection({
     setRouteWarningError('');
 
     try {
+      const vehicleHeightMm = parseVehicleMeasure(heightRef.current?.value ?? '', 'mm');
       const requestBody = {
         from: routeFrom,
         to: routeTo,
-        vehicleHeightMm: parseVehicleMeasure(heightRef.current?.value ?? '', 'mm'),
+        vehicleHeightMm,
         vehicleWidthMm: parseVehicleMeasure(widthRef.current?.value ?? '', 'mm'),
         vehicleLengthMm: parseVehicleMeasure(lengthRef.current?.value ?? '', 'mm'),
         totalWeightKg: parseVehicleMeasure(totalWeightRef.current?.value ?? '', 'kg'),
@@ -141,6 +150,7 @@ export function RouteCheckFutureSection({
       const json = (await response.json()) as RouteWarningResponse;
       setRouteWarningResult(json);
       setSelectedWarning(null);
+      setCheckedVehicleHeightMm(vehicleHeightMm);
     } catch {
       setRouteWarningError(
         tx(language, 'Kunne ikke gjennomføre foreløpig rutesjekk.', 'Could not run the preliminary route check.'),
@@ -238,6 +248,18 @@ export function RouteCheckFutureSection({
                 <div style={{ display: 'grid', gap: '0.75rem' }}>
                   {sortedHeightWarnings.map((warning, index) => {
                     const isCritical = warning.severity === 'critical';
+                    const restrictionHeightMm = Math.round(warning.value * 1000);
+                    const diffMm =
+                      checkedVehicleHeightMm !== null ? checkedVehicleHeightMm - restrictionHeightMm : null;
+                    const diffCm = diffMm !== null ? Math.round(Math.abs(diffMm) / 10) : null;
+                    const statusText =
+                      diffMm !== null && diffCm !== null
+                        ? diffMm > 0
+                          ? tx(language, `Du er ${diffCm} cm for høy`, `You are ${diffCm} cm too high`)
+                          : tx(language, `Kun ${diffCm} cm klaring`, `Only ${diffCm} cm clearance`)
+                        : isCritical
+                          ? tx(language, 'Kritisk høydebegrensning', 'Critical height restriction')
+                          : tx(language, 'Nær høydegrense', 'Near height limit');
                     return (
                       <button
                         type="button"
@@ -259,22 +281,34 @@ export function RouteCheckFutureSection({
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
                           <span aria-hidden="true">{isCritical ? '🚫' : '⚠️'}</span>
-                          <strong>{warning.description}</strong>
+                          <strong>{statusText}</strong>
+                        </div>
+                        <div
+                          style={{
+                            display: 'grid',
+                            gap: '0.25rem',
+                            color: isCritical ? '#fecaca' : '#fed7aa',
+                          }}
+                        >
+                          <span>
+                            {tx(language, 'Høyde', 'Height')}: {formatHeightMeters(warning.value, language)} m
+                          </span>
+                          {diffMm !== null && diffCm !== null ? (
+                            <strong>
+                              {diffMm > 0
+                                ? tx(language, `Du er ${diffCm} cm for høy`, `You are ${diffCm} cm too high`)
+                                : tx(language, `Kun ${diffCm} cm klaring`, `Only ${diffCm} cm clearance`)}
+                            </strong>
+                          ) : null}
                         </div>
                         {typeof warning.distanceKm === 'number' ? (
                           <div className="helper" style={{ margin: 0 }}>
                             {warning.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
                               maximumFractionDigits: 1,
                             })}{' '}
-                            {tx(language, 'km frem', 'km ahead')}
+                            {tx(language, 'km frem langs ruten', 'km ahead along the route')}
                           </div>
                         ) : null}
-                        <div className="helper" style={{ margin: 0 }}>
-                          {isCritical
-                            ? tx(language, 'Kritisk', 'Critical')
-                            : tx(language, 'Nær grense', 'Near limit')}{' '}
-                          · {tx(language, 'langs ruten', 'along the route')}
-                        </div>
                       </button>
                     );
                   })}
