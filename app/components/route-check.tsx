@@ -161,6 +161,14 @@ export function RouteCheckFutureSection({
   const realRoadwork = useMemo(() => routeWarningResult?.roadwork ?? [], [routeWarningResult]);
   const restStops = useMemo(() => routeWarningResult?.restStops ?? [], [routeWarningResult]);
   const roadworkCount = realRoadwork.length;
+  const heightWarningSummary = routeWarningLoading
+    ? tx(language, 'Sjekker', 'Checking')
+    : criticalWarningCount > 0
+      ? `${criticalWarningCount} ${tx(language, 'kritisk', 'critical')}`
+      : cautionWarningCount > 0
+        ? `${cautionWarningCount} ${tx(language, 'nær', 'caution')}`
+        : tx(language, '0 varsler', '0 warnings');
+  const trafficSummary = routeWarningLoading ? tx(language, 'Sjekker', 'Checking') : String(roadworkCount);
   const estimatedStopDistanceKm = useMemo(() => {
     const remainingHours = parseRemainingDrivingHours(nextBreakSummary);
     return remainingHours !== null ? remainingHours * AVERAGE_TRUCK_SPEED_KMH : null;
@@ -312,9 +320,9 @@ export function RouteCheckFutureSection({
             offisielle kilder før kjøring. Ikke bruk som eneste grunnlag for transport.
           </p>
           {liveStatusMessages.length > 0 ? (
-            <div style={{ display: 'grid', gap: '0.5rem' }}>
-              <strong>{tx(language, 'Status nå', 'Status now')}</strong>
-              <div style={{ display: 'grid', gap: '0.5rem' }}>
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+              <strong style={{ fontSize: '1rem' }}>{tx(language, 'Status nå', 'Status now')}</strong>
+              <div style={{ display: 'grid', gap: '0.65rem' }}>
                 {liveStatusMessages.map((message, index) => (
                   <div
                     key={`live-status-${message.tone}-${index}`}
@@ -332,7 +340,10 @@ export function RouteCheckFutureSection({
                             ? 'rgba(245, 158, 11, 0.12)'
                             : 'rgba(148, 163, 184, 0.1)',
                       borderRadius: '12px',
-                      padding: '0.65rem 0.8rem',
+                      padding: '0.8rem 0.9rem',
+                      fontSize: '1rem',
+                      fontWeight: 700,
+                      lineHeight: 1.35,
                     }}
                   >
                     <span>{message.text}</span>
@@ -343,25 +354,19 @@ export function RouteCheckFutureSection({
           ) : null}
           <div className="trip-status-grid">
             <div className="trip-status-card">
-              <span>LTP</span>
+              <span>{tx(language, 'Klarering', 'Clearance')}</span>
               <strong>{ltpSummary ?? tx(language, 'Sjekk detaljer', 'Check details')}</strong>
             </div>
             <div className="trip-status-card">
-              <span>{tx(language, 'Tunnel/høyde', 'Tunnel/height')}</span>
-              <strong>
-                {routeWarningLoading
-                  ? tx(language, 'Sjekker...', 'Checking...')
-                  : `${criticalWarningCount} ${tx(language, 'kritisk', 'critical')}, ${cautionWarningCount} ${tx(language, 'nær grense', 'caution')}`}
-              </strong>
+              <span>{tx(language, 'Høydevarsler', 'Height warnings')}</span>
+              <strong>{heightWarningSummary}</strong>
             </div>
             <div className="trip-status-card">
-              <span>{tx(language, 'Veiarbeid', 'Roadwork')}</span>
-              <strong>
-                {routeWarningLoading ? tx(language, 'Sjekker...', 'Checking...') : `${roadworkCount} ${tx(language, 'hendelser', 'incidents')}`}
-              </strong>
+              <span>{tx(language, 'Trafikk', 'Traffic')}</span>
+              <strong>{trafficSummary}</strong>
             </div>
             <div className="trip-status-card">
-              <span>{tx(language, 'Neste pause', 'Next break')}</span>
+              <span>{tx(language, 'Pause', 'Break')}</span>
               <strong>{nextBreakSummary ?? tx(language, 'Avgang ikke satt', 'Departure not set')}</strong>
             </div>
           </div>
@@ -478,7 +483,7 @@ export function RouteCheckFutureSection({
                   <h3>{tx(language, 'Hvileplasser', 'Rest stops')}</h3>
                   {restStops.length === 0 ? (
                     <p className="helper">
-                      {tx(language, 'Hvileplasser kobles til neste steg.', 'Rest stops will be connected in the next step.')}
+                      {tx(language, 'Ingen hvileplasser funnet langs ruten', 'No rest stops found along the route')}
                     </p>
                   ) : (
                     <div style={{ display: 'grid', gap: '0.75rem' }}>
@@ -646,8 +651,8 @@ export function DrivingRestSection({
         <p>
           {tx(
             language,
-            'En enkel forhåndsvisning for pause og døgnhvile. Rute- og stoppdata kobles til senere.',
-            'A simple preview for breaks and daily rest. Route and stop data will be connected later.',
+            'Plan for pause og døgnhvile.',
+            'Break and daily rest plan.',
           )}
         </p>
       </div>
@@ -721,11 +726,10 @@ export function DrivingRestSection({
                     <span>{stop.name}</span>
                     {typeof stop.distanceKm === 'number' ? (
                       <div className="helper" style={{ margin: 0 }}>
-                        ≈{' '}
                         {stop.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
                           maximumFractionDigits: 0,
                         })}{' '}
-                        {tx(language, 'km frem', 'km ahead')}
+                        km
                       </div>
                     ) : null}
                   </div>

@@ -429,12 +429,6 @@ export default function RouteMap({
           <div className="route-check-map-caption">
             <strong>{tx(language, 'Rutekart', 'Route map')}</strong>
             <span>{routeCaption}</span>
-            <div className="route-map-debug">
-              <span>{tx(language, 'From coordinate found', 'From coordinate found')}: {fromCoord ? 'yes' : 'no'}</span>
-              <span>{tx(language, 'To coordinate found', 'To coordinate found')}: {toCoord ? 'yes' : 'no'}</span>
-              <span>{tx(language, 'OSRM route fetched', 'OSRM route fetched')}: {routeStatus === 'ready' ? 'yes' : 'no'}</span>
-              <span>{tx(language, 'Route point count', 'Route point count')}: {routePath?.length ?? 0}</span>
-            </div>
           </div>
         </>
       ) : (
