@@ -34,6 +34,14 @@ type RouteMapRoadwork = {
   distanceKm?: number;
 };
 
+type RouteMapRestStop = {
+  type: 'rest-stop';
+  name: string;
+  lat: number;
+  lon: number;
+  distanceKm?: number;
+};
+
 type LeafletMapInstance = {
   setView: (center: [number, number], zoom: number) => void;
   fitBounds: (bounds: [number, number][], options?: { padding?: [number, number] }) => void;
@@ -47,7 +55,8 @@ function warningKey(warning: RouteMapWarning) {
   return `${warning.lat}-${warning.lon}-${warning.severity}-${warning.description}`;
 }
 
-function simplifyRoute(points: [number, number][], step = 10) {
+function simplifyRoute(points: [number, number][] | null | undefined, step = 10) {
+  if (!points || points.length === 0) return [];
   return points.filter((_, i) => i % step === 0);
 }
 
@@ -74,6 +83,7 @@ export default function RouteMap({
   routeTo,
   warnings = [],
   roadwork = [],
+  restStops = [],
   selectedWarning = null,
 }: {
   language: Language;
@@ -81,6 +91,7 @@ export default function RouteMap({
   routeTo: string;
   warnings?: RouteMapWarning[];
   roadwork?: RouteMapRoadwork[];
+  restStops?: RouteMapRestStop[];
   selectedWarning?: RouteMapWarning | null;
 }) {
   const [fromCoord, setFromCoord] = useState<[number, number] | null>(null);
@@ -93,9 +104,9 @@ export default function RouteMap({
   const warningMarkerRefs = useRef<Map<string, LeafletMarkerInstance>>(new Map());
   const hasRouteInput = Boolean(routeFrom.trim() && routeTo.trim());
   const simplifiedRoute = useMemo(() => {
-    if (!routePath || routePath.length === 0) return [];
-    const simplified = simplifyRoute(routePath, routePath.length > 10000 ? 15 : 5);
-    return simplified.length > 1 ? simplified : routePath;
+    const routePoints = routePath ?? [];
+    const simplified = simplifyRoute(routePoints, routePoints.length > 10000 ? 15 : 5);
+    return simplified.length > 1 ? simplified : routePoints;
   }, [routePath]);
   const snappedHeightWarnings = useMemo(
     () =>
@@ -112,6 +123,14 @@ export default function RouteMap({
         mapPosition: nearestRoutePoint([incident.lat, incident.lon], simplifiedRoute),
       })),
     [roadwork, simplifiedRoute],
+  );
+  const snappedRestStops = useMemo(
+    () =>
+      restStops.map((stop) => ({
+        ...stop,
+        mapPosition: nearestRoutePoint([stop.lat, stop.lon], simplifiedRoute),
+      })),
+    [restStops, simplifiedRoute],
   );
 
   useEffect(() => {
@@ -368,6 +387,35 @@ export default function RouteMap({
                       <br />
                       <span>
                         {incident.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
+                          maximumFractionDigits: 1,
+                        })}{' '}
+                        {tx(language, 'km frem', 'km ahead')}
+                      </span>
+                    </>
+                  ) : null}
+                </LeafletComponents.Popup>
+              </LeafletComponents.Marker>
+            ))}
+            {snappedRestStops.map((stop, index) => (
+              <LeafletComponents.Marker
+                key={`rest-stop-${stop.lat}-${stop.lon}-${index}`}
+                position={stop.mapPosition}
+                icon={LeafletComponents.L.divIcon({
+                  className: '',
+                  html: '<span style="display:block;width:20px;height:20px;border-radius:999px;background:#22c55e;border:3px solid #fff;box-shadow:0 8px 18px rgba(0,0,0,.28);"></span>',
+                  iconSize: [20, 20],
+                  iconAnchor: [10, 10],
+                })}
+              >
+                <LeafletComponents.Popup>
+                  <strong>{stop.name}</strong>
+                  <br />
+                  <span>{tx(language, 'Hvileplass', 'Rest stop')}</span>
+                  {typeof stop.distanceKm === 'number' ? (
+                    <>
+                      <br />
+                      <span>
+                        {stop.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
                           maximumFractionDigits: 1,
                         })}{' '}
                         {tx(language, 'km frem', 'km ahead')}

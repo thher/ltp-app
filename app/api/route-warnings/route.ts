@@ -17,6 +17,7 @@ type RouteWarningDebug = {
   nvdbHeightFilteredCount: number;
   datexFetchedCount: number;
   datexMatchedRouteCount: number;
+  restStopCount: number;
   usedRouteFilter: boolean;
 };
 
@@ -40,14 +41,25 @@ type RoadworkWarning = {
   distanceKm?: number;
 };
 
+type RestStop = {
+  type: 'rest-stop';
+  name: string;
+  lat: number;
+  lon: number;
+  distanceKm?: number;
+};
+
 const NVDB_HEIGHT_RESTRICTIONS_URL =
   'https://nvdbapiles-v3.atlas.vegvesen.no/vegobjekter/591?antall=500&inkluder=alle&srid=4326';
 const DATEX_SITUATION_URL =
   'https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/GetSituation/pullsnapshotdata';
+const OVERPASS_API_URL = 'https://overpass-api.de/api/interpreter';
 const ROUTE_MATCH_DISTANCE_METERS = 300;
 const ROADWORK_ROUTE_MATCH_DISTANCE_METERS = 1000;
+const REST_STOP_ROUTE_MATCH_DISTANCE_METERS = 2000;
 const MAX_TRAFFIC_WARNINGS = 10;
 const MAX_DATEX_RECORDS = 200;
+const MAX_REST_STOPS = 10;
 
 function createDebug(usedRouteFilter: boolean): RouteWarningDebug {
   return {
@@ -56,6 +68,7 @@ function createDebug(usedRouteFilter: boolean): RouteWarningDebug {
     nvdbHeightFilteredCount: 0,
     datexFetchedCount: 0,
     datexMatchedRouteCount: 0,
+    restStopCount: 0,
     usedRouteFilter,
   };
 }
@@ -288,15 +301,26 @@ function prioritizeHeightWarnings(warnings: HeightWarning[]) {
     .slice(0, 10);
 }
 
-function buildNvdbBbox(route: Coordinate[]) {
+function buildRouteBbox(route: Coordinate[]) {
   const padding = 0.1;
   const lats = route.map(([lat]) => lat);
   const lons = route.map(([, lon]) => lon);
-  const minLat = Math.min(...lats) - padding;
-  const maxLat = Math.max(...lats) + padding;
-  const minLon = Math.min(...lons) - padding;
-  const maxLon = Math.max(...lons) + padding;
+  return {
+    minLat: Math.min(...lats) - padding,
+    maxLat: Math.max(...lats) + padding,
+    minLon: Math.min(...lons) - padding,
+    maxLon: Math.max(...lons) + padding,
+  };
+}
+
+function buildNvdbBbox(route: Coordinate[]) {
+  const { minLat, maxLat, minLon, maxLon } = buildRouteBbox(route);
   return `${minLon},${minLat},${maxLon},${maxLat}`;
+}
+
+function buildOverpassBbox(route: Coordinate[]) {
+  const { minLat, maxLat, minLon, maxLon } = buildRouteBbox(route);
+  return `${minLat},${minLon},${maxLat},${maxLon}`;
 }
 
 function decodeXmlEntities(value: string) {
@@ -391,6 +415,93 @@ async function fetchDatexRoadworkWarnings(route: Coordinate[] | undefined, debug
     debug.datexFetchedCount = 0;
     debug.datexMatchedRouteCount = 0;
     return [];
+  }
+}
+
+async function fetchRestStops(route: Coordinate[] | undefined, debug: RouteWarningDebug): Promise<RestStop[]> {
+  if (!route || route.length < 2) {
+    debug.restStopCount = 0;
+    return [];
+  }
+
+  const bbox = buildOverpassBbox(route);
+  const query = `
+    [out:json][timeout:8];
+    (
+      node["highway"="rest_area"](${bbox});
+      way["highway"="rest_area"](${bbox});
+      relation["highway"="rest_area"](${bbox});
+      node["amenity"="parking"](${bbox});
+      way["amenity"="parking"](${bbox});
+      relation["amenity"="parking"](${bbox});
+    );
+    out center 200;
+  `;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3500);
+
+  try {
+    const response = await fetch(OVERPASS_API_URL, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) LTP-Calculator/1.0 contact: local-dev',
+      },
+      body: `data=${encodeURIComponent(query)}`,
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error('Overpass rest stop request failed');
+
+    const json = (await response.json()) as unknown;
+    const root = asRecord(json);
+    const elements = Array.isArray(root?.elements) ? root.elements : [];
+    const seen = new Set<string>();
+    const stops = elements
+      .map((element): RestStop | null => {
+        const record = asRecord(element);
+        if (!record) return null;
+
+        const center = asRecord(record.center);
+        const lat = parseNumber(record.lat ?? center?.lat);
+        const lon = parseNumber(record.lon ?? center?.lon);
+        if (lat === null || lon === null) return null;
+
+        const distanceKm = routeDistanceKmToNearestPoint(
+          [lat, lon],
+          route,
+          REST_STOP_ROUTE_MATCH_DISTANCE_METERS,
+        );
+        if (distanceKm === null) return null;
+
+        const tags = asRecord(record.tags);
+        const rawName = parseText(tags?.name) ?? parseText(tags?.operator);
+        const isRestArea = tags?.highway === 'rest_area';
+        const name = rawName ?? (isRestArea ? 'Hvileplass' : 'Parkering');
+        const key = `${Math.round(lat * 10000)}:${Math.round(lon * 10000)}:${name}`;
+        if (seen.has(key)) return null;
+        seen.add(key);
+
+        return {
+          type: 'rest-stop',
+          name,
+          lat,
+          lon,
+          distanceKm,
+        };
+      })
+      .filter((stop): stop is RestStop => stop !== null)
+      .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
+      .slice(0, MAX_REST_STOPS);
+
+    debug.restStopCount = stops.length;
+    return stops;
+  } catch {
+    debug.restStopCount = 0;
+    return [];
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -515,6 +626,7 @@ async function fetchNvdbHeightWarnings(
 
 async function fetchNvdbTestWarnings(vehicleHeightMm: number) {
   const debug = createDebug(false);
+  const restStops: RestStop[] = [];
 
   try {
     const [warnings, roadwork] = await Promise.all([
@@ -524,6 +636,7 @@ async function fetchNvdbTestWarnings(vehicleHeightMm: number) {
     return NextResponse.json({
       warnings,
       roadwork,
+      restStops,
       source: 'nvdb-test',
       message: 'Høydebegrensninger hentet fra NVDB testutvalg',
       debug,
@@ -532,6 +645,7 @@ async function fetchNvdbTestWarnings(vehicleHeightMm: number) {
     return NextResponse.json({
       warnings: [],
       roadwork: await fetchDatexRoadworkWarnings(undefined, debug),
+      restStops,
       source: 'nvdb-test',
       message: 'NVDB var ikke tilgjengelig. Ingen varsler funnet i foreløpig sjekk.',
       debug,
@@ -555,9 +669,11 @@ export async function POST(request: NextRequest) {
 
   if (vehicleHeightMm === null) {
     const debug = createDebug(false);
+    const restStops: RestStop[] = [];
     return NextResponse.json({
       warnings: [],
       roadwork: await fetchDatexRoadworkWarnings(undefined, debug),
+      restStops,
       source: 'nvdb-test',
       message: 'Kjøretøyhøyde mangler. Ingen høydevarsler filtrert.',
       debug,
@@ -572,14 +688,16 @@ export async function POST(request: NextRequest) {
     const debug = createDebug(true);
     const [fromCoord, toCoord] = await Promise.all([geocodeLocation(from), geocodeLocation(to)]);
     const route = await fetchOsrmRoute(fromCoord, toCoord);
-    const [warnings, roadwork] = await Promise.all([
+    const [warnings, roadwork, restStops] = await Promise.all([
       fetchNvdbHeightWarnings(vehicleHeightMm, route, debug),
       fetchDatexRoadworkWarnings(route, debug),
+      fetchRestStops(route, debug),
     ]);
 
     return NextResponse.json({
       warnings,
       roadwork,
+      restStops,
       source: 'nvdb-route',
       message: 'Høydebegrensninger hentet fra NVDB testutvalg og filtrert mot rute',
       debug,

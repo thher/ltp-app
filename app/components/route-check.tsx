@@ -61,9 +61,18 @@ type RoadworkWarning = {
   distanceKm?: number;
 };
 
+type RestStop = {
+  type: 'rest-stop';
+  name: string;
+  lat: number;
+  lon: number;
+  distanceKm?: number;
+};
+
 type RouteWarningResponse = {
   warnings: RouteWarning[];
   roadwork: RoadworkWarning[];
+  restStops: RestStop[];
   source: string;
   message: string;
   debug?: {
@@ -72,6 +81,7 @@ type RouteWarningResponse = {
     nvdbHeightFilteredCount: number;
     datexFetchedCount: number;
     datexMatchedRouteCount: number;
+    restStopCount: number;
     usedRouteFilter: boolean;
   };
 };
@@ -89,6 +99,19 @@ function formatHeightMeters(valueMeters: number, language: Language) {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   });
+}
+
+const AVERAGE_TRUCK_SPEED_KMH = 70;
+
+function parseRemainingDrivingHours(value?: string) {
+  if (!value) return null;
+  const normalized = value.toLowerCase().replace(',', '.');
+  const hourMatch = normalized.match(/(\d+(?:\.\d+)?)\s*(?:h|t|time|timer|hour|hours)/);
+  const minuteMatch = normalized.match(/(\d+(?:\.\d+)?)\s*(?:m|min|minutt|minutter|minute|minutes)/);
+  const hours = hourMatch ? Number(hourMatch[1]) : 0;
+  const minutes = minuteMatch ? Number(minuteMatch[1]) : 0;
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes) || (hours === 0 && minutes === 0)) return null;
+  return hours + minutes / 60;
 }
 
 export function RouteCheckFutureSection({
@@ -136,7 +159,30 @@ export function RouteCheckFutureSection({
   const criticalWarningCount = (routeWarningResult?.warnings ?? []).filter((warning) => warning.severity === 'critical').length;
   const cautionWarningCount = (routeWarningResult?.warnings ?? []).filter((warning) => warning.severity === 'caution').length;
   const realRoadwork = routeWarningResult?.roadwork ?? [];
+  const restStops = useMemo(() => routeWarningResult?.restStops ?? [], [routeWarningResult]);
   const roadworkCount = realRoadwork.length;
+  const estimatedStopDistanceKm = useMemo(() => {
+    const remainingHours = parseRemainingDrivingHours(nextBreakSummary);
+    return remainingHours !== null ? remainingHours * AVERAGE_TRUCK_SPEED_KMH : null;
+  }, [nextBreakSummary]);
+  const recommendedRestStop = useMemo(() => {
+    if (estimatedStopDistanceKm === null || restStops.length === 0) return null;
+    return restStops
+      .map((stop) => ({
+        ...stop,
+        diff: Math.abs((stop.distanceKm ?? Infinity) - estimatedStopDistanceKm),
+      }))
+      .sort((a, b) => a.diff - b.diff)[0] ?? null;
+  }, [estimatedStopDistanceKm, restStops]);
+  const estimatedTimeToStop = useMemo(() => {
+    if (!recommendedRestStop?.distanceKm) return null;
+    return recommendedRestStop.distanceKm / AVERAGE_TRUCK_SPEED_KMH;
+  }, [recommendedRestStop]);
+  const isRecommendedStopTooFar =
+    recommendedRestStop &&
+    estimatedStopDistanceKm !== null &&
+    typeof recommendedRestStop.distanceKm === 'number' &&
+    recommendedRestStop.distanceKm > estimatedStopDistanceKm + 50;
 
   const checkRouteWarnings = useCallback(async () => {
     setRouteWarningLoading(true);
@@ -207,6 +253,7 @@ export function RouteCheckFutureSection({
             routeTo={routeTo}
             warnings={routeWarningResult?.warnings ?? []}
             roadwork={realRoadwork}
+            restStops={restStops}
             selectedWarning={selectedWarning}
           />
           <p className="helper">
@@ -348,13 +395,76 @@ export function RouteCheckFutureSection({
                     </div>
                   )}
                   <h3>{tx(language, 'Hvileplasser', 'Rest stops')}</h3>
-                  <p className="helper">
-                    {tx(
-                      language,
-                      'Hvileplasser vises her når en reell datakilde for tungbilparkering kobles til.',
-                      'Truck rest stops will appear here when a real heavy-vehicle parking data source is connected.',
-                    )}
-                  </p>
+                  {restStops.length === 0 ? (
+                    <p className="helper">
+                      {tx(language, 'Hvileplasser kobles til neste steg.', 'Rest stops will be connected in the next step.')}
+                    </p>
+                  ) : (
+                    <div style={{ display: 'grid', gap: '0.75rem' }}>
+                      <div
+                        style={{
+                          border: '1px solid rgba(34, 197, 94, 0.45)',
+                          background: 'rgba(34, 197, 94, 0.14)',
+                          borderRadius: '14px',
+                          padding: '0.85rem 1rem',
+                          display: 'grid',
+                          gap: '0.35rem',
+                        }}
+                      >
+                        <strong>{tx(language, 'Anbefalt stopp', 'Recommended stop')}</strong>
+                        {recommendedRestStop ? (
+                          <>
+                            <span>{recommendedRestStop.name}</span>
+                            {typeof recommendedRestStop.distanceKm === 'number' ? (
+                              <span className="helper" style={{ margin: 0 }}>
+                                {recommendedRestStop.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
+                                  maximumFractionDigits: 1,
+                                })}{' '}
+                                {tx(language, 'km frem', 'km ahead')}
+                              </span>
+                            ) : null}
+                            {estimatedTimeToStop ? (
+                              <span className="helper" style={{ margin: 0 }}>
+                                {Math.round(estimatedTimeToStop * 60)} min
+                              </span>
+                            ) : null}
+                          {isRecommendedStopTooFar ? (
+                            <span>{tx(language, 'Ingen ideell hvileplass - vurder tidligere stopp', 'No ideal rest stop - consider an earlier stop')}</span>
+                          ) : (
+                            <span className="helper" style={{ margin: 0 }}>
+                              {tx(language, 'Basert på kjøre-/hviletid', 'Based on driving/rest time')}
+                            </span>
+                          )}
+                        </>
+                        ) : (
+                          <span>{tx(language, 'Ingen optimal hvileplass funnet - vurder tidligere stopp', 'No optimal rest stop found - consider an earlier stop')}</span>
+                        )}
+                      </div>
+                      {restStops.map((stop, index) => (
+                        <div
+                          key={`rest-stop-${stop.lat}-${stop.lon}-${index}`}
+                          style={{
+                            border: '1px solid rgba(34, 197, 94, 0.35)',
+                            background: 'rgba(34, 197, 94, 0.1)',
+                            borderRadius: '14px',
+                            padding: '0.85rem 1rem',
+                            display: 'grid',
+                            gap: '0.35rem',
+                          }}
+                        >
+                          <strong>{stop.name}</strong>
+                          {typeof stop.distanceKm === 'number' ? (
+                            <div className="helper" style={{ margin: 0 }}>
+                              {stop.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
+                                maximumFractionDigits: 1,
+                              })}{' '}
+                              {tx(language, 'km frem', 'km ahead')}
+                            </div>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </>
               ) : (
                 <p>{tx(language, 'Varsler sjekkes automatisk når ruten er klar.', 'Warnings are checked automatically when the route is ready.')}</p>
