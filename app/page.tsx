@@ -1135,18 +1135,6 @@ export default function Home() {
     setError('');
   };
 
-  const renderVehicleDataSummary = () => (
-    <div className="driver-vehicle-prefill driver-vehicle-prefill--details" aria-label={tx(language, 'Kjøretøydata', 'Vehicle data')}>
-      <span>{tx(language, 'Kjøretøydata', 'Vehicle data')}</span>
-      <div>
-        <strong>{tx(language, 'Høyde', 'Height')}: {routeCheckPrefill.vehicleHeight || tx(language, 'Mangler', 'Missing')}</strong>
-        <strong>{tx(language, 'Lengde', 'Length')}: {routeCheckPrefill.vehicleLength || tx(language, 'Mangler', 'Missing')}</strong>
-        <strong>{tx(language, 'Bredde', 'Width')}: {routeCheckPrefill.vehicleWidth || tx(language, 'Mangler', 'Missing')}</strong>
-        <strong>{tx(language, 'Totalvekt', 'Total weight')}: {routeCheckPrefill.totalWeight || tx(language, 'Mangler', 'Missing')}</strong>
-      </div>
-    </div>
-  );
-
   const getTripLtpSummary = () => {
     const ltp = result?.ltp ?? semiTrailerResult?.ltp ?? null;
     if (!ltp) return tx(language, 'Sjekk detaljer', 'Check details');
@@ -1183,46 +1171,37 @@ export default function Home() {
         autoCheckKey={tripCalculationKey}
         ltpSummary={getTripLtpSummary()}
         nextBreakSummary={getNextBreakSummary()}
+        detailsContent={
+          <details className="trip-detail-card">
+            <summary>{tx(language, 'Kjøre- og hviletid', 'Driving and rest time')}</summary>
+            <DrivingRestSection
+              language={language}
+              plannedDeparture={plannedDeparture}
+              drivingUsedTodayHours={drivingUsedTodayHours}
+            />
+          </details>
+        }
+        afterVehicleDetailsContent={
+          <details className="trip-detail-card">
+            <summary>{tx(language, 'LTP-sammendrag', 'LTP summary')}</summary>
+            <div>
+              {result ? (
+                <>
+                  <strong>{result.ltp.status === 'ready' ? `${formatNumber(result.ltp.ltpCm ?? 0, 0)} cm` : tx(language, 'Ikke klar', 'Not ready')}</strong>
+                  <p>{translateRuntimeText(result.ltp.message, language)}</p>
+                </>
+              ) : semiTrailerResult ? (
+                <>
+                  <strong>{semiTrailerResult.ltp.status === 'ready' ? `${formatNumber(semiTrailerResult.ltp.ltpCm ?? 0, 0)} cm` : tx(language, 'Ikke klar', 'Not ready')}</strong>
+                  <p>{translateRuntimeText(semiTrailerResult.ltp.message, language)}</p>
+                </>
+              ) : (
+                <p>{tx(language, 'Beregningen vises her når grunnlaget er klart.', 'The calculation appears here when the basis is ready.')}</p>
+              )}
+            </div>
+          </details>
+        }
       />
-
-      <div className="workflow-section-heading workflow-section-heading--compact">
-        <h2>{tx(language, 'Detaljer', 'Details')}</h2>
-      </div>
-
-      <div className="trip-detail-grid">
-        <details className="trip-detail-card">
-          <summary>LTP</summary>
-          <div>
-            {result ? (
-              <>
-                <strong>{result.ltp.status === 'ready' ? `${formatNumber(result.ltp.ltpCm ?? 0, 0)} cm` : tx(language, 'Ikke klar', 'Not ready')}</strong>
-                <p>{translateRuntimeText(result.ltp.message, language)}</p>
-              </>
-            ) : semiTrailerResult ? (
-              <>
-                <strong>{semiTrailerResult.ltp.status === 'ready' ? `${formatNumber(semiTrailerResult.ltp.ltpCm ?? 0, 0)} cm` : tx(language, 'Ikke klar', 'Not ready')}</strong>
-                <p>{translateRuntimeText(semiTrailerResult.ltp.message, language)}</p>
-              </>
-            ) : (
-              <p>{tx(language, 'Beregningen vises her når grunnlaget er klart.', 'The calculation appears here when the basis is ready.')}</p>
-            )}
-          </div>
-        </details>
-
-        <details className="trip-detail-card">
-          <summary>{tx(language, 'Kjøre- og hviletid', 'Driving and rest time')}</summary>
-          <DrivingRestSection
-            language={language}
-            plannedDeparture={plannedDeparture}
-            drivingUsedTodayHours={drivingUsedTodayHours}
-          />
-        </details>
-
-        <details className="trip-detail-card">
-          <summary>{tx(language, 'Kjøretøydata', 'Vehicle data')}</summary>
-          {renderVehicleDataSummary()}
-        </details>
-      </div>
     </section>
   );
 
@@ -1232,18 +1211,7 @@ export default function Home() {
         <GlobalTopControls language={language} onLanguageChange={setLanguage} theme={theme} onThemeChange={setTheme} />
         <section className="plate-entry">
           <div className="plate-entry-copy">
-            <p className="eyebrow">{tx(language, 'Turassistent', 'Trip assistant')}</p>
-            <h1>{tx(language, 'Planlegg tungbil-turen', 'Plan your heavy vehicle trip')}</h1>
-            <p className="hero-text">
-              {tx(
-                language,
-                'Skriv inn turen, trykk start, og få kart, LTP og varsler samlet.',
-                'Enter the trip, press start, and get the map, LTP and warnings together.',
-              )}
-            </p>
-
             <div className="registration-lookup registration-lookup--standalone">
-              <span className="registration-label">{tx(language, 'Steg 1', 'Step 1')}</span>
               <h2>{tx(language, 'Tur og kjøretøy', 'Trip and vehicle')}</h2>
               <form
                 className="registration-lookup-form registration-lookup-form--stacked"
@@ -1313,9 +1281,6 @@ export default function Home() {
                     />
                   </label>
                 </div>
-                <p className="registration-helper">
-                  {tx(language, 'Legg til tilhenger hvis du skal beregne vogntog.', 'Add a trailer if you want to calculate a vehicle combination.')}
-                </p>
                 <button type="submit" className="registration-button registration-button--wide" disabled={lookupLoading || trailerLookupLoading}>
                   {lookupLoading || trailerLookupLoading ? tx(language, 'Henter...', 'Fetching...') : tx(language, 'Start turberegning', 'Start trip calculation')}
                 </button>
@@ -1375,20 +1340,6 @@ export default function Home() {
               ) : null}
             </div>
 
-            <button type="button" className="manual-entry-button" onClick={() => setScreen('choose')}>
-              {tx(language, 'Jeg har ikke skilt nr, velg kjøretøy selv', 'I do not have a plate number, choose vehicle manually')}
-            </button>
-          </div>
-
-          <div className="plate-entry-visual">
-            <Image
-              src="/images/hero-vehicles-bg-v1.png"
-              alt="Fotorealistisk bakgrunn med lastebil og buss"
-              className="plate-entry-photo"
-              fill
-              priority
-              sizes="(max-width: 939px) 100vw, 48vw"
-            />
           </div>
         </section>
       </main>
@@ -1411,7 +1362,6 @@ export default function Home() {
               )}
             </p>
             <div className="registration-lookup">
-              <span className="registration-label">{tx(language, 'Steg 1', 'Step 1')}</span>
               <h2>{tx(language, 'Tur og kjøretøy', 'Trip and vehicle')}</h2>
               <p>
                 {tx(
@@ -1602,7 +1552,7 @@ export default function Home() {
 
         {tripCalculationKey > 0 ? renderTripMainView() : null}
 
-        <details className="advanced-calculation-shell" open={tripCalculationKey === 0}>
+        <details className="advanced-calculation-shell">
           <summary>{tx(language, 'Avansert beregning', 'Advanced calculation')}</summary>
         <section className="hero-card professional-hero">
           <div className="hero-copy">
@@ -2284,7 +2234,7 @@ export default function Home() {
 
       {tripCalculationKey > 0 ? renderTripMainView() : null}
 
-      <details className="advanced-calculation-shell" open={tripCalculationKey === 0}>
+      <details className="advanced-calculation-shell">
         <summary>{tx(language, 'Avansert beregning', 'Advanced calculation')}</summary>
       <section className="hero-card professional-hero">
         <div className="hero-copy">

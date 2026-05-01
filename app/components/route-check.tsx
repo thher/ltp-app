@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ROAD_PROFILES } from '../constants';
 import type { RoadProfile } from '../types';
 import { tx, type Language } from '../lib/i18n';
@@ -99,6 +99,8 @@ export function RouteCheckFutureSection({
   autoCheckKey = 0,
   ltpSummary,
   nextBreakSummary,
+  detailsContent,
+  afterVehicleDetailsContent,
 }: {
   language: Language;
   routeFrom: string;
@@ -107,6 +109,8 @@ export function RouteCheckFutureSection({
   autoCheckKey?: number;
   ltpSummary?: string;
   nextBreakSummary?: string;
+  detailsContent?: ReactNode;
+  afterVehicleDetailsContent?: ReactNode;
 }) {
   const sourceHelper = tx(language, 'Hentes fra vognkort når tilgjengelig', 'Fetched from vehicle card when available');
   const emptyRouteText = tx(language, 'Ikke lagt inn ennå', 'Not entered yet');
@@ -195,43 +199,6 @@ export function RouteCheckFutureSection({
           </div>
         </div>
 
-        <details className="route-check-form route-check-form--details" aria-label={tx(language, 'Kjøretøydata for rutesjekk', 'Vehicle data for route check')}>
-          <summary>{tx(language, 'Kjøretøydata', 'Vehicle data')}</summary>
-          <div className="route-check-form-fields">
-            <label>
-              <span>{tx(language, 'Kjøretøyhøyde', 'Vehicle height')}</span>
-              <input ref={heightRef} type="text" defaultValue={prefill?.vehicleHeight ?? ''} placeholder="4,20 m" />
-              <small>{sourceHelper}</small>
-            </label>
-            <label>
-              <span>{tx(language, 'Kjøretøylengde', 'Vehicle length')}</span>
-              <input ref={lengthRef} type="text" defaultValue={prefill?.vehicleLength ?? ''} placeholder="19,50 m" />
-              <small>{sourceHelper}</small>
-            </label>
-            <label>
-              <span>{tx(language, 'Kjøretøybredde', 'Vehicle width')}</span>
-              <input ref={widthRef} type="text" defaultValue={prefill?.vehicleWidth ?? ''} placeholder="2,55 m" />
-              <small>{sourceHelper}</small>
-            </label>
-            <label>
-              <span>{tx(language, 'Totalvekt', 'Total weight')}</span>
-              <input ref={totalWeightRef} type="text" defaultValue={prefill?.totalWeight ?? ''} placeholder="50 000 kg" />
-              <small>{sourceHelper}</small>
-            </label>
-            <label>
-              <span>{tx(language, 'Bruksklasse', 'Road class')}</span>
-              <select defaultValue={prefill?.roadClass ?? 'Bk10_50'}>
-                {ROAD_PROFILES.map((option) => (
-                  <option key={`route-${option.value}`} value={option.value}>
-                    {tx(language, option.label, option.labelEn ?? option.label)}
-                  </option>
-                ))}
-              </select>
-              <small>{sourceHelper}</small>
-            </label>
-          </div>
-        </details>
-
         <div className="route-check-map-panel">
           <RouteMap
             language={language}
@@ -273,153 +240,160 @@ export function RouteCheckFutureSection({
             <p className="route-check-loading">{tx(language, 'Sjekker høydevarsler og trafikk langs ruten...', 'Checking height warnings and traffic along the route...')}</p>
           ) : null}
           {routeWarningError ? <p className="helper">{routeWarningError}</p> : null}
-          <details className="route-warning-list route-warning-list--details">
-            <summary>{tx(language, 'Varsler', 'Warnings')}</summary>
-            <button type="button" className="secondary-button secondary-button--compact" onClick={checkRouteWarnings} disabled={routeWarningLoading}>
-              {routeWarningLoading
-                ? tx(language, 'Oppdaterer...', 'Updating...')
-                : tx(language, 'Oppdater varsler', 'Refresh warnings')}
-            </button>
-            {routeWarningResult ? (
-              <>
-              <h3>{tx(language, 'Tunnel og høyde', 'Tunnel and height')}</h3>
-              {sortedHeightWarnings.length === 0 ? (
-                <p>{tx(language, 'Ingen høydebegrensninger funnet langs ruten for valgt kjøretøyhøyde.', 'No height restrictions found along the route for the selected vehicle height.')}</p>
-              ) : (
-                <div style={{ display: 'grid', gap: '0.75rem' }}>
-                  {sortedHeightWarnings.map((warning, index) => {
-                    const isCritical = warning.severity === 'critical';
-                    const restrictionHeightMm = Math.round(warning.value * 1000);
-                    const diffMm =
-                      checkedVehicleHeightMm !== null ? checkedVehicleHeightMm - restrictionHeightMm : null;
-                    const diffCm = diffMm !== null ? Math.round(Math.abs(diffMm) / 10) : null;
-                    const statusText =
-                      diffMm !== null && diffCm !== null
-                        ? diffMm > 0
-                          ? tx(language, `Du er ${diffCm} cm for høy`, `You are ${diffCm} cm too high`)
-                          : tx(language, `Kun ${diffCm} cm klaring`, `Only ${diffCm} cm clearance`)
-                        : isCritical
-                          ? tx(language, 'Kritisk høydebegrensning', 'Critical height restriction')
-                          : tx(language, 'Nær høydegrense', 'Near height limit');
-                    return (
-                      <button
-                        type="button"
-                        key={`height-warning-list-${warning.lat}-${warning.lon}-${index}`}
-                        onClick={() => setSelectedWarning(warning)}
-                        style={{
-                          border: `1px solid ${isCritical ? 'rgba(220, 38, 38, 0.45)' : 'rgba(245, 158, 11, 0.5)'}`,
-                          background: isCritical ? 'rgba(220, 38, 38, 0.1)' : 'rgba(245, 158, 11, 0.12)',
-                          borderRadius: '14px',
-                          padding: '0.85rem 1rem',
-                          display: 'grid',
-                          gap: '0.35rem',
-                          color: 'inherit',
-                          cursor: 'pointer',
-                          font: 'inherit',
-                          textAlign: 'left',
-                          width: '100%',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                          <span aria-hidden="true">{isCritical ? '🚫' : '⚠️'}</span>
-                          <strong>{statusText}</strong>
-                        </div>
-                        <div className={isCritical ? 'height-warning-detail height-warning-detail--critical' : 'height-warning-detail height-warning-detail--caution'}>
-                          {tx(language, 'Skiltet høyde', 'Posted height')}: {formatHeightMeters(warning.value, language)} m
-                        </div>
-                        {typeof warning.distanceKm === 'number' ? (
-                          <div className="helper" style={{ margin: 0 }}>
-                            {warning.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
-                              maximumFractionDigits: 1,
-                            })}{' '}
-                            {tx(language, 'km frem langs ruten', 'km ahead along the route')}
-                          </div>
-                        ) : null}
-                        {isCritical ? (
-                          <strong className="height-warning-stop">
-                            {tx(language, 'STOPP - finn omkjøring', 'STOP - find an alternate route')}
-                          </strong>
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-              <p className="helper">
-                Foreløpig funksjon. Sjekk alltid skilting og offisielle kilder.
-              </p>
-              <div style={{ marginTop: '1rem', display: 'grid', gap: '0.5rem' }}>
-                <h3>{tx(language, 'Veiarbeid og trafikk', 'Roadwork and traffic')}</h3>
-                {routeWarningResult.roadwork.length === 0 ? (
-                  <p>{tx(language, 'Ingen registrerte veiarbeid/trafikkmeldinger funnet langs ruten akkurat nå.', 'No registered roadwork/traffic incidents found along the route right now.')}</p>
-                ) : (
-                  <div style={{ display: 'grid', gap: '0.75rem' }}>
-                    {routeWarningResult.roadwork.map((incident, index) => (
-                      <div
-                        key={`roadwork-${incident.lat}-${incident.lon}-${index}`}
-                        style={{
-                          border: '1px solid rgba(14, 165, 233, 0.35)',
-                          background: 'rgba(14, 165, 233, 0.1)',
-                          borderRadius: '14px',
-                          padding: '0.85rem 1rem',
-                          display: 'grid',
-                          gap: '0.35rem',
-                        }}
-                      >
-                        <strong>{incident.description}</strong>
-                        {typeof incident.distanceKm === 'number' ? (
-                          <div className="helper" style={{ margin: 0 }}>
-                            {incident.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
-                              maximumFractionDigits: 1,
-                            })}{' '}
-                            {tx(language, 'km frem', 'km ahead')}
-                          </div>
-                        ) : null}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {routeWarningResult.debug ? (
-                <details style={{ marginTop: '1rem' }}>
-                  <summary className="helper" style={{ cursor: 'pointer' }}>
-                    {tx(language, 'Datakilder sjekket', 'Data sources checked')}
-                  </summary>
-                  <div className="helper" style={{ display: 'grid', gap: '0.35rem', marginTop: '0.5rem' }}>
-                    <div>
-                      {tx(language, 'NVDB høydebegrensninger', 'NVDB height restrictions')}:{' '}
-                      {routeWarningResult.debug.nvdbFetchedCount}{' '}
-                      {tx(language, 'hentet', 'fetched')},{' '}
-                      {routeWarningResult.debug.nvdbMatchedRouteCount}{' '}
-                      {tx(language, 'nær ruten', 'near route')},{' '}
-                      {routeWarningResult.debug.nvdbHeightFilteredCount}{' '}
-                      {tx(language, 'relevante for kjøretøyhøyde', 'relevant for vehicle height')}
-                    </div>
-                    <div>
-                      {tx(language, 'Trafikk/veiarbeid', 'Traffic/roadwork')}:{' '}
-                      {routeWarningResult.debug.datexFetchedCount}{' '}
-                      {tx(language, 'hentet', 'fetched')},{' '}
-                      {routeWarningResult.debug.datexMatchedRouteCount}{' '}
-                      {tx(language, 'nær ruten', 'near route')}
-                    </div>
-                  </div>
-                </details>
-              ) : null}
-              </>
-            ) : (
-              <p>{tx(language, 'Varsler sjekkes automatisk når ruten er klar.', 'Warnings are checked automatically when the route is ready.')}</p>
-            )}
-          </details>
         </div>
 
-        <details className="route-warning-list route-warning-list--details">
-          <summary>{tx(language, 'Andre varsler som kommer senere', 'Other warnings coming later')}</summary>
-          <ul>
-            <li>{tx(language, 'Tunnelhøydevarsler', 'Tunnel height warnings')}</li>
-            <li>{tx(language, 'Vegarbeid / trafikkmeldinger', 'Road work / traffic messages')}</li>
-            <li>{tx(language, 'Bruksklassevarsler', 'Road class warnings')}</li>
-            <li>{tx(language, 'Rutevegliste', 'Route road list')}</li>
-          </ul>
+        <details className="trip-details-master">
+          <summary>{tx(language, 'Vis detaljer', 'Show details')}</summary>
+          <div className="trip-details-stack">
+            <details className="trip-detail-card">
+              <summary>{tx(language, 'Varsler', 'Warnings')}</summary>
+              <button type="button" className="secondary-button secondary-button--compact" onClick={checkRouteWarnings} disabled={routeWarningLoading}>
+                {routeWarningLoading
+                  ? tx(language, 'Oppdaterer...', 'Updating...')
+                  : tx(language, 'Oppdater varsler', 'Refresh warnings')}
+              </button>
+              {routeWarningResult ? (
+                <>
+                  <h3>{tx(language, 'Tunnel og høyde', 'Tunnel and height')}</h3>
+                  {sortedHeightWarnings.length === 0 ? (
+                    <p>{tx(language, 'Ingen høydebegrensninger funnet langs ruten for valgt kjøretøyhøyde.', 'No height restrictions found along the route for the selected vehicle height.')}</p>
+                  ) : (
+                    <div style={{ display: 'grid', gap: '0.75rem' }}>
+                      {sortedHeightWarnings.map((warning, index) => {
+                        const isCritical = warning.severity === 'critical';
+                        const restrictionHeightMm = Math.round(warning.value * 1000);
+                        const diffMm =
+                          checkedVehicleHeightMm !== null ? checkedVehicleHeightMm - restrictionHeightMm : null;
+                        const diffCm = diffMm !== null ? Math.round(Math.abs(diffMm) / 10) : null;
+                        const statusText =
+                          diffMm !== null && diffCm !== null
+                            ? diffMm > 0
+                              ? tx(language, `Du er ${diffCm} cm for høy`, `You are ${diffCm} cm too high`)
+                              : tx(language, `Kun ${diffCm} cm klaring`, `Only ${diffCm} cm clearance`)
+                            : isCritical
+                              ? tx(language, 'Kritisk høydebegrensning', 'Critical height restriction')
+                              : tx(language, 'Nær høydegrense', 'Near height limit');
+                        return (
+                          <button
+                            type="button"
+                            key={`height-warning-list-${warning.lat}-${warning.lon}-${index}`}
+                            onClick={() => setSelectedWarning(warning)}
+                            style={{
+                              border: `1px solid ${isCritical ? 'rgba(220, 38, 38, 0.45)' : 'rgba(245, 158, 11, 0.5)'}`,
+                              background: isCritical ? 'rgba(220, 38, 38, 0.1)' : 'rgba(245, 158, 11, 0.12)',
+                              borderRadius: '14px',
+                              padding: '0.85rem 1rem',
+                              display: 'grid',
+                              gap: '0.35rem',
+                              color: 'inherit',
+                              cursor: 'pointer',
+                              font: 'inherit',
+                              textAlign: 'left',
+                              width: '100%',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                              <span aria-hidden="true">{isCritical ? '🚫' : '⚠️'}</span>
+                              <strong>{statusText}</strong>
+                            </div>
+                            <div className={isCritical ? 'height-warning-detail height-warning-detail--critical' : 'height-warning-detail height-warning-detail--caution'}>
+                              {tx(language, 'Skiltet høyde', 'Posted height')}: {formatHeightMeters(warning.value, language)} m
+                            </div>
+                            {typeof warning.distanceKm === 'number' ? (
+                              <div className="helper" style={{ margin: 0 }}>
+                                {warning.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
+                                  maximumFractionDigits: 1,
+                                })}{' '}
+                                {tx(language, 'km frem langs ruten', 'km ahead along the route')}
+                              </div>
+                            ) : null}
+                            {isCritical ? (
+                              <strong className="height-warning-stop">
+                                {tx(language, 'STOPP - finn omkjøring', 'STOP - find an alternate route')}
+                              </strong>
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <h3>{tx(language, 'Veiarbeid og trafikk', 'Roadwork and traffic')}</h3>
+                  {routeWarningResult.roadwork.length === 0 ? (
+                    <p>{tx(language, 'Ingen registrerte veiarbeid/trafikkmeldinger funnet langs ruten akkurat nå.', 'No registered roadwork/traffic incidents found along the route right now.')}</p>
+                  ) : (
+                    <div style={{ display: 'grid', gap: '0.75rem' }}>
+                      {routeWarningResult.roadwork.map((incident, index) => (
+                        <div
+                          key={`roadwork-${incident.lat}-${incident.lon}-${index}`}
+                          style={{
+                            border: '1px solid rgba(14, 165, 233, 0.35)',
+                            background: 'rgba(14, 165, 233, 0.1)',
+                            borderRadius: '14px',
+                            padding: '0.85rem 1rem',
+                            display: 'grid',
+                            gap: '0.35rem',
+                          }}
+                        >
+                          <strong>{incident.description}</strong>
+                          {typeof incident.distanceKm === 'number' ? (
+                            <div className="helper" style={{ margin: 0 }}>
+                              {incident.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
+                                maximumFractionDigits: 1,
+                              })}{' '}
+                              {tx(language, 'km frem', 'km ahead')}
+                            </div>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p>{tx(language, 'Varsler sjekkes automatisk når ruten er klar.', 'Warnings are checked automatically when the route is ready.')}</p>
+              )}
+            </details>
+
+            {detailsContent}
+
+            <details className="trip-detail-card">
+              <summary>{tx(language, 'Kjøretøydata', 'Vehicle data')}</summary>
+              <div className="route-check-form-fields">
+                <label>
+                  <span>{tx(language, 'Kjøretøyhøyde', 'Vehicle height')}</span>
+                  <input ref={heightRef} type="text" defaultValue={prefill?.vehicleHeight ?? ''} placeholder="4,20 m" />
+                  <small>{sourceHelper}</small>
+                </label>
+                <label>
+                  <span>{tx(language, 'Kjøretøylengde', 'Vehicle length')}</span>
+                  <input ref={lengthRef} type="text" defaultValue={prefill?.vehicleLength ?? ''} placeholder="19,50 m" />
+                  <small>{sourceHelper}</small>
+                </label>
+                <label>
+                  <span>{tx(language, 'Kjøretøybredde', 'Vehicle width')}</span>
+                  <input ref={widthRef} type="text" defaultValue={prefill?.vehicleWidth ?? ''} placeholder="2,55 m" />
+                  <small>{sourceHelper}</small>
+                </label>
+                <label>
+                  <span>{tx(language, 'Totalvekt', 'Total weight')}</span>
+                  <input ref={totalWeightRef} type="text" defaultValue={prefill?.totalWeight ?? ''} placeholder="50 000 kg" />
+                  <small>{sourceHelper}</small>
+                </label>
+                <label>
+                  <span>{tx(language, 'Bruksklasse', 'Road class')}</span>
+                  <select defaultValue={prefill?.roadClass ?? 'Bk10_50'}>
+                    {ROAD_PROFILES.map((option) => (
+                      <option key={`route-${option.value}`} value={option.value}>
+                        {tx(language, option.label, option.labelEn ?? option.label)}
+                      </option>
+                    ))}
+                  </select>
+                  <small>{sourceHelper}</small>
+                </label>
+              </div>
+            </details>
+
+            {afterVehicleDetailsContent}
+          </div>
         </details>
       </div>
     </section>

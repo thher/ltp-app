@@ -746,6 +746,12 @@ select {
   margin-top: 0;
 }
 
+.ltp-shell--plate .plate-entry {
+  max-width: 900px;
+  margin: 0 auto;
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .workflow-section-heading {
   display: grid;
   gap: 8px;
@@ -871,6 +877,10 @@ select {
 
 .route-check-section--main-trip .route-check-layout {
   gap: 16px;
+}
+
+.route-check-section--main-trip .route-check-copy {
+  display: none;
 }
 
 .route-check-route-preview {
@@ -1263,6 +1273,35 @@ select {
   display: none;
 }
 
+.trip-details-master {
+  grid-column: 1 / -1;
+  border: 1px solid rgba(215, 232, 224, 0.13);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.trip-details-master > summary {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  color: var(--foreground);
+  cursor: pointer;
+  font-weight: 850;
+}
+
+.trip-details-stack {
+  display: grid;
+  gap: 12px;
+  padding: 0 16px 16px;
+}
+
+.trip-details-master .trip-detail-card {
+  box-shadow: none;
+}
+
 .secondary-button--compact {
   width: auto;
   min-height: 42px;
@@ -1362,6 +1401,12 @@ select {
 }
 
 [data-theme="light"] .trip-detail-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .trip-details-master {
   background: #ffffff;
   border-color: rgba(0, 0, 0, 0.06);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
@@ -3965,4 +4010,8 @@ select {
 
 .registration-button:disabled {
   animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.ltp-shell--plate .plate-entry {
+  grid-template-columns: minmax(0, 1fr);
 }
