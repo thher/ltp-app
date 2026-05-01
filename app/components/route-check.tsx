@@ -66,6 +66,14 @@ type RouteWarningResponse = {
   roadwork: RoadworkWarning[];
   source: string;
   message: string;
+  debug?: {
+    nvdbFetchedCount: number;
+    nvdbMatchedRouteCount: number;
+    nvdbHeightFilteredCount: number;
+    datexFetchedCount: number;
+    datexMatchedRouteCount: number;
+    usedRouteFilter: boolean;
+  };
 };
 
 function parseVehicleMeasure(value: string, unit: 'mm' | 'kg') {
@@ -111,18 +119,23 @@ export function RouteCheckFutureSection({
     setRouteWarningError('');
 
     try {
+      const requestBody = {
+        from: routeFrom,
+        to: routeTo,
+        vehicleHeightMm: parseVehicleMeasure(heightRef.current?.value ?? '', 'mm'),
+        vehicleWidthMm: parseVehicleMeasure(widthRef.current?.value ?? '', 'mm'),
+        vehicleLengthMm: parseVehicleMeasure(lengthRef.current?.value ?? '', 'mm'),
+        totalWeightKg: parseVehicleMeasure(totalWeightRef.current?.value ?? '', 'kg'),
+      };
+      console.log('Calling /api/route-warnings');
+      console.log('Route warnings request body:', requestBody);
+
       const response = await fetch('/api/route-warnings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: routeFrom,
-          to: routeTo,
-          vehicleHeightMm: parseVehicleMeasure(heightRef.current?.value ?? '', 'mm'),
-          vehicleWidthMm: parseVehicleMeasure(widthRef.current?.value ?? '', 'mm'),
-          vehicleLengthMm: parseVehicleMeasure(lengthRef.current?.value ?? '', 'mm'),
-          totalWeightKg: parseVehicleMeasure(totalWeightRef.current?.value ?? '', 'kg'),
-        }),
+        body: JSON.stringify(requestBody),
       });
+      console.log('Route warnings response status:', response.status);
 
       if (!response.ok) throw new Error('Route warning request failed');
       const json = (await response.json()) as RouteWarningResponse;
@@ -220,7 +233,7 @@ export function RouteCheckFutureSection({
             <div className="route-warning-list">
               <h3>{tx(language, 'Foreløpig tunnelsjekk', 'Preliminary tunnel check')}</h3>
               {sortedHeightWarnings.length === 0 ? (
-                <p>{tx(language, 'Ingen høydevarsler funnet langs ruten', 'No height warnings found along the route')}</p>
+                <p>{tx(language, 'Ingen høydebegrensninger funnet langs ruten for valgt kjøretøyhøyde.', 'No height restrictions found along the route for the selected vehicle height.')}</p>
               ) : (
                 <div style={{ display: 'grid', gap: '0.75rem' }}>
                   {sortedHeightWarnings.map((warning, index) => {
@@ -273,7 +286,7 @@ export function RouteCheckFutureSection({
               <div style={{ marginTop: '1rem', display: 'grid', gap: '0.5rem' }}>
                 <h3>{tx(language, 'Veiarbeid og trafikk', 'Roadwork and traffic')}</h3>
                 {routeWarningResult.roadwork.length === 0 ? (
-                  <p>{tx(language, 'Ingen veiarbeid eller trafikkmeldinger funnet langs ruten', 'No roadwork or traffic incidents found along the route')}</p>
+                  <p>{tx(language, 'Ingen registrerte veiarbeid/trafikkmeldinger funnet langs ruten akkurat nå.', 'No registered roadwork/traffic incidents found along the route right now.')}</p>
                 ) : (
                   <div style={{ display: 'grid', gap: '0.75rem' }}>
                     {routeWarningResult.roadwork.map((incident, index) => (
@@ -302,6 +315,31 @@ export function RouteCheckFutureSection({
                   </div>
                 )}
               </div>
+              {routeWarningResult.debug ? (
+                <details style={{ marginTop: '1rem' }}>
+                  <summary className="helper" style={{ cursor: 'pointer' }}>
+                    {tx(language, 'Datakilder sjekket', 'Data sources checked')}
+                  </summary>
+                  <div className="helper" style={{ display: 'grid', gap: '0.35rem', marginTop: '0.5rem' }}>
+                    <div>
+                      {tx(language, 'NVDB høydebegrensninger', 'NVDB height restrictions')}:{' '}
+                      {routeWarningResult.debug.nvdbFetchedCount}{' '}
+                      {tx(language, 'hentet', 'fetched')},{' '}
+                      {routeWarningResult.debug.nvdbMatchedRouteCount}{' '}
+                      {tx(language, 'nær ruten', 'near route')},{' '}
+                      {routeWarningResult.debug.nvdbHeightFilteredCount}{' '}
+                      {tx(language, 'relevante for kjøretøyhøyde', 'relevant for vehicle height')}
+                    </div>
+                    <div>
+                      {tx(language, 'Trafikk/veiarbeid', 'Traffic/roadwork')}:{' '}
+                      {routeWarningResult.debug.datexFetchedCount}{' '}
+                      {tx(language, 'hentet', 'fetched')},{' '}
+                      {routeWarningResult.debug.datexMatchedRouteCount}{' '}
+                      {tx(language, 'nær ruten', 'near route')}
+                    </div>
+                  </div>
+                </details>
+              ) : null}
             </div>
           ) : null}
         </div>

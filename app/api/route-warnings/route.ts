@@ -11,6 +11,15 @@ type RouteWarningRequest = {
 
 type Coordinate = [number, number];
 
+type RouteWarningDebug = {
+  nvdbFetchedCount: number;
+  nvdbMatchedRouteCount: number;
+  nvdbHeightFilteredCount: number;
+  datexFetchedCount: number;
+  datexMatchedRouteCount: number;
+  usedRouteFilter: boolean;
+};
+
 type HeightWarning = {
   type: 'height';
   severity: 'critical' | 'caution';
@@ -32,12 +41,23 @@ type RoadworkWarning = {
 };
 
 const NVDB_HEIGHT_RESTRICTIONS_URL =
-  'https://nvdbapiles-v3.atlas.vegvesen.no/vegobjekter/591?antall=20&inkluder=alle';
+  'https://nvdbapiles-v3.atlas.vegvesen.no/vegobjekter/591?antall=500&inkluder=alle&srid=4326';
 const DATEX_SITUATION_URL =
   'https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/GetSituation/pullsnapshotdata';
-const ROUTE_MATCH_DISTANCE_METERS = 500;
+const ROUTE_MATCH_DISTANCE_METERS = 2000;
 const ROADWORK_ROUTE_MATCH_DISTANCE_METERS = 1000;
 const MAX_TRAFFIC_WARNINGS = 20;
+
+function createDebug(usedRouteFilter: boolean): RouteWarningDebug {
+  return {
+    nvdbFetchedCount: 0,
+    nvdbMatchedRouteCount: 0,
+    nvdbHeightFilteredCount: 0,
+    datexFetchedCount: 0,
+    datexMatchedRouteCount: 0,
+    usedRouteFilter,
+  };
+}
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : null;
@@ -98,11 +118,14 @@ function extractLocation(objekt: Record<string, unknown>) {
 function extractCoordinates(objekt: Record<string, unknown>): Coordinate | undefined {
   const geometri = asRecord(objekt.geometri);
   const wkt = typeof geometri?.wkt === 'string' ? geometri.wkt : '';
-  const match = wkt.match(/(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)/);
+  const match = wkt.match(/(?:POINT|LINESTRING)\s+Z?\s*\(?\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)(?:\s+-?\d+(?:\.\d+)?)?/i);
   if (!match) return undefined;
 
-  const lon = Number(match[1]);
-  const lat = Number(match[2]);
+  const first = Number(match[1]);
+  const second = Number(match[2]);
+  const isNorwegianLatLon = first >= 58 && first <= 72 && second >= 4 && second <= 32;
+  const lat = isNorwegianLatLon ? first : second;
+  const lon = isNorwegianLatLon ? second : first;
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return undefined;
   if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return undefined;
   return [lat, lon];
@@ -176,6 +199,17 @@ function routeDistanceKmToNearestPoint(
   return Math.round((distanceAtNearestMeters / 1000) * 10) / 10;
 }
 
+function buildNvdbBbox(route: Coordinate[]) {
+  const padding = 0.1;
+  const lats = route.map(([lat]) => lat);
+  const lons = route.map(([, lon]) => lon);
+  const minLat = Math.min(...lats) - padding;
+  const maxLat = Math.max(...lats) + padding;
+  const minLon = Math.min(...lons) - padding;
+  const maxLon = Math.max(...lons) + padding;
+  return `${minLon},${minLat},${maxLon},${maxLat}`;
+}
+
 function buildRoadworkPlaceholder(route?: Coordinate[]): RoadworkWarning[] {
   if (!route || route.length === 0) return [];
   const [lat, lon] = route[Math.floor(route.length / 2)];
@@ -238,7 +272,7 @@ function extractDatexDescription(recordXml: string) {
   );
 }
 
-async function fetchDatexRoadworkWarnings(route?: Coordinate[]) {
+async function fetchDatexRoadworkWarnings(route: Coordinate[] | undefined, debug: RouteWarningDebug) {
   try {
     const response = await fetch(DATEX_SITUATION_URL, {
       headers: {
@@ -250,8 +284,10 @@ async function fetchDatexRoadworkWarnings(route?: Coordinate[]) {
     if (!response.ok) throw new Error('DATEX request failed');
 
     const xml = await response.text();
-    const roadwork = splitSituationRecords(xml)
-      .slice(0, MAX_TRAFFIC_WARNINGS)
+    const records = splitSituationRecords(xml).slice(0, MAX_TRAFFIC_WARNINGS);
+    debug.datexFetchedCount = records.length;
+
+    const roadwork = records
       .map((record): RoadworkWarning | null => {
         const coordinates = extractDatexCoordinate(record);
         if (!coordinates) return null;
@@ -272,8 +308,11 @@ async function fetchDatexRoadworkWarnings(route?: Coordinate[]) {
       })
       .filter((warning): warning is RoadworkWarning => warning !== null);
 
+    debug.datexMatchedRouteCount = route ? roadwork.length : 0;
     return roadwork.length > 0 ? roadwork : buildRoadworkPlaceholder(route);
   } catch {
+    debug.datexFetchedCount = 0;
+    debug.datexMatchedRouteCount = 0;
     return buildRoadworkPlaceholder(route);
   }
 }
@@ -327,53 +366,96 @@ async function fetchOsrmRoute(fromCoord: Coordinate, toCoord: Coordinate): Promi
   return route;
 }
 
-async function fetchNvdbHeightWarnings(vehicleHeightMm: number, route?: Coordinate[]) {
-  const response = await fetch(NVDB_HEIGHT_RESTRICTIONS_URL, {
-    headers: {
-      Accept: 'application/json',
-      'User-Agent': 'ai-search-app route-warnings test',
-    },
-    next: { revalidate: 3600 },
-  });
+async function fetchNvdbHeightWarnings(
+  vehicleHeightMm: number,
+  route: Coordinate[] | undefined,
+  debug: RouteWarningDebug,
+) {
+  try {
+    const bbox = route ? buildNvdbBbox(route) : null;
+    const url = new URL(NVDB_HEIGHT_RESTRICTIONS_URL);
+    if (bbox) {
+      url.searchParams.set('kartutsnitt', bbox);
+    }
+    const response = await fetch(url.toString(), {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) LTP-Calculator/1.0 contact: local-dev',
+        Accept: 'application/json',
+      },
+      cache: 'no-store',
+    });
 
-  if (!response.ok) throw new Error('NVDB request failed');
+    const rawText = await response.text();
 
-  const data = (await response.json()) as unknown;
-  const root = asRecord(data);
-  const objekter = Array.isArray(root?.objekter) ? root.objekter : [];
-  return objekter
-    .map((objekt) => asRecord(objekt))
-    .filter((objekt): objekt is Record<string, unknown> => objekt !== null)
-    .map((objekt) => {
-      if (!route) return { objekt, distanceKm: undefined };
-      const coordinates = extractCoordinates(objekt);
-      if (!coordinates) return null;
-      const distanceKm = routeDistanceKmToNearestPoint(coordinates, route);
-      return distanceKm !== null ? { objekt, distanceKm } : null;
-    })
-    .filter((match): match is { objekt: Record<string, unknown>; distanceKm?: number } => match !== null)
-    .map(({ objekt, distanceKm }) => mapNvdbWarning(objekt, vehicleHeightMm, distanceKm))
-    .filter((warning): warning is HeightWarning => warning !== null);
+    if (!response.ok) {
+      console.error(`NVDB request failed with status ${response.status}: ${response.statusText}`);
+      return [];
+    }
+
+    let data: unknown;
+    try {
+      data = JSON.parse(rawText);
+    } catch (error) {
+      console.error('NVDB JSON parse failed:', error);
+      return [];
+    }
+
+    const root = asRecord(data);
+    const objekterRaw = root?.objekter ?? root?.vegobjekter;
+    const objekter = Array.isArray(objekterRaw) ? objekterRaw : [];
+
+    debug.nvdbFetchedCount = objekter.length;
+
+    const routeMatches = objekter
+      .map((objekt) => asRecord(objekt))
+      .filter((objekt): objekt is Record<string, unknown> => objekt !== null)
+      .map((objekt) => {
+        if (!route) return { objekt, distanceKm: undefined };
+        const coordinates = extractCoordinates(objekt);
+        if (!coordinates) return null;
+        const distanceKm = routeDistanceKmToNearestPoint(coordinates, route);
+        return distanceKm !== null ? { objekt, distanceKm } : null;
+      })
+      .filter((match): match is { objekt: Record<string, unknown>; distanceKm?: number } => match !== null);
+
+    debug.nvdbMatchedRouteCount = route ? routeMatches.length : 0;
+    const warnings = routeMatches
+      .map(({ objekt, distanceKm }) => mapNvdbWarning(objekt, vehicleHeightMm, distanceKm))
+      .filter((warning): warning is HeightWarning => warning !== null);
+    debug.nvdbHeightFilteredCount = warnings.length;
+
+    return warnings;
+  } catch (error) {
+    console.error('NVDB height warning fetch failed:', error);
+    debug.nvdbFetchedCount = 0;
+    debug.nvdbMatchedRouteCount = 0;
+    debug.nvdbHeightFilteredCount = 0;
+    return [];
+  }
 }
 
 async function fetchNvdbTestWarnings(vehicleHeightMm: number) {
+  const debug = createDebug(false);
+
   try {
     const [warnings, roadwork] = await Promise.all([
-      fetchNvdbHeightWarnings(vehicleHeightMm),
-      fetchDatexRoadworkWarnings(),
+      fetchNvdbHeightWarnings(vehicleHeightMm, undefined, debug),
+      fetchDatexRoadworkWarnings(undefined, debug),
     ]);
     return NextResponse.json({
       warnings,
       roadwork,
       source: 'nvdb-test',
       message: 'Høydebegrensninger hentet fra NVDB testutvalg',
+      debug,
     });
   } catch {
     return NextResponse.json({
       warnings: [],
-      roadwork: await fetchDatexRoadworkWarnings(),
+      roadwork: await fetchDatexRoadworkWarnings(undefined, debug),
       source: 'nvdb-test',
       message: 'NVDB var ikke tilgjengelig. Ingen varsler funnet i foreløpig sjekk.',
+      debug,
     });
   }
 }
@@ -393,11 +475,13 @@ export async function POST(request: NextRequest) {
   }
 
   if (vehicleHeightMm === null) {
+    const debug = createDebug(false);
     return NextResponse.json({
       warnings: [],
-      roadwork: await fetchDatexRoadworkWarnings(),
+      roadwork: await fetchDatexRoadworkWarnings(undefined, debug),
       source: 'nvdb-test',
       message: 'Kjøretøyhøyde mangler. Ingen høydevarsler filtrert.',
+      debug,
     });
   }
 
@@ -406,11 +490,12 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const debug = createDebug(true);
     const [fromCoord, toCoord] = await Promise.all([geocodeLocation(from), geocodeLocation(to)]);
     const route = await fetchOsrmRoute(fromCoord, toCoord);
     const [warnings, roadwork] = await Promise.all([
-      fetchNvdbHeightWarnings(vehicleHeightMm, route),
-      fetchDatexRoadworkWarnings(route),
+      fetchNvdbHeightWarnings(vehicleHeightMm, route, debug),
+      fetchDatexRoadworkWarnings(route, debug),
     ]);
 
     return NextResponse.json({
@@ -418,6 +503,7 @@ export async function POST(request: NextRequest) {
       roadwork,
       source: 'nvdb-route',
       message: 'Høydebegrensninger hentet fra NVDB testutvalg og filtrert mot rute',
+      debug,
     });
   } catch {
     return fetchNvdbTestWarnings(vehicleHeightMm);
