@@ -19,6 +19,10 @@ type RouteWarningDebug = {
   datexMatchedRouteCount: number;
   datexReturnedCount: number;
   datexDebugReason: string;
+  datexSourceUrl: string;
+  primaryTrafficSourceCount: number;
+  fallbackTrafficSourceCount: number;
+  finalTrafficReturnedCount: number;
   restStopCount: number;
   restStopsFetchedCount: number;
   restStopsMissingCoordinatesCount: number;
@@ -60,8 +64,9 @@ const NVDB_HEIGHT_RESTRICTIONS_URL =
   'https://nvdbapiles-v3.atlas.vegvesen.no/vegobjekter/591?antall=500&inkluder=alle&srid=4326';
 const DATEX_SITUATION_URL =
   'https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/GetSituation/pullsnapshotdata';
+const DATEX_WFS_URL = 'https://ogckart-sn1.atlas.vegvesen.no/datex_3_1/wfs';
+const DATEX_WFS_CAPABILITIES_URL = `${DATEX_WFS_URL}?service=WFS&request=GetCapabilities`;
 const ROUTE_MATCH_DISTANCE_METERS = 300;
-const ROADWORK_ROUTE_MATCH_DISTANCE_METERS = 1000;
 const REST_STOP_ROUTE_MATCH_DISTANCE_METERS = 2000;
 const MAX_TRAFFIC_WARNINGS = 10;
 const MAX_DATEX_RECORDS = 200;
@@ -76,6 +81,10 @@ function createDebug(usedRouteFilter: boolean): RouteWarningDebug {
     datexMatchedRouteCount: 0,
     datexReturnedCount: 0,
     datexDebugReason: 'not checked',
+    datexSourceUrl: DATEX_SITUATION_URL,
+    primaryTrafficSourceCount: 0,
+    fallbackTrafficSourceCount: 0,
+    finalTrafficReturnedCount: 0,
     restStopCount: 0,
     restStopsFetchedCount: 0,
     restStopsMissingCoordinatesCount: 0,
@@ -387,8 +396,159 @@ function extractDatexDescription(recordXml: string) {
   );
 }
 
-async function fetchDatexRoadworkWarnings(route: Coordinate[] | undefined, debug: RouteWarningDebug) {
+function extractWfsFeatureTypeNames(xml: string) {
+  const names = Array.from(xml.matchAll(/<(?:\w+:)?Name\b[^>]*>([\s\S]*?)<\/(?:\w+:)?Name>/gi))
+    .map((match) => stripXmlTags(match[1]))
+    .filter((name) => /situation/i.test(name));
+  return Array.from(new Set(names));
+}
+
+function firstCoordinateFromGeoJsonGeometry(geometry: unknown): Coordinate | null {
+  const record = asRecord(geometry);
+  if (!record) return null;
+
+  function findCoordinate(value: unknown): Coordinate | null {
+    if (
+      Array.isArray(value) &&
+      value.length >= 2 &&
+      typeof value[0] === 'number' &&
+      typeof value[1] === 'number'
+    ) {
+      const lon = value[0];
+      const lat = value[1];
+      if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) return [lat, lon];
+      return null;
+    }
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const coordinate = findCoordinate(item);
+        if (coordinate) return coordinate;
+      }
+    }
+
+    return null;
+  }
+
+  return findCoordinate(record.coordinates);
+}
+
+function extractWfsDescription(properties: Record<string, unknown> | null) {
+  if (!properties) return 'Trafikkmelding';
+
+  const preferredKeys = [
+    'description',
+    'comment',
+    'value',
+    'name',
+    'title',
+    'summary',
+    'situationRecordType',
+    'overallSeverity',
+    'message',
+  ];
+  for (const key of preferredKeys) {
+    const value = properties[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+
+  const firstText = Object.values(properties).find((value) => typeof value === 'string' && value.trim());
+  return typeof firstText === 'string' ? firstText.trim() : 'Trafikkmelding';
+}
+
+async function fetchDatexWfsFallback() {
+  console.log('DATEX fallback capabilities endpoint:', DATEX_WFS_CAPABILITIES_URL);
+  const capabilitiesResponse = await fetch(DATEX_WFS_CAPABILITIES_URL, {
+    headers: {
+      Accept: 'application/xml,text/xml',
+      'User-Agent': 'ai-search-app route-warnings test',
+    },
+    next: { revalidate: 300 },
+  });
+  console.log('DATEX fallback capabilities status:', capabilitiesResponse.status, capabilitiesResponse.statusText);
+
+  const capabilitiesXml = await capabilitiesResponse.text();
+  console.log('DATEX fallback capabilities preview:', capabilitiesXml.slice(0, 500));
+  if (!capabilitiesResponse.ok) throw new Error('DATEX WFS capabilities request failed');
+
+  const candidates = Array.from(
+    new Set([
+      ...extractWfsFeatureTypeNames(capabilitiesXml),
+      'datex_3_1:Situation',
+      'datex_3_1:SituationRecord',
+      'Situation',
+      'SituationRecord',
+    ]),
+  );
+
+  for (const featureType of candidates) {
+    const url = new URL(DATEX_WFS_URL);
+    url.searchParams.set('service', 'WFS');
+    url.searchParams.set('version', '2.0.0');
+    url.searchParams.set('request', 'GetFeature');
+    url.searchParams.set('typeNames', featureType);
+    url.searchParams.set('count', String(MAX_TRAFFIC_WARNINGS));
+    url.searchParams.set('outputFormat', 'application/json');
+
+    console.log('DATEX fallback feature endpoint:', url.toString());
+    const featureResponse = await fetch(url.toString(), {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'ai-search-app route-warnings test',
+      },
+      next: { revalidate: 300 },
+    });
+    console.log('DATEX fallback feature status:', featureResponse.status, featureResponse.statusText);
+
+    const featureText = await featureResponse.text();
+    console.log('DATEX fallback feature preview:', featureText.slice(0, 500));
+    if (!featureResponse.ok) continue;
+
+    let json: unknown;
+    try {
+      json = JSON.parse(featureText);
+    } catch {
+      continue;
+    }
+
+    const root = asRecord(json);
+    const features = Array.isArray(root?.features) ? root.features : [];
+    const roadwork = features
+      .map((feature): RoadworkWarning | null => {
+        const featureRecord = asRecord(feature);
+        const coordinate = firstCoordinateFromGeoJsonGeometry(featureRecord?.geometry);
+        if (!coordinate) return null;
+
+        const [lat, lon] = coordinate;
+        return {
+          type: 'roadwork',
+          description: extractWfsDescription(asRecord(featureRecord?.properties)),
+          lat,
+          lon,
+        };
+      })
+      .filter((warning): warning is RoadworkWarning => warning !== null)
+      .slice(0, MAX_TRAFFIC_WARNINGS);
+
+    if (features.length > 0 || roadwork.length > 0) {
+      return {
+        rawCount: features.length,
+        roadwork,
+        sourceUrl: url.toString(),
+      };
+    }
+  }
+
+  return {
+    rawCount: 0,
+    roadwork: [] as RoadworkWarning[],
+    sourceUrl: DATEX_WFS_CAPABILITIES_URL,
+  };
+}
+
+async function fetchDatexRoadworkWarnings(_route: Coordinate[] | undefined, debug: RouteWarningDebug) {
   try {
+    console.log('DATEX endpoint:', DATEX_SITUATION_URL);
     const response = await fetch(DATEX_SITUATION_URL, {
       headers: {
         Accept: 'application/xml,text/xml',
@@ -396,21 +556,20 @@ async function fetchDatexRoadworkWarnings(route: Coordinate[] | undefined, debug
       },
       next: { revalidate: 300 },
     });
-    if (!response.ok) throw new Error('DATEX request failed');
+    console.log('DATEX response status:', response.status, response.statusText);
 
     const xml = await response.text();
+    console.log('DATEX raw response preview:', xml.slice(0, 500));
+    if (!response.ok) throw new Error('DATEX request failed');
+
     const records = splitSituationRecords(xml).slice(0, MAX_DATEX_RECORDS);
     debug.datexFetchedCount = records.length;
+    debug.datexSourceUrl = DATEX_SITUATION_URL;
 
-    const matchedRoadwork = records
+    const unfilteredRoadwork = records
       .map((record): RoadworkWarning | null => {
         const coordinates = extractDatexCoordinate(record);
         if (!coordinates) return null;
-
-        const distanceKm = route
-          ? routeDistanceKmToNearestPoint(coordinates, route, ROADWORK_ROUTE_MATCH_DISTANCE_METERS)
-          : undefined;
-        if (route && distanceKm === null) return null;
 
         const [lat, lon] = coordinates;
         return {
@@ -418,29 +577,58 @@ async function fetchDatexRoadworkWarnings(route: Coordinate[] | undefined, debug
           description: extractDatexDescription(record),
           lat,
           lon,
-          distanceKm: distanceKm ?? undefined,
         };
       })
       .filter((warning): warning is RoadworkWarning => warning !== null)
-      .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
-    const roadwork = matchedRoadwork.slice(0, MAX_TRAFFIC_WARNINGS);
+      .slice(0, MAX_TRAFFIC_WARNINGS);
 
-    debug.datexMatchedRouteCount = route ? matchedRoadwork.length : roadwork.length;
-    debug.datexReturnedCount = roadwork.length;
-    if (debug.datexFetchedCount === 0) {
-      debug.datexDebugReason = 'No DATEX data fetched';
-    } else if (debug.datexFetchedCount > 0 && debug.datexMatchedRouteCount === 0) {
-      debug.datexDebugReason = 'No incidents near route';
-    } else {
-      debug.datexDebugReason = 'ok';
+    let finalRoadwork = unfilteredRoadwork;
+    let fallbackCount = 0;
+    debug.primaryTrafficSourceCount = unfilteredRoadwork.length;
+    debug.datexSourceUrl = DATEX_SITUATION_URL;
+
+    if (unfilteredRoadwork.length === 0) {
+      try {
+        const fallback = await fetchDatexWfsFallback();
+        fallbackCount = fallback.roadwork.length;
+        finalRoadwork = fallback.roadwork;
+        debug.datexSourceUrl = `${DATEX_SITUATION_URL} | ${fallback.sourceUrl}`;
+      } catch (fallbackError) {
+        console.error('DATEX fallback fetch failed:', fallbackError);
+        debug.datexSourceUrl = `${DATEX_SITUATION_URL} | ${DATEX_WFS_CAPABILITIES_URL}`;
+      }
     }
-    return roadwork;
+
+    debug.fallbackTrafficSourceCount = fallbackCount;
+    debug.finalTrafficReturnedCount = finalRoadwork.length;
+    debug.datexMatchedRouteCount = 0;
+    debug.datexReturnedCount = finalRoadwork.length;
+    console.log('primaryTrafficSourceCount:', debug.primaryTrafficSourceCount);
+    console.log('fallbackTrafficSourceCount:', debug.fallbackTrafficSourceCount);
+    console.log('finalTrafficReturnedCount:', debug.finalTrafficReturnedCount);
+    if (debug.datexFetchedCount === 0 && fallbackCount === 0) {
+      debug.datexDebugReason = 'No DATEX data fetched';
+    } else if (finalRoadwork.length === 0) {
+      debug.datexDebugReason = 'No coordinate-bearing traffic incidents from DATEX sources';
+    } else if (unfilteredRoadwork.length === 0 && fallbackCount > 0) {
+      debug.datexDebugReason = 'Primary DATEX empty; using fallback DATEX WFS incidents';
+    } else {
+      debug.datexDebugReason = 'Route filtering disabled; showing unfiltered DATEX incidents';
+    }
+    return finalRoadwork;
   } catch (error) {
     console.error('DATEX traffic fetch failed:', error);
     debug.datexFetchedCount = 0;
     debug.datexMatchedRouteCount = 0;
     debug.datexReturnedCount = 0;
+    debug.primaryTrafficSourceCount = 0;
+    debug.fallbackTrafficSourceCount = 0;
+    debug.finalTrafficReturnedCount = 0;
+    console.log('primaryTrafficSourceCount:', debug.primaryTrafficSourceCount);
+    console.log('fallbackTrafficSourceCount:', debug.fallbackTrafficSourceCount);
+    console.log('finalTrafficReturnedCount:', debug.finalTrafficReturnedCount);
     debug.datexDebugReason = 'DATEX request failed';
+    debug.datexSourceUrl = DATEX_SITUATION_URL;
     return [];
   }
 }

@@ -117,6 +117,7 @@ type RouteWarningResponse = {
     datexMatchedRouteCount: number;
     datexReturnedCount: number;
     datexDebugReason: string;
+    datexSourceUrl: string;
     restStopCount: number;
     restStopsFetchedCount: number;
     restStopsMissingCoordinatesCount: number;
@@ -332,6 +333,16 @@ export function RouteCheckFutureSection({
     : roadworkCount > 0
       ? `${roadworkCount} ${tx(language, 'hendelser', 'incidents')}`
       : tx(language, 'Ingen funnet', 'None found');
+  const clearanceStatusTone =
+    ltpSummary && !/sjekk|check|ikke|not/i.test(ltpSummary) ? 'ok' : 'info';
+  const heightStatusTone = routeWarningLoading
+    ? 'info'
+    : criticalWarningCount > 0
+      ? 'critical'
+      : cautionWarningCount > 0
+        ? 'warning'
+        : 'ok';
+  const trafficStatusTone = routeWarningLoading ? 'info' : roadworkCount > 0 ? 'warning' : 'ok';
   const remainingDrivingMinutes = useMemo(() => {
     const usedHours = parseDrivingHours(drivingUsedTodayHours);
     if (usedHours === null) return null;
@@ -390,6 +401,8 @@ export function RouteCheckFutureSection({
       text: tx(language, `Pause om ${remainingDrivingMinutes} min`, `Break in ${remainingDrivingMinutes} min`),
     };
   }, [language, pausePhase, plannedDeparture, remainingDrivingMinutes]);
+  const pauseStatusTone =
+    pausePhase === 'critical' ? 'critical' : pausePhase === 'warning' ? 'warning' : 'ok';
   const estimatedStopDistanceKm = useMemo(() => {
     if (remainingDrivingMinutes === null) {
       const remainingHours = parseRemainingDrivingHours(nextBreakSummary);
@@ -785,20 +798,7 @@ export function RouteCheckFutureSection({
 
         <div className="route-check-map-panel">
           {navigationStatusText ? (
-            <div
-              className="route-live-guidance-bar"
-              style={{
-                position: 'sticky',
-                top: '0.75rem',
-                zIndex: 5,
-                border: '1px solid rgba(59, 130, 246, 0.3)',
-                background: 'var(--panel)',
-                borderRadius: '999px',
-                padding: '0.65rem 0.9rem',
-                boxShadow: '0 10px 24px rgba(15, 23, 42, 0.12)',
-                fontWeight: 800,
-              }}
-            >
+            <div className="route-live-guidance-bar">
               {navigationStatusText}
             </div>
           ) : null}
@@ -814,25 +814,15 @@ export function RouteCheckFutureSection({
             currentPosition={currentPosition}
             onRoutePointsChange={handleRoutePointsChange}
           />
-          <p className="helper">
+          <p className="route-safety-note">
             Rute, tunnel, høyde og trafikkdata er veiledende. Sjekk alltid skilting, vegliste og
             offisielle kilder før kjøring. Ikke bruk som eneste grunnlag for transport.
           </p>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '0.75rem',
-              border: '1px solid rgba(148, 163, 184, 0.28)',
-              borderRadius: '14px',
-              padding: '0.75rem 0.9rem',
-            }}
-          >
-            <div style={{ display: 'grid', gap: '0.15rem' }}>
+          <div className="voice-alert-card">
+            <div>
               <strong>{tx(language, 'Talebeskjeder', 'Voice alerts')}</strong>
               {!speechSupported ? (
-                <span className="helper" style={{ margin: 0 }}>
+                <span className="helper">
                   {tx(language, 'Talebeskjeder støttes ikke i denne nettleseren', 'Voice alerts are not supported in this browser')}
                 </span>
               ) : null}
@@ -848,9 +838,9 @@ export function RouteCheckFutureSection({
             </label>
           </div>
           {liveStatusMessages.length > 0 ? (
-            <div style={{ display: 'grid', gap: '0.75rem' }}>
-              <strong style={{ fontSize: '1rem' }}>{tx(language, 'Live status', 'Live status')}</strong>
-              <div style={{ display: 'grid', gap: '0.65rem' }}>
+            <div className="live-status-panel">
+              <strong>{tx(language, 'Live status', 'Live status')}</strong>
+              <div className="live-status-list">
                 {liveStatusMessages.map((message, index) => (
                   <button
                     type="button"
@@ -859,32 +849,7 @@ export function RouteCheckFutureSection({
                       if (message.alert) setSelectedMapAlert(message.alert);
                     }}
                     disabled={!message.alert}
-                    style={{
-                      border:
-                        message.tone === 'critical'
-                          ? '1px solid rgba(220, 38, 38, 0.45)'
-                          : message.tone === 'warning'
-                            ? '1px solid rgba(245, 158, 11, 0.5)'
-                            : message.tone === 'support'
-                              ? '1px solid rgba(34, 197, 94, 0.45)'
-                            : '1px solid rgba(148, 163, 184, 0.35)',
-                      background:
-                        message.tone === 'critical'
-                          ? 'rgba(220, 38, 38, 0.1)'
-                          : message.tone === 'warning'
-                            ? 'rgba(245, 158, 11, 0.12)'
-                            : message.tone === 'support'
-                              ? 'rgba(34, 197, 94, 0.12)'
-                            : 'rgba(148, 163, 184, 0.1)',
-                      borderRadius: '12px',
-                      padding: '0.8rem 0.9rem',
-                      fontSize: '1rem',
-                      fontWeight: 700,
-                      lineHeight: 1.35,
-                      color: 'inherit',
-                      cursor: message.alert ? 'pointer' : 'default',
-                      textAlign: 'left',
-                    }}
+                    className={`live-status-item live-status-item--${message.tone}`}
                   >
                     <span>{message.text}</span>
                   </button>
@@ -892,30 +857,7 @@ export function RouteCheckFutureSection({
               </div>
             </div>
           ) : null}
-          <div
-            style={{
-              border:
-                pausePhase === 'critical'
-                  ? '1px solid rgba(220, 38, 38, 0.45)'
-                  : pausePhase === 'warning'
-                    ? '1px solid rgba(245, 158, 11, 0.5)'
-                    : shouldShowPauseStopSuggestion
-                      ? '1px solid rgba(34, 197, 94, 0.3)'
-                      : '1px solid rgba(148, 163, 184, 0.28)',
-              background:
-                pausePhase === 'critical'
-                  ? 'rgba(220, 38, 38, 0.1)'
-                  : pausePhase === 'warning'
-                    ? 'rgba(245, 158, 11, 0.12)'
-                    : shouldShowPauseStopSuggestion
-                      ? 'rgba(34, 197, 94, 0.09)'
-                      : 'rgba(148, 163, 184, 0.08)',
-              borderRadius: '14px',
-              padding: '0.9rem 1rem',
-              display: 'grid',
-              gap: '0.25rem',
-            }}
-          >
+          <div className={`pause-advice-card pause-advice-card--${pauseStatusTone}`}>
             {pausePhase === 'early' ? (
               <>
                 <strong>
@@ -979,19 +921,19 @@ export function RouteCheckFutureSection({
             )}
           </div>
           <div className="trip-status-grid">
-            <div className="trip-status-card">
+            <div className={`trip-status-card trip-status-card--${clearanceStatusTone}`}>
               <span>{tx(language, 'Klarering', 'Clearance')}</span>
               <strong>{ltpSummary ?? tx(language, 'Sjekk detaljer', 'Check details')}</strong>
             </div>
-            <div className="trip-status-card">
+            <div className={`trip-status-card trip-status-card--${heightStatusTone}`}>
               <span>{tx(language, 'Høydevarsler', 'Height warnings')}</span>
               <strong>{heightWarningSummary}</strong>
             </div>
-            <div className="trip-status-card">
-              <span>{tx(language, 'Trafikk', 'Traffic')}</span>
+            <div className={`trip-status-card trip-status-card--${trafficStatusTone}`}>
+              <span>{tx(language, 'Offisielle trafikkmeldinger', 'Official traffic messages')}</span>
               <strong>{trafficSummary}</strong>
             </div>
-            <div className="trip-status-card">
+            <div className={`trip-status-card trip-status-card--${pauseStatusTone}`}>
               <span>{tx(language, 'Pause', 'Break')}</span>
               <strong>
                 {pausePhase === 'early' && pauseDeadlineText
@@ -1082,34 +1024,26 @@ export function RouteCheckFutureSection({
                       })}
                     </div>
                   )}
-                  <h3>{tx(language, 'Veiarbeid og trafikk', 'Roadwork and traffic')}</h3>
-                  <label className="checkbox-label" style={{ margin: '0 0 0.5rem' }}>
-                    <input
-                      type="checkbox"
-                      checked={testRoadworkEnabled}
-                      onChange={(event) => setTestRoadworkEnabled(event.target.checked)}
-                    />
-                    <span>{tx(language, 'Test veiarbeid', 'Test roadwork')}</span>
-                  </label>
-                  <div className="helper" style={{ display: 'grid', gap: '0.15rem', margin: 0 }}>
-                    <span>
-                      {tx(language, 'Trafikkdata hentet', 'Traffic data fetched')}: {routeWarningResult.debug?.datexFetchedCount ?? 0}
-                    </span>
-                    <span>
-                      {tx(language, 'Langs ruten', 'Along route')}: {routeWarningResult.debug?.datexMatchedRouteCount ?? 0}
-                    </span>
-                    {routeWarningResult.debug?.datexDebugReason ? <span>{routeWarningResult.debug.datexDebugReason}</span> : null}
-                  </div>
-                  {(routeWarningResult.debug?.datexFetchedCount ?? 0) === 0 ? (
-                    <p>{tx(language, 'Ingen trafikkdata tilgjengelig', 'No traffic data available')}</p>
-                  ) : (routeWarningResult.debug?.datexMatchedRouteCount ?? 0) === 0 ? (
-                    <p>{tx(language, 'Ingen veiarbeid langs denne ruten akkurat nå', 'No roadwork along this route right now')}</p>
-                  ) : null}
-                  {displayedRoadwork.length === 0 && (routeWarningResult.debug?.datexMatchedRouteCount ?? 0) > 0 ? (
-                    <p>{tx(language, 'Ingen veiarbeid langs denne ruten akkurat nå', 'No roadwork along this route right now')}</p>
+                  <h3>{tx(language, 'Offisielle trafikkmeldinger', 'Official traffic messages')}</h3>
+                  {!routeWarningLoading && displayedRoadwork.length === 0 ? (
+                    <div style={{ display: 'grid', gap: '0.25rem' }}>
+                      <p>{tx(language, 'Ingen offisielle meldinger funnet langs ruten.', 'No official messages found along the route.')}</p>
+                      <p className="helper" style={{ margin: 0 }}>
+                        {tx(
+                          language,
+                          'Google-lignende live trafikk krever egen trafikk-API og er ikke koblet inn ennå.',
+                          'Google-like live traffic requires a separate traffic API and is not connected yet.',
+                        )}
+                      </p>
+                    </div>
                   ) : null}
                   {displayedRoadwork.length > 0 ? (
                     <div style={{ display: 'grid', gap: '0.75rem' }}>
+                      <strong>
+                        {testRoadworkEnabled
+                          ? tx(language, 'Testmodus for trafikkmeldinger', 'Traffic message test mode')
+                          : tx(language, 'Trafikkmeldinger', 'Traffic messages')}
+                      </strong>
                       {displayedRoadwork.map((incident, index) => (
                         <div
                           key={`roadwork-${incident.lat}-${incident.lon}-${index}`}
@@ -1137,6 +1071,27 @@ export function RouteCheckFutureSection({
                       ))}
                     </div>
                   ) : null}
+                  <details className="data-source-details">
+                    <summary>{tx(language, 'Datakilder', 'Data sources')}</summary>
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={testRoadworkEnabled}
+                        onChange={(event) => setTestRoadworkEnabled(event.target.checked)}
+                      />
+                      <span>{tx(language, 'Test veiarbeid', 'Test roadwork')}</span>
+                    </label>
+                    <div className="data-source-list">
+                      <span>
+                        {tx(language, 'Trafikkdata hentet', 'Traffic data fetched')}: {routeWarningResult.debug?.datexFetchedCount ?? 0}
+                      </span>
+                      <span>
+                        {tx(language, 'Langs ruten', 'Along route')}: {routeWarningResult.debug?.datexMatchedRouteCount ?? 0}
+                      </span>
+                      <span>DATEX: {routeWarningResult.debug?.datexSourceUrl ?? 'datexapi/GetSituation/pullsnapshotdata'}</span>
+                      {routeWarningResult.debug?.datexDebugReason ? <span>{routeWarningResult.debug.datexDebugReason}</span> : null}
+                    </div>
+                  </details>
                   {shouldShowPauseStopSuggestion ? (
                     <>
                       <h3>{tx(language, 'Hvileplasser', 'Rest stops')}</h3>
