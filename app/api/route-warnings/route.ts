@@ -18,6 +18,11 @@ type RouteWarningDebug = {
   datexFetchedCount: number;
   datexMatchedRouteCount: number;
   restStopCount: number;
+  restStopsFetchedCount: number;
+  restStopsMissingCoordinatesCount: number;
+  restStopsRouteMatchedCount: number;
+  restStopsReturnedCount: number;
+  restStopsDebugReason: string;
   usedRouteFilter: boolean;
 };
 
@@ -46,14 +51,13 @@ type RestStop = {
   name: string;
   lat: number;
   lon: number;
-  distanceKm?: number;
+  distanceKm?: number | null;
 };
 
 const NVDB_HEIGHT_RESTRICTIONS_URL =
   'https://nvdbapiles-v3.atlas.vegvesen.no/vegobjekter/591?antall=500&inkluder=alle&srid=4326';
 const DATEX_SITUATION_URL =
   'https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/GetSituation/pullsnapshotdata';
-const OVERPASS_API_URL = 'https://overpass-api.de/api/interpreter';
 const ROUTE_MATCH_DISTANCE_METERS = 300;
 const ROADWORK_ROUTE_MATCH_DISTANCE_METERS = 1000;
 const REST_STOP_ROUTE_MATCH_DISTANCE_METERS = 2000;
@@ -69,6 +73,11 @@ function createDebug(usedRouteFilter: boolean): RouteWarningDebug {
     datexFetchedCount: 0,
     datexMatchedRouteCount: 0,
     restStopCount: 0,
+    restStopsFetchedCount: 0,
+    restStopsMissingCoordinatesCount: 0,
+    restStopsRouteMatchedCount: 0,
+    restStopsReturnedCount: 0,
+    restStopsDebugReason: 'not checked',
     usedRouteFilter,
   };
 }
@@ -318,11 +327,6 @@ function buildNvdbBbox(route: Coordinate[]) {
   return `${minLon},${minLat},${maxLon},${maxLat}`;
 }
 
-function buildOverpassBbox(route: Coordinate[]) {
-  const { minLat, maxLat, minLon, maxLon } = buildRouteBbox(route);
-  return `${minLat},${minLon},${maxLat},${maxLon}`;
-}
-
 function decodeXmlEntities(value: string) {
   return value
     .replace(/&amp;/g, '&')
@@ -421,42 +425,67 @@ async function fetchDatexRoadworkWarnings(route: Coordinate[] | undefined, debug
 async function fetchRestStops(route: Coordinate[] | undefined, debug: RouteWarningDebug): Promise<RestStop[]> {
   if (!route || route.length < 2) {
     debug.restStopCount = 0;
+    debug.restStopsFetchedCount = 0;
+    debug.restStopsMissingCoordinatesCount = 0;
+    debug.restStopsRouteMatchedCount = 0;
+    debug.restStopsReturnedCount = 0;
+    debug.restStopsDebugReason = 'missing route geometry';
     return [];
   }
 
-  const bbox = buildOverpassBbox(route);
-  const query = `
-    [out:json][timeout:8];
-    (
-      node["highway"="rest_area"](${bbox});
-      way["highway"="rest_area"](${bbox});
-      relation["highway"="rest_area"](${bbox});
-      node["amenity"="parking"](${bbox});
-      way["amenity"="parking"](${bbox});
-      relation["amenity"="parking"](${bbox});
-    );
-    out center 200;
-  `;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 3500);
+  const { minLat: south, minLon: west, maxLat: north, maxLon: east } = buildRouteBbox(route);
+  const overpassQuery = `
+[out:json][timeout:25];
+(
+  node["highway"="rest_area"](${south},${west},${north},${east});
+  way["highway"="rest_area"](${south},${west},${north},${east});
+  node["amenity"="parking"]["access"!="private"](${south},${west},${north},${east});
+  way["amenity"="parking"]["access"!="private"](${south},${west},${north},${east});
+);
+out center;
+`;
 
   try {
-    const response = await fetch(OVERPASS_API_URL, {
+    const body = `data=${encodeURIComponent(overpassQuery)}`;
+    const overpassHeaders = {
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+      Accept: 'application/json',
+      'User-Agent': 'LTP-Calculator/1.0 local-dev',
+    };
+    let response = await fetch('https://overpass-api.de/api/interpreter', {
       method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) LTP-Calculator/1.0 contact: local-dev',
-      },
-      body: `data=${encodeURIComponent(query)}`,
-      cache: 'no-store',
-      signal: controller.signal,
+      headers: overpassHeaders,
+      body,
     });
-    if (!response.ok) throw new Error('Overpass rest stop request failed');
 
-    const json = (await response.json()) as unknown;
+    if (response.status === 406) {
+      response = await fetch('https://overpass.kumi.systems/api/interpreter', {
+        method: 'POST',
+        headers: overpassHeaders,
+        body,
+      });
+    }
+
+    const text = await response.text();
+
+    if (!response.ok) {
+      console.error(`Overpass rest stop request failed: ${response.status} ${response.statusText}`);
+      debug.restStopsDebugReason = `Overpass failed: ${response.status} ${response.statusText}`;
+      return [];
+    }
+
+    let json: unknown;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      debug.restStopsDebugReason = 'Overpass JSON parse failed';
+      return [];
+    }
     const root = asRecord(json);
     const elements = Array.isArray(root?.elements) ? root.elements : [];
+    debug.restStopsFetchedCount = elements.length;
+    let missingCoordinatesCount = 0;
+    let routeMatchedCount = 0;
     const seen = new Set<string>();
     const stops = elements
       .map((element): RestStop | null => {
@@ -466,7 +495,21 @@ async function fetchRestStops(route: Coordinate[] | undefined, debug: RouteWarni
         const center = asRecord(record.center);
         const lat = parseNumber(record.lat ?? center?.lat);
         const lon = parseNumber(record.lon ?? center?.lon);
-        if (lat === null || lon === null) return null;
+        if (lat === null || lon === null) {
+          missingCoordinatesCount += 1;
+          return null;
+        }
+
+        const tags = asRecord(record.tags);
+        const access = String(tags?.access ?? '').toLowerCase();
+        const bicycle = String(tags?.bicycle ?? '').toLowerCase();
+        const motorVehicle = String(tags?.motor_vehicle ?? tags?.motorcar ?? '').toLowerCase();
+        const parking = String(tags?.parking ?? '').toLowerCase();
+        const capacity = parseNumber(tags?.capacity);
+        if (access === 'private' || access === 'no') return null;
+        if (bicycle === 'designated' && motorVehicle !== 'yes') return null;
+        if (parking === 'bicycle') return null;
+        if (capacity !== null && capacity > 0 && capacity < 5) return null;
 
         const distanceKm = routeDistanceKmToNearestPoint(
           [lat, lon],
@@ -474,8 +517,8 @@ async function fetchRestStops(route: Coordinate[] | undefined, debug: RouteWarni
           REST_STOP_ROUTE_MATCH_DISTANCE_METERS,
         );
         if (distanceKm === null) return null;
+        routeMatchedCount += 1;
 
-        const tags = asRecord(record.tags);
         const rawName = parseText(tags?.name) ?? parseText(tags?.operator);
         const isRestArea = tags?.highway === 'rest_area';
         const name = rawName ?? (isRestArea ? 'Hvileplass' : 'Parkering');
@@ -495,13 +538,31 @@ async function fetchRestStops(route: Coordinate[] | undefined, debug: RouteWarni
       .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
       .slice(0, MAX_REST_STOPS);
 
+    debug.restStopsMissingCoordinatesCount = missingCoordinatesCount;
+    debug.restStopsRouteMatchedCount = routeMatchedCount;
+    debug.restStopsReturnedCount = stops.length;
     debug.restStopCount = stops.length;
+    if (elements.length === 0) {
+      debug.restStopsDebugReason = 'Overpass returned 0 results';
+    } else if (missingCoordinatesCount === elements.length) {
+      debug.restStopsDebugReason = 'missing coordinates';
+    } else if (routeMatchedCount === 0) {
+      debug.restStopsDebugReason = 'route filtering removed all';
+    } else if (stops.length === 0) {
+      debug.restStopsDebugReason = 'non-truck or duplicate stops removed all';
+    } else {
+      debug.restStopsDebugReason = 'ok';
+    }
     return stops;
-  } catch {
+  } catch (error) {
+    console.error('REST STOPS OVERPASS ERROR:', error);
     debug.restStopCount = 0;
+    debug.restStopsReturnedCount = 0;
+    debug.restStopsDebugReason =
+      error instanceof DOMException && error.name === 'AbortError'
+        ? 'Overpass failed: timeout'
+        : 'Overpass failed: request error';
     return [];
-  } finally {
-    clearTimeout(timeout);
   }
 }
 

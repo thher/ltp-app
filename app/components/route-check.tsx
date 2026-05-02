@@ -82,6 +82,11 @@ type RouteWarningResponse = {
     datexFetchedCount: number;
     datexMatchedRouteCount: number;
     restStopCount: number;
+    restStopsFetchedCount: number;
+    restStopsMissingCoordinatesCount: number;
+    restStopsRouteMatchedCount: number;
+    restStopsReturnedCount: number;
+    restStopsDebugReason: string;
     usedRouteFilter: boolean;
   };
 };
@@ -132,7 +137,7 @@ export function RouteCheckFutureSection({
   autoCheckKey?: number;
   ltpSummary?: string;
   nextBreakSummary?: string;
-  detailsContent?: ReactNode;
+  detailsContent?: ReactNode | ((restStops: RestStop[]) => ReactNode);
   afterVehicleDetailsContent?: ReactNode;
 }) {
   const sourceHelper = tx(language, 'Hentes fra vognkort når tilgjengelig', 'Fetched from vehicle card when available');
@@ -481,6 +486,21 @@ export function RouteCheckFutureSection({
                     </div>
                   )}
                   <h3>{tx(language, 'Hvileplasser', 'Rest stops')}</h3>
+                  <p className="helper" style={{ margin: 0 }}>
+                    {tx(language, 'Hvileplasser funnet', 'Rest stops found')}: {restStops.length}
+                  </p>
+                  <div className="helper" style={{ display: 'grid', gap: '0.15rem', margin: 0 }}>
+                    <span>API restStops length: {routeWarningResult.restStops.length}</span>
+                    <span>restStops passed to RouteMap: {restStops.length}</span>
+                    <span>restStops passed to DrivingRestSection: {restStops.length}</span>
+                    <span>restStopsFetchedCount: {routeWarningResult.debug?.restStopsFetchedCount ?? 0}</span>
+                    <span>restStopsMissingCoordinatesCount: {routeWarningResult.debug?.restStopsMissingCoordinatesCount ?? 0}</span>
+                    <span>restStopsRouteMatchedCount: {routeWarningResult.debug?.restStopsRouteMatchedCount ?? 0}</span>
+                    <span>restStopsReturnedCount: {routeWarningResult.debug?.restStopsReturnedCount ?? 0}</span>
+                    {restStops.length === 0 ? (
+                      <span>Why empty: {routeWarningResult.debug?.restStopsDebugReason ?? 'unknown'}</span>
+                    ) : null}
+                  </div>
                   {restStops.length === 0 ? (
                     <p className="helper">
                       {tx(language, 'Ingen hvileplasser funnet langs ruten', 'No rest stops found along the route')}
@@ -508,7 +528,11 @@ export function RouteCheckFutureSection({
                                 })}{' '}
                                 {tx(language, 'km frem', 'km ahead')}
                               </span>
-                            ) : null}
+                            ) : (
+                              <span className="helper" style={{ margin: 0 }}>
+                                {tx(language, 'avstand ikke beregnet', 'distance not calculated')}
+                              </span>
+                            )}
                             {estimatedTimeToStop ? (
                               <span className="helper" style={{ margin: 0 }}>
                                 {Math.round(estimatedTimeToStop * 60)} min
@@ -546,7 +570,11 @@ export function RouteCheckFutureSection({
                               })}{' '}
                               {tx(language, 'km frem', 'km ahead')}
                             </div>
-                          ) : null}
+                          ) : (
+                            <div className="helper" style={{ margin: 0 }}>
+                              {tx(language, 'avstand ikke beregnet', 'distance not calculated')}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -557,7 +585,7 @@ export function RouteCheckFutureSection({
               )}
             </details>
 
-            {detailsContent}
+            {typeof detailsContent === 'function' ? detailsContent(restStops) : detailsContent}
 
             <details className="trip-detail-card">
               <summary>{tx(language, 'Kjøretøydata', 'Vehicle data')}</summary>
@@ -731,7 +759,11 @@ export function DrivingRestSection({
                         })}{' '}
                         km
                       </div>
-                    ) : null}
+                    ) : (
+                      <div className="helper" style={{ margin: 0 }}>
+                        {tx(language, 'avstand ikke beregnet', 'distance not calculated')}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

@@ -1171,16 +1171,17 @@ export default function Home() {
         autoCheckKey={tripCalculationKey}
         ltpSummary={getTripLtpSummary()}
         nextBreakSummary={getNextBreakSummary()}
-        detailsContent={
+        detailsContent={(restStops) => (
           <details className="trip-detail-card">
             <summary>{tx(language, 'Kjøre- og hviletid', 'Driving and rest time')}</summary>
             <DrivingRestSection
               language={language}
               plannedDeparture={plannedDeparture}
               drivingUsedTodayHours={drivingUsedTodayHours}
+              restStops={restStops}
             />
           </details>
-        }
+        )}
         afterVehicleDetailsContent={
           <details className="trip-detail-card">
             <summary>{tx(language, 'LTP-sammendrag', 'LTP summary')}</summary>
