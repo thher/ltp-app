@@ -43,6 +43,13 @@ type RouteCheckPrefill = {
   roadClass?: RoadProfile;
 };
 
+type Coordinate = [number, number];
+
+type CurrentPosition = {
+  lat: number;
+  lon: number;
+};
+
 type RouteWarning = {
   type: 'height';
   value: number;
@@ -115,6 +122,12 @@ function formatHeightMeters(valueMeters: number, language: Language) {
 const AVERAGE_TRUCK_SPEED_KMH = 70;
 const MAX_DRIVING_BEFORE_BREAK_HOURS = 4.5;
 
+function formatKm(value: number, language: Language) {
+  return value.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
+    maximumFractionDigits: value < 10 ? 1 : 0,
+  });
+}
+
 function parseRemainingDrivingHours(value?: string) {
   if (!value) return null;
   const normalized = value.toLowerCase().replace(',', '.');
@@ -130,6 +143,44 @@ function parseDrivingHours(value?: string) {
   if (!value) return 0;
   const parsed = Number(value.replace(',', '.'));
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function haversineKm(a: Coordinate, b: Coordinate) {
+  const radiusKm = 6371;
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+  const dLat = toRadians(b[0] - a[0]);
+  const dLon = toRadians(b[1] - a[1]);
+  const lat1 = toRadians(a[0]);
+  const lat2 = toRadians(b[0]);
+  const h =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return 2 * radiusKm * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+function routeProgressForPosition(position: CurrentPosition | null, route: Coordinate[]) {
+  if (!position || route.length === 0) return null;
+
+  const point: Coordinate = [position.lat, position.lon];
+  let distanceFromStartKm = 0;
+  let nearestIndex = -1;
+  let nearestDistanceKm = Infinity;
+  let distanceAtNearestKm = 0;
+
+  for (let index = 0; index < route.length; index += 1) {
+    if (index > 0) {
+      distanceFromStartKm += haversineKm(route[index - 1], route[index]);
+    }
+
+    const distanceKm = haversineKm(point, route[index]);
+    if (distanceKm < nearestDistanceKm) {
+      nearestDistanceKm = distanceKm;
+      nearestIndex = index;
+      distanceAtNearestKm = distanceFromStartKm;
+    }
+  }
+
+  return nearestIndex >= 0 ? { index: nearestIndex, distanceKm: distanceAtNearestKm } : null;
 }
 
 export function RouteCheckFutureSection({
@@ -168,6 +219,12 @@ export function RouteCheckFutureSection({
   const [routeWarningError, setRouteWarningError] = useState('');
   const [selectedWarning, setSelectedWarning] = useState<RouteWarning | null>(null);
   const [checkedVehicleHeightMm, setCheckedVehicleHeightMm] = useState<number | null>(null);
+  const [routePoints, setRoutePoints] = useState<Coordinate[]>([]);
+  const [currentPosition, setCurrentPosition] = useState<CurrentPosition | null>(null);
+  const [locationStatus, setLocationStatus] = useState<'pending' | 'active' | 'unavailable'>('pending');
+  const handleRoutePointsChange = useCallback((points: Coordinate[]) => {
+    setRoutePoints(points);
+  }, []);
   const sortedHeightWarnings = useMemo(
     () =>
       [...(routeWarningResult?.warnings ?? [])].sort((a, b) => {
@@ -283,47 +340,116 @@ export function RouteCheckFutureSection({
     estimatedStopDistanceKm !== null &&
     typeof recommendedRestStop.distanceKm === 'number' &&
     recommendedRestStop.distanceKm > estimatedStopDistanceKm + 50;
-  const nextCriticalWarning = useMemo(
+  const currentRouteProgress = useMemo(
+    () => routeProgressForPosition(currentPosition, routePoints),
+    [currentPosition, routePoints],
+  );
+  const distanceAheadFromCurrent = useCallback(
+    (distanceKm?: number) => {
+      if (!currentRouteProgress || typeof distanceKm !== 'number') return null;
+      const aheadKm = distanceKm - currentRouteProgress.distanceKm;
+      return aheadKm >= 0 ? aheadKm : null;
+    },
+    [currentRouteProgress],
+  );
+  const nextHeightWarning = useMemo(
     () =>
-      [...(routeWarningResult?.warnings ?? [])]
-        .filter((warning) => warning.severity === 'critical')
-        .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))[0] ?? null,
-    [routeWarningResult],
+      sortedHeightWarnings
+        .map((warning) => ({ warning, aheadKm: distanceAheadFromCurrent(warning.distanceKm) }))
+        .filter((item): item is { warning: RouteWarning; aheadKm: number } => item.aheadKm !== null)
+        .sort((a, b) => a.aheadKm - b.aheadKm)[0] ?? null,
+    [distanceAheadFromCurrent, sortedHeightWarnings],
+  );
+  const nextRoadwork = useMemo(
+    () =>
+      realRoadwork
+        .map((incident) => ({ incident, aheadKm: distanceAheadFromCurrent(incident.distanceKm) }))
+        .filter((item): item is { incident: RoadworkWarning; aheadKm: number } => item.aheadKm !== null)
+        .sort((a, b) => a.aheadKm - b.aheadKm)[0] ?? null,
+    [distanceAheadFromCurrent, realRoadwork],
+  );
+  const nextRestStop = useMemo(
+    () =>
+      restStops
+        .map((stop) => ({ stop, aheadKm: distanceAheadFromCurrent(stop.distanceKm) }))
+        .filter((item): item is { stop: RestStop; aheadKm: number } => item.aheadKm !== null)
+        .sort((a, b) => a.aheadKm - b.aheadKm)[0] ?? null,
+    [distanceAheadFromCurrent, restStops],
   );
   const liveStatusMessages = useMemo(() => {
     const messages: Array<{ tone: 'critical' | 'warning' | 'info'; text: string }> = [];
 
-    if (nextCriticalWarning) {
-      const restrictionHeightMm = Math.round(nextCriticalWarning.value * 1000);
-      const diffMm =
-        checkedVehicleHeightMm !== null ? checkedVehicleHeightMm - restrictionHeightMm : null;
-      const diffCm = diffMm !== null ? Math.max(Math.round(diffMm / 10), 0) : null;
-      const distanceText =
-        typeof nextCriticalWarning.distanceKm === 'number'
-          ? ` - ${nextCriticalWarning.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
-              maximumFractionDigits: 1,
-            })} ${tx(language, 'km frem', 'km ahead')}`
-          : '';
+    if (locationStatus === 'unavailable') {
+      messages.push({
+        tone: 'info',
+        text: tx(language, 'Lokasjon ikke tilgjengelig', 'Location unavailable'),
+      });
+      return messages;
+    }
+
+    if (!currentPosition || !currentRouteProgress) {
+      messages.push({
+        tone: 'info',
+        text: tx(language, 'Henter lokasjon...', 'Fetching location...'),
+      });
+      return messages;
+    }
+
+    if (nextHeightWarning) {
       messages.push({
         tone: 'critical',
-        text:
-          diffCm !== null
-            ? `${tx(language, 'FOR HØY', 'TOO HIGH')} +${diffCm} cm${distanceText}`
-            : `${tx(language, 'FOR HØY', 'TOO HIGH')}${distanceText}`,
+        text: `🔴 ${tx(language, 'Lav høyde om', 'Low height in')} ${formatKm(nextHeightWarning.aheadKm, language)} km`,
       });
     }
 
-    messages.push(pauseStatus);
+    if (nextRestStop) {
+      const minutes = Math.max(Math.round((nextRestStop.aheadKm / AVERAGE_TRUCK_SPEED_KMH) * 60), 1);
+      messages.push({
+        tone: 'warning',
+        text: `🟠 ${tx(language, 'Pause om', 'Break in')} ${minutes} min`,
+      });
+    } else {
+      messages.push(pauseStatus);
+    }
 
-    if (realRoadwork.some((incident) => typeof incident.distanceKm === 'number' && incident.distanceKm <= 50)) {
+    if (nextRoadwork) {
       messages.push({
         tone: 'info',
-        text: tx(language, 'Veiarbeid nærmer seg', 'Roadwork ahead'),
+        text: `🟡 ${tx(language, 'Veiarbeid om', 'Roadwork in')} ${formatKm(nextRoadwork.aheadKm, language)} km`,
       });
     }
 
     return messages.slice(0, 3);
-  }, [checkedVehicleHeightMm, language, nextCriticalWarning, pauseStatus, realRoadwork]);
+  }, [currentPosition, currentRouteProgress, language, locationStatus, nextHeightWarning, nextRestStop, nextRoadwork, pauseStatus]);
+
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setLocationStatus('unavailable');
+      return;
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        setCurrentPosition({
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+        });
+        setLocationStatus('active');
+      },
+      () => {
+        setLocationStatus('unavailable');
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 10000,
+        timeout: 15000,
+      },
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
+  }, []);
 
   const checkRouteWarnings = useCallback(async () => {
     setRouteWarningLoading(true);
@@ -396,6 +522,8 @@ export function RouteCheckFutureSection({
             roadwork={realRoadwork}
             restStops={restStops}
             selectedWarning={selectedWarning}
+            currentPosition={currentPosition}
+            onRoutePointsChange={handleRoutePointsChange}
           />
           <p className="helper">
             Rute, tunnel, høyde og trafikkdata er veiledende. Sjekk alltid skilting, vegliste og
@@ -403,7 +531,7 @@ export function RouteCheckFutureSection({
           </p>
           {liveStatusMessages.length > 0 ? (
             <div style={{ display: 'grid', gap: '0.75rem' }}>
-              <strong style={{ fontSize: '1rem' }}>{tx(language, 'Status nå', 'Status now')}</strong>
+              <strong style={{ fontSize: '1rem' }}>{tx(language, 'Live status', 'Live status')}</strong>
               <div style={{ display: 'grid', gap: '0.65rem' }}>
                 {liveStatusMessages.map((message, index) => (
                   <div

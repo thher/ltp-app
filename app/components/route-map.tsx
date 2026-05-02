@@ -42,6 +42,11 @@ type RouteMapRestStop = {
   distanceKm?: number;
 };
 
+type CurrentPosition = {
+  lat: number;
+  lon: number;
+};
+
 type LeafletMapInstance = {
   setView: (center: [number, number], zoom: number) => void;
   fitBounds: (bounds: [number, number][], options?: { padding?: [number, number] }) => void;
@@ -85,6 +90,8 @@ export default function RouteMap({
   roadwork = [],
   restStops = [],
   selectedWarning = null,
+  currentPosition = null,
+  onRoutePointsChange,
 }: {
   language: Language;
   routeFrom: string;
@@ -93,6 +100,8 @@ export default function RouteMap({
   roadwork?: RouteMapRoadwork[];
   restStops?: RouteMapRestStop[];
   selectedWarning?: RouteMapWarning | null;
+  currentPosition?: CurrentPosition | null;
+  onRoutePointsChange?: (points: [number, number][]) => void;
 }) {
   const [fromCoord, setFromCoord] = useState<[number, number] | null>(null);
   const [toCoord, setToCoord] = useState<[number, number] | null>(null);
@@ -209,6 +218,7 @@ export default function RouteMap({
     async function fetchRoute() {
       if (!fromCoord || !toCoord) {
         setRoutePath(null);
+        onRoutePointsChange?.([]);
         setRouteStatus('idle');
         return;
       }
@@ -251,17 +261,21 @@ export default function RouteMap({
             .filter((coord): coord is [number, number] => coord !== null);
 
           console.log('RouteMap OSRM geometry point count:', path.length);
-          setRoutePath(path.length > 1 ? path : null);
-          setRouteStatus(path.length > 1 ? 'ready' : 'failed');
+          const nextPath = path.length > 1 ? path : null;
+          setRoutePath(nextPath);
+          onRoutePointsChange?.(nextPath ?? []);
+          setRouteStatus(nextPath ? 'ready' : 'failed');
           return;
         }
 
         setRoutePath(null);
+        onRoutePointsChange?.([]);
         setRouteStatus('failed');
         console.log('RouteMap OSRM geometry point count:', 0);
       } catch {
         if (mounted && !controller.signal.aborted) {
           setRoutePath(null);
+          onRoutePointsChange?.([]);
           setRouteStatus('failed');
           console.log('RouteMap OSRM geometry point count:', 0);
         }
@@ -274,7 +288,7 @@ export default function RouteMap({
       mounted = false;
       controller.abort();
     };
-  }, [fromCoord, toCoord]);
+  }, [fromCoord, onRoutePointsChange, toCoord]);
 
   const mapCenter: [number, number] = useMemo(() => {
     if (fromCoord && toCoord) {
@@ -341,6 +355,21 @@ export default function RouteMap({
             ) : null}
             {fromCoord && <LeafletComponents.Marker position={fromCoord as [number, number]} />}
             {toCoord && <LeafletComponents.Marker position={toCoord as [number, number]} />}
+            {currentPosition ? (
+              <LeafletComponents.Marker
+                position={[currentPosition.lat, currentPosition.lon] as [number, number]}
+                icon={LeafletComponents.L.divIcon({
+                  className: '',
+                  html: '<span style="display:block;width:18px;height:18px;border-radius:999px;background:#2563eb;border:4px solid #bfdbfe;box-shadow:0 8px 18px rgba(37,99,235,.35);"></span>',
+                  iconSize: [18, 18],
+                  iconAnchor: [9, 9],
+                })}
+              >
+                <LeafletComponents.Popup>
+                  <strong>{tx(language, 'Din posisjon', 'Your position')}</strong>
+                </LeafletComponents.Popup>
+              </LeafletComponents.Marker>
+            ) : null}
             {snappedHeightWarnings.map((warning, index) => (
               <LeafletComponents.Marker
                 key={`height-warning-${warning.lat}-${warning.lon}-${index}`}
