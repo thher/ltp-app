@@ -69,6 +69,10 @@ type RestStop = {
   distanceKm?: number;
 };
 
+type RecommendedRestStop = RestStop & {
+  reason: 'before-limit' | 'nearest-available';
+};
+
 type RouteWarningResponse = {
   warnings: RouteWarning[];
   roadwork: RoadworkWarning[];
@@ -177,7 +181,10 @@ export function RouteCheckFutureSection({
   const criticalWarningCount = (routeWarningResult?.warnings ?? []).filter((warning) => warning.severity === 'critical').length;
   const cautionWarningCount = (routeWarningResult?.warnings ?? []).filter((warning) => warning.severity === 'caution').length;
   const realRoadwork = useMemo(() => routeWarningResult?.roadwork ?? [], [routeWarningResult]);
-  const restStops = useMemo(() => routeWarningResult?.restStops ?? [], [routeWarningResult]);
+  const restStops = useMemo(
+    () => [...(routeWarningResult?.restStops ?? [])].sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity)),
+    [routeWarningResult],
+  );
   const roadworkCount = realRoadwork.length;
   const heightWarningSummary = routeWarningLoading
     ? tx(language, 'Sjekker', 'Checking')
@@ -238,14 +245,34 @@ export function RouteCheckFutureSection({
     }
     return (remainingDrivingMinutes / 60) * AVERAGE_TRUCK_SPEED_KMH;
   }, [nextBreakSummary, remainingDrivingMinutes]);
-  const recommendedRestStop = useMemo(() => {
+  const recommendedRestStop = useMemo<RecommendedRestStop | null>(() => {
     if (estimatedStopDistanceKm === null || restStops.length === 0) return null;
-    return restStops
-      .map((stop) => ({
-        ...stop,
-        diff: Math.abs((stop.distanceKm ?? Infinity) - estimatedStopDistanceKm),
-      }))
-      .sort((a, b) => a.diff - b.diff)[0] ?? null;
+    const stopsWithDistance = restStops.filter(
+      (stop): stop is RestStop & { distanceKm: number } => typeof stop.distanceKm === 'number',
+    );
+    if (stopsWithDistance.length === 0) return null;
+
+    const preferredMinKm = Math.max(estimatedStopDistanceKm - 50, 0);
+    const preferredMaxKm = estimatedStopDistanceKm + 20;
+    const preferredStop = stopsWithDistance
+      .filter((stop) => stop.distanceKm >= preferredMinKm && stop.distanceKm <= preferredMaxKm)
+      .sort((a, b) => {
+        const beforeScoreA = a.distanceKm <= estimatedStopDistanceKm ? 0 : 1;
+        const beforeScoreB = b.distanceKm <= estimatedStopDistanceKm ? 0 : 1;
+        if (beforeScoreA !== beforeScoreB) return beforeScoreA - beforeScoreB;
+        return Math.abs(a.distanceKm - estimatedStopDistanceKm) - Math.abs(b.distanceKm - estimatedStopDistanceKm);
+      })[0];
+    if (preferredStop) return { ...preferredStop, reason: 'before-limit' };
+
+    const beforeStop = stopsWithDistance
+      .filter((stop) => stop.distanceKm < estimatedStopDistanceKm)
+      .sort((a, b) => b.distanceKm - a.distanceKm)[0];
+    if (beforeStop) return { ...beforeStop, reason: 'nearest-available' };
+
+    const afterStop = stopsWithDistance
+      .filter((stop) => stop.distanceKm >= estimatedStopDistanceKm)
+      .sort((a, b) => a.distanceKm - b.distanceKm)[0];
+    return afterStop ? { ...afterStop, reason: 'nearest-available' } : null;
   }, [estimatedStopDistanceKm, restStops]);
   const estimatedTimeToStop = useMemo(() => {
     if (!recommendedRestStop?.distanceKm) return null;
@@ -435,6 +462,11 @@ export function RouteCheckFutureSection({
                     {tx(language, 'avstand ikke beregnet', 'distance not calculated')}
                   </span>
                 )}
+                <span className="helper" style={{ margin: 0 }}>
+                  {recommendedRestStop.reason === 'before-limit'
+                    ? tx(language, 'Passer før pausegrensen', 'Fits before the break limit')
+                    : tx(language, 'Nærmeste tilgjengelige stopp', 'Nearest available stop')}
+                </span>
               </>
             ) : (
               <strong>{tx(language, 'Ingen egnet hvileplass funnet langs ruten', 'No suitable rest stop found along the route')}</strong>
@@ -538,12 +570,15 @@ export function RouteCheckFutureSection({
                     </div>
                   )}
                   <h3>{tx(language, 'Veiarbeid og trafikk', 'Roadwork and traffic')}</h3>
-                  <p className="helper" style={{ margin: 0 }}>
-                    DATEX: {routeWarningResult.debug?.datexFetchedCount ?? 0} {tx(language, 'hentet', 'fetched')},{' '}
-                    {routeWarningResult.debug?.datexMatchedRouteCount ?? 0} {tx(language, 'nær ruten', 'near route')},{' '}
-                    {routeWarningResult.debug?.datexReturnedCount ?? 0} {tx(language, 'vist', 'shown')}.
-                    {routeWarningResult.debug?.datexDebugReason ? ` ${routeWarningResult.debug.datexDebugReason}` : ''}
-                  </p>
+                  <div className="helper" style={{ display: 'grid', gap: '0.15rem', margin: 0 }}>
+                    <span>
+                      {tx(language, 'Trafikkdata hentet', 'Traffic data fetched')}: {routeWarningResult.debug?.datexFetchedCount ?? 0}
+                    </span>
+                    <span>
+                      {tx(language, 'Langs ruten', 'Along route')}: {routeWarningResult.debug?.datexMatchedRouteCount ?? 0}
+                    </span>
+                    {routeWarningResult.debug?.datexDebugReason ? <span>{routeWarningResult.debug.datexDebugReason}</span> : null}
+                  </div>
                   {realRoadwork.length === 0 ? (
                     <p>{tx(language, 'Ingen registrerte veiarbeid eller trafikkmeldinger langs ruten akkurat nå.', 'No registered roadwork or traffic incidents along the route right now.')}</p>
                   ) : (
@@ -576,24 +611,9 @@ export function RouteCheckFutureSection({
                     </div>
                   )}
                   <h3>{tx(language, 'Hvileplasser', 'Rest stops')}</h3>
-                  <p className="helper" style={{ margin: 0 }}>
-                    {tx(language, 'Hvileplasser funnet', 'Rest stops found')}: {restStops.length}
-                  </p>
-                  <div className="helper" style={{ display: 'grid', gap: '0.15rem', margin: 0 }}>
-                    <span>API restStops length: {routeWarningResult.restStops.length}</span>
-                    <span>restStops passed to RouteMap: {restStops.length}</span>
-                    <span>restStops passed to DrivingRestSection: {restStops.length}</span>
-                    <span>restStopsFetchedCount: {routeWarningResult.debug?.restStopsFetchedCount ?? 0}</span>
-                    <span>restStopsMissingCoordinatesCount: {routeWarningResult.debug?.restStopsMissingCoordinatesCount ?? 0}</span>
-                    <span>restStopsRouteMatchedCount: {routeWarningResult.debug?.restStopsRouteMatchedCount ?? 0}</span>
-                    <span>restStopsReturnedCount: {routeWarningResult.debug?.restStopsReturnedCount ?? 0}</span>
-                    {restStops.length === 0 ? (
-                      <span>Why empty: {routeWarningResult.debug?.restStopsDebugReason ?? 'unknown'}</span>
-                    ) : null}
-                  </div>
                   {restStops.length === 0 ? (
                     <p className="helper">
-                      {tx(language, 'Ingen hvileplasser funnet langs ruten', 'No rest stops found along the route')}
+                      {tx(language, 'Ingen egnede hvileplasser funnet langs ruten', 'No suitable rest stops found along the route')}
                     </p>
                   ) : (
                     <div style={{ display: 'grid', gap: '0.75rem' }}>
@@ -623,21 +643,22 @@ export function RouteCheckFutureSection({
                                 {tx(language, 'avstand ikke beregnet', 'distance not calculated')}
                               </span>
                             )}
-                            {estimatedTimeToStop ? (
+                          {estimatedTimeToStop ? (
                               <span className="helper" style={{ margin: 0 }}>
                                 {Math.round(estimatedTimeToStop * 60)} min
                               </span>
                             ) : null}
-                          {isRecommendedStopTooFar ? (
-                            <span>{tx(language, 'Ingen ideell hvileplass - vurder tidligere stopp', 'No ideal rest stop - consider an earlier stop')}</span>
-                          ) : (
                             <span className="helper" style={{ margin: 0 }}>
-                              {tx(language, 'Basert på kjøre-/hviletid', 'Based on driving/rest time')}
+                              {recommendedRestStop.reason === 'before-limit'
+                                ? tx(language, 'Passer før pausegrensen', 'Fits before the break limit')
+                                : tx(language, 'Nærmeste tilgjengelige stopp', 'Nearest available stop')}
                             </span>
-                          )}
+                            {isRecommendedStopTooFar ? (
+                              <span>{tx(language, 'Ingen ideell hvileplass - vurder tidligere stopp', 'No ideal rest stop - consider an earlier stop')}</span>
+                            ) : null}
                         </>
                         ) : (
-                          <span>{tx(language, 'Ingen optimal hvileplass funnet - vurder tidligere stopp', 'No optimal rest stop found - consider an earlier stop')}</span>
+                          <span>{tx(language, 'Ingen egnet hvileplass funnet langs ruten', 'No suitable rest stop found along the route')}</span>
                         )}
                       </div>
                       {restStops.map((stop, index) => (

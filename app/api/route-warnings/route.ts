@@ -247,6 +247,14 @@ function routeDistanceKmToNearestPoint(
   return Math.round((distanceAtNearestMeters / 1000) * 10) / 10;
 }
 
+function routeLengthKm(route: Coordinate[]) {
+  let distanceMeters = 0;
+  for (let index = 1; index < route.length; index += 1) {
+    distanceMeters += haversineMeters(route[index - 1], route[index]);
+  }
+  return distanceMeters / 1000;
+}
+
 function routeDistanceKmToNearbySegment(point: Coordinate, route: Coordinate[]) {
   if (route.length < 2) return null;
 
@@ -394,7 +402,7 @@ async function fetchDatexRoadworkWarnings(route: Coordinate[] | undefined, debug
     const records = splitSituationRecords(xml).slice(0, MAX_DATEX_RECORDS);
     debug.datexFetchedCount = records.length;
 
-    const roadwork = records
+    const matchedRoadwork = records
       .map((record): RoadworkWarning | null => {
         const coordinates = extractDatexCoordinate(record);
         if (!coordinates) return null;
@@ -414,10 +422,10 @@ async function fetchDatexRoadworkWarnings(route: Coordinate[] | undefined, debug
         };
       })
       .filter((warning): warning is RoadworkWarning => warning !== null)
-      .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
-      .slice(0, MAX_TRAFFIC_WARNINGS);
+      .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
+    const roadwork = matchedRoadwork.slice(0, MAX_TRAFFIC_WARNINGS);
 
-    debug.datexMatchedRouteCount = route ? roadwork.length : 0;
+    debug.datexMatchedRouteCount = route ? matchedRoadwork.length : roadwork.length;
     debug.datexReturnedCount = roadwork.length;
     if (records.length === 0) {
       debug.datexDebugReason = 'DATEX returned 0 records';
@@ -501,7 +509,9 @@ out center;
     debug.restStopsFetchedCount = elements.length;
     let missingCoordinatesCount = 0;
     let routeMatchedCount = 0;
+    let startAreaExcludedCount = 0;
     const seen = new Set<string>();
+    const shouldExcludeStartArea = routeLengthKm(route) >= 50;
     const stops = elements
       .map((element): RestStop | null => {
         const record = asRecord(element);
@@ -533,6 +543,10 @@ out center;
         );
         if (distanceKm === null) return null;
         routeMatchedCount += 1;
+        if (shouldExcludeStartArea && distanceKm < 20) {
+          startAreaExcludedCount += 1;
+          return null;
+        }
 
         const rawName = parseText(tags?.name) ?? parseText(tags?.operator);
         const isRestArea = tags?.highway === 'rest_area';
@@ -563,6 +577,8 @@ out center;
       debug.restStopsDebugReason = 'missing coordinates';
     } else if (routeMatchedCount === 0) {
       debug.restStopsDebugReason = 'route filtering removed all';
+    } else if (stops.length === 0 && startAreaExcludedCount > 0) {
+      debug.restStopsDebugReason = 'only start-area stops found';
     } else if (stops.length === 0) {
       debug.restStopsDebugReason = 'non-truck or duplicate stops removed all';
     } else {
