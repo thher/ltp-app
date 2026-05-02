@@ -93,6 +93,8 @@ type LiveStatusMessage = {
   alert?: MapAlert;
 };
 
+type PausePhase = 'unknown' | 'early' | 'prepare' | 'warning' | 'critical';
+
 type RouteWarningResponse = {
   warnings: RouteWarning[];
   roadwork: RoadworkWarning[];
@@ -275,6 +277,24 @@ export function RouteCheckFutureSection({
     if (usedHours === null) return null;
     return Math.max(Math.round((MAX_DRIVING_BEFORE_BREAK_HOURS - usedHours) * 60), 0);
   }, [drivingUsedTodayHours]);
+  const pauseDeadlineText = useMemo(() => {
+    if (remainingDrivingMinutes === null || !plannedDeparture) return nextBreakSummary ?? '';
+    const departure = new Date(plannedDeparture);
+    if (!Number.isFinite(departure.getTime())) return nextBreakSummary ?? '';
+    const deadline = new Date(departure.getTime() + remainingDrivingMinutes * 60 * 1000);
+    return new Intl.DateTimeFormat(language === 'no' ? 'nb-NO' : 'en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(deadline);
+  }, [language, nextBreakSummary, plannedDeparture, remainingDrivingMinutes]);
+  const pausePhase = useMemo<PausePhase>(() => {
+    if (remainingDrivingMinutes === null) return 'unknown';
+    if (remainingDrivingMinutes < 15) return 'critical';
+    if (remainingDrivingMinutes <= 30) return 'warning';
+    if (remainingDrivingMinutes <= 60) return 'prepare';
+    return 'early';
+  }, [remainingDrivingMinutes]);
+  const shouldShowPauseStopSuggestion = pausePhase === 'prepare' || pausePhase === 'warning' || pausePhase === 'critical';
   const pauseStatus = useMemo(() => {
     const departureIsValid = !plannedDeparture || Number.isFinite(new Date(plannedDeparture).getTime());
     if (!departureIsValid) {
@@ -291,17 +311,17 @@ export function RouteCheckFutureSection({
       };
     }
 
-    if (remainingDrivingMinutes <= 15) {
+    if (pausePhase === 'critical') {
       return {
         tone: 'critical' as const,
-        text: tx(language, 'STOPP snart - hviletid nærmer seg', 'STOP soon - rest time is approaching'),
+        text: tx(language, 'STOPP snart', 'STOP soon'),
       };
     }
 
-    if (remainingDrivingMinutes <= 30) {
+    if (pausePhase === 'warning') {
       return {
         tone: 'warning' as const,
-        text: tx(language, 'Pause snart nødvendig', 'Break needed soon'),
+        text: tx(language, `Pause om ${remainingDrivingMinutes} min`, `Break in ${remainingDrivingMinutes} min`),
       };
     }
 
@@ -309,7 +329,7 @@ export function RouteCheckFutureSection({
       tone: 'info' as const,
       text: tx(language, `Pause om ${remainingDrivingMinutes} min`, `Break in ${remainingDrivingMinutes} min`),
     };
-  }, [language, plannedDeparture, remainingDrivingMinutes]);
+  }, [language, pausePhase, plannedDeparture, remainingDrivingMinutes]);
   const estimatedStopDistanceKm = useMemo(() => {
     if (remainingDrivingMinutes === null) {
       const remainingHours = parseRemainingDrivingHours(nextBreakSummary);
@@ -370,17 +390,19 @@ export function RouteCheckFutureSection({
       restStops.map((stop) => ({
         ...stop,
         isRecommended:
+          shouldShowPauseStopSuggestion &&
           recommendedRestStop !== null &&
           stop.lat === recommendedRestStop.lat &&
           stop.lon === recommendedRestStop.lon,
         label:
+          shouldShowPauseStopSuggestion &&
           recommendedRestStop !== null &&
           stop.lat === recommendedRestStop.lat &&
           stop.lon === recommendedRestStop.lon
             ? recommendedStopLabel
             : tx(language, 'Hvileplass', 'Rest stop'),
       })),
-    [language, recommendedRestStop, recommendedStopLabel, restStops],
+    [language, recommendedRestStop, recommendedStopLabel, restStops, shouldShowPauseStopSuggestion],
   );
   const currentRouteProgress = useMemo(
     () => routeProgressForPosition(currentPosition, routePoints),
@@ -410,14 +432,6 @@ export function RouteCheckFutureSection({
         .sort((a, b) => a.aheadKm - b.aheadKm)[0] ?? null,
     [distanceAheadFromCurrent, realRoadwork],
   );
-  const nextRestStop = useMemo(
-    () =>
-      restStops
-        .map((stop) => ({ stop, aheadKm: distanceAheadFromCurrent(stop.distanceKm) }))
-        .filter((item): item is { stop: RestStop; aheadKm: number } => item.aheadKm !== null)
-        .sort((a, b) => a.aheadKm - b.aheadKm)[0] ?? null,
-    [distanceAheadFromCurrent, restStops],
-  );
   const liveStatusMessages = useMemo(() => {
     const messages: LiveStatusMessage[] = [];
 
@@ -441,34 +455,56 @@ export function RouteCheckFutureSection({
 
     if (nextHeightWarning) {
       const isCritical = nextHeightWarning.warning.severity === 'critical';
-      messages.push({
-        tone: isCritical ? 'critical' : 'warning',
-        priority: isCritical ? 0 : 20,
-        text: `🔴 ${tx(language, 'Lav høyde om', 'Low height in')} ${formatKm(nextHeightWarning.aheadKm, language)} km`,
-        alert: {
-          type: 'height',
-          lat: nextHeightWarning.warning.lat,
-          lon: nextHeightWarning.warning.lon,
-        },
-      });
+      if (isCritical || pausePhase !== 'early') {
+        messages.push({
+          tone: isCritical ? 'critical' : 'warning',
+          priority: isCritical ? 0 : 20,
+          text: `🔴 ${tx(language, 'Lav høyde om', 'Low height in')} ${formatKm(nextHeightWarning.aheadKm, language)} km`,
+          alert: {
+            type: 'height',
+            lat: nextHeightWarning.warning.lat,
+            lon: nextHeightWarning.warning.lon,
+          },
+        });
+      }
     }
 
-    if (pauseStatus.tone === 'critical') {
-      messages.push({ ...pauseStatus, priority: 5 });
+    if (pausePhase === 'early') {
+      messages.push({
+        tone: 'info',
+        priority: 10,
+        text: `${tx(language, 'Pause senest', 'Break by')}: ${pauseDeadlineText || '-'}`,
+      });
+      return messages.sort((a, b) => a.priority - b.priority).slice(0, 3);
+    }
+
+    if (pausePhase === 'prepare') {
+      messages.push({ tone: 'info', priority: 10, text: pauseStatus.text });
+    } else if (pausePhase === 'warning') {
+      messages.push({ tone: 'warning', priority: 10, text: pauseStatus.text });
+      messages.push({ tone: 'warning', priority: 11, text: tx(language, 'Finn stopp snart', 'Find a stop soon') });
+    } else if (pausePhase === 'critical') {
+      messages.push({ tone: 'critical', priority: 5, text: tx(language, 'STOPP snart', 'STOP soon') });
     } else if (pauseStatus.tone === 'warning') {
       messages.push({ ...pauseStatus, priority: 10 });
     }
 
-    if (nextRestStop && recommendedRestStop) {
+    if (shouldShowPauseStopSuggestion && recommendedRestStop) {
       messages.push({
         tone: 'support',
-        priority: 40,
+        priority: pausePhase === 'critical' ? 6 : 40,
         text: `🟢 ${recommendedStopLabel}: ${recommendedRestStop.name}`,
         alert: {
           type: 'rest-stop',
           lat: recommendedRestStop.lat,
           lon: recommendedRestStop.lon,
         },
+      });
+    } else if (pausePhase === 'critical') {
+      messages.push({
+        tone: 'critical',
+        priority: 6,
+        text: tx(language, 'Ingen stopp før pause - stopp tidligere', 'No stop before break - stop earlier'),
       });
     }
 
@@ -493,11 +529,13 @@ export function RouteCheckFutureSection({
     language,
     locationStatus,
     nextHeightWarning,
-    nextRestStop,
     nextRoadwork,
+    pauseDeadlineText,
+    pausePhase,
     pauseStatus,
     recommendedRestStop,
     recommendedStopLabel,
+    shouldShowPauseStopSuggestion,
   ]);
 
   useEffect(() => {
@@ -659,18 +697,43 @@ export function RouteCheckFutureSection({
           ) : null}
           <div
             style={{
-              border: '1px solid rgba(34, 197, 94, 0.3)',
-              background: 'rgba(34, 197, 94, 0.09)',
+              border:
+                pausePhase === 'critical'
+                  ? '1px solid rgba(220, 38, 38, 0.45)'
+                  : pausePhase === 'warning'
+                    ? '1px solid rgba(245, 158, 11, 0.5)'
+                    : shouldShowPauseStopSuggestion
+                      ? '1px solid rgba(34, 197, 94, 0.3)'
+                      : '1px solid rgba(148, 163, 184, 0.28)',
+              background:
+                pausePhase === 'critical'
+                  ? 'rgba(220, 38, 38, 0.1)'
+                  : pausePhase === 'warning'
+                    ? 'rgba(245, 158, 11, 0.12)'
+                    : shouldShowPauseStopSuggestion
+                      ? 'rgba(34, 197, 94, 0.09)'
+                      : 'rgba(148, 163, 184, 0.08)',
               borderRadius: '14px',
               padding: '0.9rem 1rem',
               display: 'grid',
               gap: '0.25rem',
             }}
           >
-            {recommendedRestStop ? (
+            {pausePhase === 'early' ? (
               <>
                 <strong>
-                  {tx(language, 'Anbefalt stopp', 'Recommended stop')}: {recommendedRestStop.name}
+                  {tx(language, 'Pause senest', 'Break by')}: {pauseDeadlineText || '-'}
+                </strong>
+                <span className="helper" style={{ margin: 0 }}>
+                  {tx(language, 'Stopp foreslås når du nærmer deg pause', 'Stops are suggested as you approach break time')}
+                </span>
+              </>
+            ) : shouldShowPauseStopSuggestion && recommendedRestStop ? (
+              <>
+                <strong>
+                  {pausePhase === 'prepare'
+                    ? tx(language, 'Planlegg stopp', 'Plan stop')
+                    : tx(language, 'Anbefalt stopp', 'Recommended stop')}: {recommendedRestStop.name}
                 </strong>
                 {typeof recommendedRestStop.distanceKm === 'number' ? (
                   <span className="helper" style={{ margin: 0 }}>
@@ -694,7 +757,11 @@ export function RouteCheckFutureSection({
                 </span>
               </>
             ) : (
-              <strong>{tx(language, 'Ingen stopp før pause - stopp tidligere', 'No stop before break - stop earlier')}</strong>
+              <strong>
+                {pausePhase === 'critical'
+                  ? tx(language, 'Ingen stopp før pause - stopp tidligere', 'No stop before break - stop earlier')
+                  : pauseStatus.text}
+              </strong>
             )}
           </div>
           <div className="trip-status-grid">
@@ -712,7 +779,11 @@ export function RouteCheckFutureSection({
             </div>
             <div className="trip-status-card">
               <span>{tx(language, 'Pause', 'Break')}</span>
-              <strong>{pauseStatus.text}</strong>
+              <strong>
+                {pausePhase === 'early' && pauseDeadlineText
+                  ? `${tx(language, 'Senest', 'By')} ${pauseDeadlineText}`
+                  : pauseStatus.text}
+              </strong>
             </div>
           </div>
           {routeWarningLoading ? (
