@@ -40,9 +40,17 @@ type RouteMapRestStop = {
   lat: number;
   lon: number;
   distanceKm?: number;
+  label?: string;
+  isRecommended?: boolean;
 };
 
 type CurrentPosition = {
+  lat: number;
+  lon: number;
+};
+
+type MapAlert = {
+  type: 'height' | 'roadwork' | 'rest-stop';
   lat: number;
   lon: number;
 };
@@ -58,6 +66,10 @@ type LeafletMarkerInstance = {
 
 function warningKey(warning: RouteMapWarning) {
   return `${warning.lat}-${warning.lon}-${warning.severity}-${warning.description}`;
+}
+
+function alertKey(alert: MapAlert) {
+  return `${alert.type}-${alert.lat}-${alert.lon}`;
 }
 
 function simplifyRoute(points: [number, number][] | null | undefined, step = 10) {
@@ -90,6 +102,7 @@ export default function RouteMap({
   roadwork = [],
   restStops = [],
   selectedWarning = null,
+  selectedAlert = null,
   currentPosition = null,
   onRoutePointsChange,
 }: {
@@ -100,6 +113,7 @@ export default function RouteMap({
   roadwork?: RouteMapRoadwork[];
   restStops?: RouteMapRestStop[];
   selectedWarning?: RouteMapWarning | null;
+  selectedAlert?: MapAlert | null;
   currentPosition?: CurrentPosition | null;
   onRoutePointsChange?: (points: [number, number][]) => void;
 }) {
@@ -111,6 +125,7 @@ export default function RouteMap({
   const [LeafletComponents, setLeafletComponents] = useState<LeafletComponentsType | null>(null);
   const mapRef = useRef<LeafletMapInstance | null>(null);
   const warningMarkerRefs = useRef<Map<string, LeafletMarkerInstance>>(new Map());
+  const alertMarkerRefs = useRef<Map<string, LeafletMarkerInstance>>(new Map());
   const hasRouteInput = Boolean(routeFrom.trim() && routeTo.trim());
   const simplifiedRoute = useMemo(() => {
     const routePoints = routePath ?? [];
@@ -308,6 +323,14 @@ export default function RouteMap({
   }, [selectedWarning]);
 
   useEffect(() => {
+    if (!selectedAlert || !Number.isFinite(selectedAlert.lat) || !Number.isFinite(selectedAlert.lon)) return;
+
+    const center: [number, number] = [selectedAlert.lat, selectedAlert.lon];
+    mapRef.current?.setView(center, 15);
+    alertMarkerRefs.current.get(alertKey(selectedAlert))?.openPopup();
+  }, [selectedAlert]);
+
+  useEffect(() => {
     if (simplifiedRoute.length > 1) {
       mapRef.current?.fitBounds(simplifiedRoute, { padding: [32, 32] });
       return;
@@ -317,6 +340,26 @@ export default function RouteMap({
       mapRef.current?.fitBounds([fromCoord, toCoord], { padding: [32, 32] });
     }
   }, [fromCoord, simplifiedRoute, toCoord]);
+
+  useEffect(() => {
+    if (!currentPosition || simplifiedRoute.length < 2) return;
+
+    let nearestIndex = 0;
+    let nearestDistance = Infinity;
+    for (let index = 0; index < simplifiedRoute.length; index += 1) {
+      const routePoint = simplifiedRoute[index];
+      const latDelta = routePoint[0] - currentPosition.lat;
+      const lonDelta = routePoint[1] - currentPosition.lon;
+      const distance = latDelta * latDelta + lonDelta * lonDelta;
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = index;
+      }
+    }
+
+    const lookAheadIndex = Math.min(nearestIndex + 8, simplifiedRoute.length - 1);
+    mapRef.current?.setView(simplifiedRoute[lookAheadIndex], 13);
+  }, [currentPosition, simplifiedRoute]);
 
   const routeCaption = (() => {
     if (hasRouteInput && routeStatus === 'loading') {
@@ -378,8 +421,10 @@ export default function RouteMap({
                   const key = warningKey(warning);
                   if (marker) {
                     warningMarkerRefs.current.set(key, marker);
+                    alertMarkerRefs.current.set(alertKey({ type: 'height', lat: warning.lat, lon: warning.lon }), marker);
                   } else {
                     warningMarkerRefs.current.delete(key);
+                    alertMarkerRefs.current.delete(alertKey({ type: 'height', lat: warning.lat, lon: warning.lon }));
                   }
                 }}
                 icon={LeafletComponents.L.divIcon({
@@ -402,6 +447,14 @@ export default function RouteMap({
               <LeafletComponents.Marker
                 key={`roadwork-${incident.lat}-${incident.lon}-${index}`}
                 position={incident.mapPosition}
+                ref={(marker: LeafletMarkerInstance | null) => {
+                  const key = alertKey({ type: 'roadwork', lat: incident.lat, lon: incident.lon });
+                  if (marker) {
+                    alertMarkerRefs.current.set(key, marker);
+                  } else {
+                    alertMarkerRefs.current.delete(key);
+                  }
+                }}
                 icon={LeafletComponents.L.divIcon({
                   className: '',
                   html: '<span style="display:block;width:20px;height:20px;border-radius:6px;background:#0ea5e9;border:3px solid #fef08a;box-shadow:0 8px 18px rgba(0,0,0,.28);"></span>',
@@ -429,9 +482,17 @@ export default function RouteMap({
               <LeafletComponents.Marker
                 key={`rest-stop-${stop.lat}-${stop.lon}-${index}`}
                 position={stop.mapPosition}
+                ref={(marker: LeafletMarkerInstance | null) => {
+                  const key = alertKey({ type: 'rest-stop', lat: stop.lat, lon: stop.lon });
+                  if (marker) {
+                    alertMarkerRefs.current.set(key, marker);
+                  } else {
+                    alertMarkerRefs.current.delete(key);
+                  }
+                }}
                 icon={LeafletComponents.L.divIcon({
                   className: '',
-                  html: '<span style="display:block;width:20px;height:20px;border-radius:999px;background:#22c55e;border:3px solid #fff;box-shadow:0 8px 18px rgba(0,0,0,.28);"></span>',
+                  html: `<span style="display:block;width:${stop.isRecommended ? 24 : 18}px;height:${stop.isRecommended ? 24 : 18}px;border-radius:999px;background:${stop.isRecommended ? '#16a34a' : '#86efac'};border:3px solid #fff;box-shadow:0 8px 18px rgba(0,0,0,.28);"></span>`,
                   iconSize: [20, 20],
                   iconAnchor: [10, 10],
                 })}
@@ -439,7 +500,7 @@ export default function RouteMap({
                 <LeafletComponents.Popup>
                   <strong>{stop.name}</strong>
                   <br />
-                  <span>{tx(language, 'Hvileplass', 'Rest stop')}</span>
+                  <span>{stop.label ?? tx(language, 'Hvileplass', 'Rest stop')}</span>
                   {typeof stop.distanceKm === 'number' ? (
                     <>
                       <br />

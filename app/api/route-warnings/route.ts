@@ -462,8 +462,12 @@ async function fetchRestStops(route: Coordinate[] | undefined, debug: RouteWarni
 (
   node["highway"="rest_area"](${south},${west},${north},${east});
   way["highway"="rest_area"](${south},${west},${north},${east});
-  node["amenity"="parking"]["access"!="private"](${south},${west},${north},${east});
-  way["amenity"="parking"]["access"!="private"](${south},${west},${north},${east});
+  node["amenity"="parking"]["hgv"="yes"](${south},${west},${north},${east});
+  way["amenity"="parking"]["hgv"="yes"](${south},${west},${north},${east});
+  node["amenity"="parking"]["truck"="yes"](${south},${west},${north},${east});
+  way["amenity"="parking"]["truck"="yes"](${south},${west},${north},${east});
+  node["amenity"="parking"]["name"](${south},${west},${north},${east});
+  way["amenity"="parking"]["name"](${south},${west},${north},${east});
 );
 out center;
 `;
@@ -528,13 +532,23 @@ out center;
         const tags = asRecord(record.tags);
         const access = String(tags?.access ?? '').toLowerCase();
         const bicycle = String(tags?.bicycle ?? '').toLowerCase();
-        const motorVehicle = String(tags?.motor_vehicle ?? tags?.motorcar ?? '').toLowerCase();
+        const motorcycle = String(tags?.motorcycle ?? '').toLowerCase();
         const parking = String(tags?.parking ?? '').toLowerCase();
+        const highway = String(tags?.highway ?? '').toLowerCase();
+        const amenity = String(tags?.amenity ?? '').toLowerCase();
+        const hgv = String(tags?.hgv ?? '').toLowerCase();
+        const truck = String(tags?.truck ?? '').toLowerCase();
+        const hasName = Boolean(parseText(tags?.name) ?? parseText(tags?.operator));
         const capacity = parseNumber(tags?.capacity);
         if (access === 'private' || access === 'no') return null;
-        if (bicycle === 'designated' && motorVehicle !== 'yes') return null;
-        if (parking === 'bicycle') return null;
+        if (parking === 'layby' || parking === 'street_side' || parking === 'bicycle') return null;
+        if (bicycle === 'yes' || bicycle === 'designated') return null;
+        if (motorcycle === 'yes' || motorcycle === 'designated') return null;
         if (capacity !== null && capacity > 0 && capacity < 5) return null;
+        const isRestArea = highway === 'rest_area';
+        const isTruckParking = amenity === 'parking' && (hgv === 'yes' || truck === 'yes');
+        const isNamedParkingNearRoute = amenity === 'parking' && hasName;
+        if (!isRestArea && !isTruckParking && !isNamedParkingNearRoute) return null;
 
         const distanceKm = routeDistanceKmToNearestPoint(
           [lat, lon],
@@ -549,7 +563,6 @@ out center;
         }
 
         const rawName = parseText(tags?.name) ?? parseText(tags?.operator);
-        const isRestArea = tags?.highway === 'rest_area';
         const name = rawName ?? (isRestArea ? 'Hvileplass' : 'Parkering');
         const key = `${Math.round(lat * 10000)}:${Math.round(lon * 10000)}:${name}`;
         if (seen.has(key)) return null;
