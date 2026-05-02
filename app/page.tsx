@@ -1171,6 +1171,8 @@ export default function Home() {
         autoCheckKey={tripCalculationKey}
         ltpSummary={getTripLtpSummary()}
         nextBreakSummary={getNextBreakSummary()}
+        plannedDeparture={plannedDeparture}
+        drivingUsedTodayHours={drivingUsedTodayHours}
         detailsContent={(restStops) => (
           <details className="trip-detail-card">
             <summary>{tx(language, 'Kjøre- og hviletid', 'Driving and rest time')}</summary>

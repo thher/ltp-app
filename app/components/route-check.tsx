@@ -81,6 +81,8 @@ type RouteWarningResponse = {
     nvdbHeightFilteredCount: number;
     datexFetchedCount: number;
     datexMatchedRouteCount: number;
+    datexReturnedCount: number;
+    datexDebugReason: string;
     restStopCount: number;
     restStopsFetchedCount: number;
     restStopsMissingCoordinatesCount: number;
@@ -107,6 +109,7 @@ function formatHeightMeters(valueMeters: number, language: Language) {
 }
 
 const AVERAGE_TRUCK_SPEED_KMH = 70;
+const MAX_DRIVING_BEFORE_BREAK_HOURS = 4.5;
 
 function parseRemainingDrivingHours(value?: string) {
   if (!value) return null;
@@ -119,6 +122,12 @@ function parseRemainingDrivingHours(value?: string) {
   return hours + minutes / 60;
 }
 
+function parseDrivingHours(value?: string) {
+  if (!value) return 0;
+  const parsed = Number(value.replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 export function RouteCheckFutureSection({
   language,
   routeFrom,
@@ -127,6 +136,8 @@ export function RouteCheckFutureSection({
   autoCheckKey = 0,
   ltpSummary,
   nextBreakSummary,
+  plannedDeparture,
+  drivingUsedTodayHours,
   detailsContent,
   afterVehicleDetailsContent,
 }: {
@@ -137,6 +148,8 @@ export function RouteCheckFutureSection({
   autoCheckKey?: number;
   ltpSummary?: string;
   nextBreakSummary?: string;
+  plannedDeparture?: string;
+  drivingUsedTodayHours?: string;
   detailsContent?: ReactNode | ((restStops: RestStop[]) => ReactNode);
   afterVehicleDetailsContent?: ReactNode;
 }) {
@@ -173,11 +186,58 @@ export function RouteCheckFutureSection({
       : cautionWarningCount > 0
         ? `${cautionWarningCount} ${tx(language, 'nær', 'caution')}`
         : tx(language, '0 varsler', '0 warnings');
-  const trafficSummary = routeWarningLoading ? tx(language, 'Sjekker', 'Checking') : String(roadworkCount);
+  const trafficSummary = routeWarningLoading
+    ? tx(language, 'Sjekker', 'Checking')
+    : roadworkCount > 0
+      ? `${roadworkCount} ${tx(language, 'hendelser', 'incidents')}`
+      : tx(language, 'Ingen funnet', 'None found');
+  const remainingDrivingMinutes = useMemo(() => {
+    const usedHours = parseDrivingHours(drivingUsedTodayHours);
+    if (usedHours === null) return null;
+    return Math.max(Math.round((MAX_DRIVING_BEFORE_BREAK_HOURS - usedHours) * 60), 0);
+  }, [drivingUsedTodayHours]);
+  const pauseStatus = useMemo(() => {
+    const departureIsValid = !plannedDeparture || Number.isFinite(new Date(plannedDeparture).getTime());
+    if (!departureIsValid) {
+      return {
+        tone: 'warning' as const,
+        text: tx(language, 'Pause ikke beregnet', 'Break not calculated'),
+      };
+    }
+
+    if (remainingDrivingMinutes === null) {
+      return {
+        tone: 'warning' as const,
+        text: tx(language, 'Pause ikke beregnet', 'Break not calculated'),
+      };
+    }
+
+    if (remainingDrivingMinutes <= 15) {
+      return {
+        tone: 'critical' as const,
+        text: tx(language, 'STOPP snart - hviletid nærmer seg', 'STOP soon - rest time is approaching'),
+      };
+    }
+
+    if (remainingDrivingMinutes <= 30) {
+      return {
+        tone: 'warning' as const,
+        text: tx(language, 'Pause snart nødvendig', 'Break needed soon'),
+      };
+    }
+
+    return {
+      tone: 'info' as const,
+      text: tx(language, `Pause om ${remainingDrivingMinutes} min`, `Break in ${remainingDrivingMinutes} min`),
+    };
+  }, [language, plannedDeparture, remainingDrivingMinutes]);
   const estimatedStopDistanceKm = useMemo(() => {
-    const remainingHours = parseRemainingDrivingHours(nextBreakSummary);
-    return remainingHours !== null ? remainingHours * AVERAGE_TRUCK_SPEED_KMH : null;
-  }, [nextBreakSummary]);
+    if (remainingDrivingMinutes === null) {
+      const remainingHours = parseRemainingDrivingHours(nextBreakSummary);
+      return remainingHours !== null ? remainingHours * AVERAGE_TRUCK_SPEED_KMH : null;
+    }
+    return (remainingDrivingMinutes / 60) * AVERAGE_TRUCK_SPEED_KMH;
+  }, [nextBreakSummary, remainingDrivingMinutes]);
   const recommendedRestStop = useMemo(() => {
     if (estimatedStopDistanceKm === null || restStops.length === 0) return null;
     return restStops
@@ -226,17 +286,7 @@ export function RouteCheckFutureSection({
       });
     }
 
-    if (estimatedTimeToStop !== null && estimatedTimeToStop < 0.25) {
-      messages.push({
-        tone: 'critical',
-        text: tx(language, 'STOPP snart - hviletid nærmer seg', 'STOP soon - rest time is approaching'),
-      });
-    } else if (estimatedTimeToStop !== null && estimatedTimeToStop < 0.5) {
-      messages.push({
-        tone: 'warning',
-        text: tx(language, 'Pause snart nødvendig', 'Break needed soon'),
-      });
-    }
+    messages.push(pauseStatus);
 
     if (realRoadwork.some((incident) => typeof incident.distanceKm === 'number' && incident.distanceKm <= 50)) {
       messages.push({
@@ -246,7 +296,7 @@ export function RouteCheckFutureSection({
     }
 
     return messages.slice(0, 3);
-  }, [checkedVehicleHeightMm, estimatedTimeToStop, language, nextCriticalWarning, realRoadwork]);
+  }, [checkedVehicleHeightMm, language, nextCriticalWarning, pauseStatus, realRoadwork]);
 
   const checkRouteWarnings = useCallback(async () => {
     setRouteWarningLoading(true);
@@ -357,6 +407,39 @@ export function RouteCheckFutureSection({
               </div>
             </div>
           ) : null}
+          <div
+            style={{
+              border: '1px solid rgba(34, 197, 94, 0.3)',
+              background: 'rgba(34, 197, 94, 0.09)',
+              borderRadius: '14px',
+              padding: '0.9rem 1rem',
+              display: 'grid',
+              gap: '0.25rem',
+            }}
+          >
+            {recommendedRestStop ? (
+              <>
+                <strong>
+                  {tx(language, 'Anbefalt stopp', 'Recommended stop')}: {recommendedRestStop.name}
+                </strong>
+                {typeof recommendedRestStop.distanceKm === 'number' ? (
+                  <span className="helper" style={{ margin: 0 }}>
+                    {recommendedRestStop.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
+                      maximumFractionDigits: 0,
+                    })}{' '}
+                    km
+                    {estimatedTimeToStop ? ` / ca. ${Math.round(estimatedTimeToStop * 60)} min ${tx(language, 'frem', 'ahead')}` : ''}
+                  </span>
+                ) : (
+                  <span className="helper" style={{ margin: 0 }}>
+                    {tx(language, 'avstand ikke beregnet', 'distance not calculated')}
+                  </span>
+                )}
+              </>
+            ) : (
+              <strong>{tx(language, 'Ingen egnet hvileplass funnet langs ruten', 'No suitable rest stop found along the route')}</strong>
+            )}
+          </div>
           <div className="trip-status-grid">
             <div className="trip-status-card">
               <span>{tx(language, 'Klarering', 'Clearance')}</span>
@@ -372,7 +455,7 @@ export function RouteCheckFutureSection({
             </div>
             <div className="trip-status-card">
               <span>{tx(language, 'Pause', 'Break')}</span>
-              <strong>{nextBreakSummary ?? tx(language, 'Avgang ikke satt', 'Departure not set')}</strong>
+              <strong>{pauseStatus.text}</strong>
             </div>
           </div>
           {routeWarningLoading ? (
@@ -455,6 +538,12 @@ export function RouteCheckFutureSection({
                     </div>
                   )}
                   <h3>{tx(language, 'Veiarbeid og trafikk', 'Roadwork and traffic')}</h3>
+                  <p className="helper" style={{ margin: 0 }}>
+                    DATEX: {routeWarningResult.debug?.datexFetchedCount ?? 0} {tx(language, 'hentet', 'fetched')},{' '}
+                    {routeWarningResult.debug?.datexMatchedRouteCount ?? 0} {tx(language, 'nær ruten', 'near route')},{' '}
+                    {routeWarningResult.debug?.datexReturnedCount ?? 0} {tx(language, 'vist', 'shown')}.
+                    {routeWarningResult.debug?.datexDebugReason ? ` ${routeWarningResult.debug.datexDebugReason}` : ''}
+                  </p>
                   {realRoadwork.length === 0 ? (
                     <p>{tx(language, 'Ingen registrerte veiarbeid eller trafikkmeldinger langs ruten akkurat nå.', 'No registered roadwork or traffic incidents along the route right now.')}</p>
                   ) : (
@@ -473,6 +562,7 @@ export function RouteCheckFutureSection({
                         >
                           <strong>{tx(language, 'Veiarbeid / trafikk', 'Roadwork / traffic')}</strong>
                           <span>{incident.description}</span>
+                          <span>{tx(language, 'Kan påvirke ruten', 'May affect the route')}</span>
                           {typeof incident.distanceKm === 'number' ? (
                             <div className="helper" style={{ margin: 0 }}>
                               {incident.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {

@@ -17,6 +17,8 @@ type RouteWarningDebug = {
   nvdbHeightFilteredCount: number;
   datexFetchedCount: number;
   datexMatchedRouteCount: number;
+  datexReturnedCount: number;
+  datexDebugReason: string;
   restStopCount: number;
   restStopsFetchedCount: number;
   restStopsMissingCoordinatesCount: number;
@@ -72,6 +74,8 @@ function createDebug(usedRouteFilter: boolean): RouteWarningDebug {
     nvdbHeightFilteredCount: 0,
     datexFetchedCount: 0,
     datexMatchedRouteCount: 0,
+    datexReturnedCount: 0,
+    datexDebugReason: 'not checked',
     restStopCount: 0,
     restStopsFetchedCount: 0,
     restStopsMissingCoordinatesCount: 0,
@@ -414,10 +418,21 @@ async function fetchDatexRoadworkWarnings(route: Coordinate[] | undefined, debug
       .slice(0, MAX_TRAFFIC_WARNINGS);
 
     debug.datexMatchedRouteCount = route ? roadwork.length : 0;
+    debug.datexReturnedCount = roadwork.length;
+    if (records.length === 0) {
+      debug.datexDebugReason = 'DATEX returned 0 records';
+    } else if (route && roadwork.length === 0) {
+      debug.datexDebugReason = 'route filtering removed all';
+    } else {
+      debug.datexDebugReason = 'ok';
+    }
     return roadwork;
-  } catch {
+  } catch (error) {
+    console.error('DATEX traffic fetch failed:', error);
     debug.datexFetchedCount = 0;
     debug.datexMatchedRouteCount = 0;
+    debug.datexReturnedCount = 0;
+    debug.datexDebugReason = 'DATEX request failed';
     return [];
   }
 }
