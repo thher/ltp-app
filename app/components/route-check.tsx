@@ -385,9 +385,28 @@ export function RouteCheckFutureSection({
     }
     return tx(language, 'For sent - stopp tidligere', 'Too late - stop earlier');
   }, [language, recommendedRestStop]);
+  const stopAlternatives = useMemo(
+    () =>
+      shouldShowPauseStopSuggestion
+        ? restStops
+            .filter(
+              (stop) =>
+                !recommendedRestStop ||
+                stop.lat !== recommendedRestStop.lat ||
+                stop.lon !== recommendedRestStop.lon,
+            )
+            .slice(0, 2)
+        : [],
+    [recommendedRestStop, restStops, shouldShowPauseStopSuggestion],
+  );
+  const visibleRestStops = useMemo(() => {
+    if (!shouldShowPauseStopSuggestion) return restStops.slice(0, 3);
+    if (!recommendedRestStop) return restStops.slice(0, 3);
+    return [recommendedRestStop, ...stopAlternatives].slice(0, 3);
+  }, [recommendedRestStop, restStops, shouldShowPauseStopSuggestion, stopAlternatives]);
   const restStopsForMap = useMemo(
     () =>
-      restStops.map((stop) => ({
+      visibleRestStops.map((stop) => ({
         ...stop,
         isRecommended:
           shouldShowPauseStopSuggestion &&
@@ -402,7 +421,7 @@ export function RouteCheckFutureSection({
             ? recommendedStopLabel
             : tx(language, 'Hvileplass', 'Rest stop'),
       })),
-    [language, recommendedRestStop, recommendedStopLabel, restStops, shouldShowPauseStopSuggestion],
+    [language, recommendedRestStop, recommendedStopLabel, shouldShowPauseStopSuggestion, visibleRestStops],
   );
   const currentRouteProgress = useMemo(
     () => routeProgressForPosition(currentPosition, routePoints),
@@ -755,12 +774,29 @@ export function RouteCheckFutureSection({
                       ? tx(language, 'Perfekt for pause', 'Perfect for break')
                       : tx(language, 'For sent - stopp tidligere', 'Too late - stop earlier')}
                 </span>
+                {stopAlternatives.length > 0 ? (
+                  <div className="helper" style={{ display: 'grid', gap: '0.2rem', margin: '0.25rem 0 0' }}>
+                    <strong>{tx(language, 'Alternativer', 'Alternatives')}</strong>
+                    {stopAlternatives.map((stop) => (
+                      <span key={`main-alt-${stop.lat}-${stop.lon}`}>
+                        {stop.name}
+                        {typeof stop.distanceKm === 'number'
+                          ? ` - ${stop.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
+                              maximumFractionDigits: 0,
+                            })} km`
+                          : ''}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
               </>
             ) : (
               <strong>
                 {pausePhase === 'critical'
                   ? tx(language, 'Ingen stopp før pause - stopp tidligere', 'No stop before break - stop earlier')
-                  : pauseStatus.text}
+                  : shouldShowPauseStopSuggestion
+                    ? tx(language, 'Ingen stopp funnet langs ruten', 'No stops found along the route')
+                    : pauseStatus.text}
               </strong>
             )}
           </div>
@@ -909,95 +945,70 @@ export function RouteCheckFutureSection({
                       ))}
                     </div>
                   )}
-                  <h3>{tx(language, 'Hvileplasser', 'Rest stops')}</h3>
-                  {restStops.length === 0 ? (
-                    <p className="helper">
-                      {tx(language, 'Ingen egnede hvileplasser funnet langs ruten', 'No suitable rest stops found along the route')}
-                    </p>
-                  ) : (
-                    <div style={{ display: 'grid', gap: '0.75rem' }}>
-                      <div
-                        style={{
-                          border: '1px solid rgba(34, 197, 94, 0.45)',
-                          background: 'rgba(34, 197, 94, 0.14)',
-                          borderRadius: '14px',
-                          padding: '0.85rem 1rem',
-                          display: 'grid',
-                          gap: '0.35rem',
-                        }}
-                      >
-                        <strong>{tx(language, 'Anbefalt stopp', 'Recommended stop')}</strong>
-                        {recommendedRestStop ? (
-                          <>
-                            <span>{recommendedRestStop.name}</span>
-                            {typeof recommendedRestStop.distanceKm === 'number' ? (
-                              <span className="helper" style={{ margin: 0 }}>
-                                {recommendedRestStop.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
-                                  maximumFractionDigits: 1,
-                                })}{' '}
-                                {tx(language, 'km frem', 'km ahead')}
-                              </span>
-                            ) : (
-                              <span className="helper" style={{ margin: 0 }}>
-                                {tx(language, 'avstand ikke beregnet', 'distance not calculated')}
-                              </span>
-                            )}
-                          {estimatedTimeToStop ? (
-                              <span className="helper" style={{ margin: 0 }}>
-                                {Math.round(estimatedTimeToStop * 60)} min
-                              </span>
-                            ) : null}
-                            <span className="helper" style={{ margin: 0 }}>
-                              {recommendedRestStop.reason === 'before-limit'
-                                ? tx(language, 'Siste sikre stopp før pause', 'Last safe stop before break')
-                                : recommendedRestStop.reason === 'ideal'
-                                  ? tx(language, 'Perfekt for pause', 'Perfect for break')
-                                  : tx(language, 'For sent - stopp tidligere', 'Too late - stop earlier')}
-                            </span>
-                            {isRecommendedStopTooFar ? (
-                              <span>{tx(language, 'Ingen ideell hvileplass - vurder tidligere stopp', 'No ideal rest stop - consider an earlier stop')}</span>
-                            ) : null}
-                        </>
-                        ) : (
-                          <span>{tx(language, 'Ingen stopp før pause - stopp tidligere', 'No stop before break - stop earlier')}</span>
-                        )}
-                      </div>
-                      {restStops.map((stop, index) => (
-                        <div
-                          key={`rest-stop-${stop.lat}-${stop.lon}-${index}`}
-                          style={{
-                            border: '1px solid rgba(34, 197, 94, 0.35)',
-                            background: 'rgba(34, 197, 94, 0.1)',
-                            borderRadius: '14px',
-                            padding: '0.85rem 1rem',
-                            display: 'grid',
-                            gap: '0.35rem',
-                          }}
-                        >
-                          <strong>{stop.name}</strong>
-                          {typeof stop.distanceKm === 'number' ? (
-                            <div className="helper" style={{ margin: 0 }}>
-                              {stop.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
-                                maximumFractionDigits: 1,
-                              })}{' '}
-                              {tx(language, 'km frem', 'km ahead')}
+                  {shouldShowPauseStopSuggestion ? (
+                    <>
+                      <h3>{tx(language, 'Hvileplasser', 'Rest stops')}</h3>
+                      {visibleRestStops.length === 0 ? (
+                        <p className="helper">
+                          {tx(language, 'Ingen stopp funnet langs ruten', 'No stops found along the route')}
+                        </p>
+                      ) : (
+                        <div style={{ display: 'grid', gap: '0.75rem' }}>
+                          {recommendedRestStop ? (
+                            <div
+                              style={{
+                                border: '1px solid rgba(34, 197, 94, 0.45)',
+                                background: 'rgba(34, 197, 94, 0.14)',
+                                borderRadius: '14px',
+                                padding: '0.85rem 1rem',
+                                display: 'grid',
+                                gap: '0.35rem',
+                              }}
+                            >
+                              <strong>{tx(language, 'Anbefalt stopp', 'Recommended stop')}: {recommendedRestStop.name}</strong>
+                              {typeof recommendedRestStop.distanceKm === 'number' ? (
+                                <span className="helper" style={{ margin: 0 }}>
+                                  {recommendedRestStop.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
+                                    maximumFractionDigits: 0,
+                                  })}{' '}
+                                  km
+                                  {estimatedTimeToStop ? ` / ca. ${Math.round(estimatedTimeToStop * 60)} min ${tx(language, 'frem', 'ahead')}` : ''}
+                                </span>
+                              ) : null}
+                              <span className="helper" style={{ margin: 0 }}>{recommendedStopLabel}</span>
+                              {isRecommendedStopTooFar ? (
+                                <span>{tx(language, 'Ingen stopp før pause - stopp tidligere', 'No stop before break - stop earlier')}</span>
+                              ) : null}
                             </div>
                           ) : (
-                            <div className="helper" style={{ margin: 0 }}>
-                              {tx(language, 'avstand ikke beregnet', 'distance not calculated')}
-                            </div>
+                            <p className="helper">{tx(language, 'Ingen stopp før pause - stopp tidligere', 'No stop before break - stop earlier')}</p>
                           )}
+                          {stopAlternatives.length > 0 ? (
+                            <div className="helper" style={{ display: 'grid', gap: '0.25rem', margin: 0 }}>
+                              <strong>{tx(language, 'Alternativer', 'Alternatives')}</strong>
+                              {stopAlternatives.map((stop) => (
+                                <span key={`rest-stop-alt-${stop.lat}-${stop.lon}`}>
+                                  {stop.name}
+                                  {typeof stop.distanceKm === 'number'
+                                    ? ` - ${stop.distanceKm.toLocaleString(language === 'no' ? 'nb-NO' : 'en-US', {
+                                        maximumFractionDigits: 0,
+                                      })} km`
+                                    : ''}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      )}
+                    </>
+                  ) : null}
                 </>
               ) : (
                 <p>{tx(language, 'Varsler sjekkes automatisk når ruten er klar.', 'Warnings are checked automatically when the route is ready.')}</p>
               )}
             </details>
 
-            {typeof detailsContent === 'function' ? detailsContent(restStops) : detailsContent}
+            {typeof detailsContent === 'function' ? detailsContent(shouldShowPauseStopSuggestion ? visibleRestStops : []) : detailsContent}
 
             <details className="trip-detail-card">
               <summary>{tx(language, 'Kjøretøydata', 'Vehicle data')}</summary>
@@ -1157,9 +1168,9 @@ export function DrivingRestSection({
             <strong>{tx(language, 'Døgnhvile senest', 'Daily rest by')}</strong>
             <div>{dailyRestBy ? formatDateShort(dailyRestBy) : tx(language, 'Avgangstid ikke satt', 'Departure time not set')}</div>
           </div>
-          <div>
-            <strong>{tx(language, 'Anbefalte stoppesteder', 'Recommended stops')}</strong>
-            {restStops.length > 0 ? (
+          {restStops.length > 0 ? (
+            <div>
+              <strong>{tx(language, 'Anbefalte stoppesteder', 'Recommended stops')}</strong>
               <div style={{ display: 'grid', gap: '0.35rem' }}>
                 {restStops.slice(0, 3).map((stop, index) => (
                   <div key={`driving-rest-stop-${stop.lat}-${stop.lon}-${index}`}>
@@ -1179,10 +1190,8 @@ export function DrivingRestSection({
                   </div>
                 ))}
               </div>
-            ) : (
-              <div>{tx(language, 'Ingen hvileplasser funnet langs ruten', 'No rest stops found along the route')}</div>
-            )}
-          </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </section>

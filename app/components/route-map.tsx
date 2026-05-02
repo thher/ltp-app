@@ -492,7 +492,7 @@ export default function RouteMap({
                 }}
                 icon={LeafletComponents.L.divIcon({
                   className: '',
-                  html: `<span style="display:block;width:${stop.isRecommended ? 24 : 18}px;height:${stop.isRecommended ? 24 : 18}px;border-radius:999px;background:${stop.isRecommended ? '#16a34a' : '#86efac'};border:3px solid #fff;box-shadow:0 8px 18px rgba(0,0,0,.28);"></span>`,
+                  html: `<span style="display:block;width:${stop.isRecommended ? 24 : 18}px;height:${stop.isRecommended ? 24 : 18}px;border-radius:999px;background:${stop.isRecommended ? '#16a34a' : '#86efac'};opacity:${stop.isRecommended ? 1 : 0.55};border:3px solid #fff;box-shadow:0 8px 18px rgba(0,0,0,.28);"></span>`,
                   iconSize: [20, 20],
                   iconAnchor: [10, 10],
                 })}
