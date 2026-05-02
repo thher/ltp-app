@@ -91,9 +91,17 @@ type LiveStatusMessage = {
   priority: number;
   text: string;
   alert?: MapAlert;
+  alertId?: string;
+  speakText?: string;
+  distanceKm?: number;
 };
 
 type PausePhase = 'unknown' | 'early' | 'prepare' | 'warning' | 'critical';
+
+type SpokenAlertMemory = {
+  distanceKm?: number;
+  lastSpokenAt: number;
+};
 
 type RouteWarningResponse = {
   warnings: RouteWarning[];
@@ -198,6 +206,35 @@ function routeProgressForPosition(position: CurrentPosition | null, route: Coord
   return nearestIndex >= 0 ? { index: nearestIndex, distanceKm: distanceAtNearestKm } : null;
 }
 
+function routeLengthKm(route: Coordinate[]) {
+  let distanceKm = 0;
+  for (let index = 1; index < route.length; index += 1) {
+    distanceKm += haversineKm(route[index - 1], route[index]);
+  }
+  return distanceKm;
+}
+
+function routePointAtDistance(route: Coordinate[], targetDistanceKm: number) {
+  if (route.length === 0) return null;
+
+  let distanceKm = 0;
+  for (let index = 1; index < route.length; index += 1) {
+    const start = route[index - 1];
+    const end = route[index];
+    const segmentKm = haversineKm(start, end);
+    if (distanceKm + segmentKm >= targetDistanceKm) {
+      const ratio = segmentKm > 0 ? (targetDistanceKm - distanceKm) / segmentKm : 0;
+      return [
+        start[0] + (end[0] - start[0]) * ratio,
+        start[1] + (end[1] - start[1]) * ratio,
+      ] as Coordinate;
+    }
+    distanceKm += segmentKm;
+  }
+
+  return route[route.length - 1];
+}
+
 export function RouteCheckFutureSection({
   language,
   routeFrom,
@@ -238,7 +275,11 @@ export function RouteCheckFutureSection({
   const [routePoints, setRoutePoints] = useState<Coordinate[]>([]);
   const [currentPosition, setCurrentPosition] = useState<CurrentPosition | null>(null);
   const [locationStatus, setLocationStatus] = useState<'pending' | 'active' | 'unavailable'>('pending');
+  const [voiceAlertsEnabled, setVoiceAlertsEnabled] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(true);
+  const [testRoadworkEnabled, setTestRoadworkEnabled] = useState(false);
   const lastPositionUpdateRef = useRef(0);
+  const spokenAlertIdsRef = useRef<Map<string, SpokenAlertMemory>>(new Map());
   const handleRoutePointsChange = useCallback((points: Coordinate[]) => {
     setRoutePoints(points);
   }, []);
@@ -255,11 +296,30 @@ export function RouteCheckFutureSection({
   const criticalWarningCount = (routeWarningResult?.warnings ?? []).filter((warning) => warning.severity === 'critical').length;
   const cautionWarningCount = (routeWarningResult?.warnings ?? []).filter((warning) => warning.severity === 'caution').length;
   const realRoadwork = useMemo(() => routeWarningResult?.roadwork ?? [], [routeWarningResult]);
+  const routeTotalKm = useMemo(() => routeLengthKm(routePoints), [routePoints]);
+  const testRoadwork = useMemo<RoadworkWarning[]>(() => {
+    if (!testRoadworkEnabled || routeTotalKm <= 0) return [];
+    const point = routePointAtDistance(routePoints, routeTotalKm / 2);
+    if (!point) return [];
+    return [
+      {
+        type: 'roadwork',
+        description: 'Test veiarbeid',
+        lat: point[0],
+        lon: point[1],
+        distanceKm: Math.round((routeTotalKm / 2) * 10) / 10,
+      },
+    ];
+  }, [routePoints, routeTotalKm, testRoadworkEnabled]);
+  const displayedRoadwork = useMemo(
+    () => [...realRoadwork, ...testRoadwork].sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity)),
+    [realRoadwork, testRoadwork],
+  );
   const restStops = useMemo(
     () => [...(routeWarningResult?.restStops ?? [])].sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity)),
     [routeWarningResult],
   );
-  const roadworkCount = realRoadwork.length;
+  const roadworkCount = displayedRoadwork.length;
   const heightWarningSummary = routeWarningLoading
     ? tx(language, 'Sjekker', 'Checking')
     : criticalWarningCount > 0
@@ -445,11 +505,11 @@ export function RouteCheckFutureSection({
   );
   const nextRoadwork = useMemo(
     () =>
-      realRoadwork
+      displayedRoadwork
         .map((incident) => ({ incident, aheadKm: distanceAheadFromCurrent(incident.distanceKm) }))
         .filter((item): item is { incident: RoadworkWarning; aheadKm: number } => item.aheadKm !== null)
         .sort((a, b) => a.aheadKm - b.aheadKm)[0] ?? null,
-    [distanceAheadFromCurrent, realRoadwork],
+    [displayedRoadwork, distanceAheadFromCurrent],
   );
   const liveStatusMessages = useMemo(() => {
     const messages: LiveStatusMessage[] = [];
@@ -478,13 +538,22 @@ export function RouteCheckFutureSection({
         messages.push({
           tone: isCritical ? 'critical' : 'warning',
           priority: isCritical ? 0 : 20,
-          text: `🔴 ${tx(language, 'Lav høyde om', 'Low height in')} ${formatKm(nextHeightWarning.aheadKm, language)} km`,
-          alert: {
-            type: 'height',
-            lat: nextHeightWarning.warning.lat,
-            lon: nextHeightWarning.warning.lon,
-          },
-        });
+        text: `🔴 ${tx(language, 'Lav høyde om', 'Low height in')} ${formatKm(nextHeightWarning.aheadKm, language)} km`,
+        alert: {
+          type: 'height',
+          lat: nextHeightWarning.warning.lat,
+          lon: nextHeightWarning.warning.lon,
+        },
+        alertId: `height-${nextHeightWarning.warning.lat}-${nextHeightWarning.warning.lon}`,
+        speakText: isCritical
+          ? tx(
+              language,
+              `Lav høyde om ${formatKm(nextHeightWarning.aheadKm, language)} kilometer. Ruten må endres.`,
+              `Low height in ${formatKm(nextHeightWarning.aheadKm, language)} kilometers. Change the route.`,
+            )
+          : undefined,
+        distanceKm: nextHeightWarning.aheadKm,
+      });
       }
     }
 
@@ -500,10 +569,22 @@ export function RouteCheckFutureSection({
     if (pausePhase === 'prepare') {
       messages.push({ tone: 'info', priority: 10, text: pauseStatus.text });
     } else if (pausePhase === 'warning') {
-      messages.push({ tone: 'warning', priority: 10, text: pauseStatus.text });
+      messages.push({
+        tone: 'warning',
+        priority: 10,
+        text: pauseStatus.text,
+        alertId: 'pause-warning',
+        speakText: tx(language, 'Pause snart nødvendig.', 'Break needed soon.'),
+      });
       messages.push({ tone: 'warning', priority: 11, text: tx(language, 'Finn stopp snart', 'Find a stop soon') });
     } else if (pausePhase === 'critical') {
-      messages.push({ tone: 'critical', priority: 5, text: tx(language, 'STOPP snart', 'STOP soon') });
+      messages.push({
+        tone: 'critical',
+        priority: 5,
+        text: tx(language, 'STOPP snart', 'STOP soon'),
+        alertId: 'pause-critical',
+        speakText: tx(language, 'Stopp snart. Hviletid nærmer seg.', 'Stop soon. Rest time is approaching.'),
+      });
     } else if (pauseStatus.tone === 'warning') {
       messages.push({ ...pauseStatus, priority: 10 });
     }
@@ -537,6 +618,13 @@ export function RouteCheckFutureSection({
           lat: nextRoadwork.incident.lat,
           lon: nextRoadwork.incident.lon,
         },
+        alertId: `roadwork-${nextRoadwork.incident.lat}-${nextRoadwork.incident.lon}`,
+        speakText: tx(
+          language,
+          `Veiarbeid om ${formatKm(nextRoadwork.aheadKm, language)} kilometer.`,
+          `Roadwork in ${formatKm(nextRoadwork.aheadKm, language)} kilometers.`,
+        ),
+        distanceKm: nextRoadwork.aheadKm,
       });
     }
 
@@ -556,6 +644,49 @@ export function RouteCheckFutureSection({
     recommendedStopLabel,
     shouldShowPauseStopSuggestion,
   ]);
+  const navigationStatusText = useMemo(() => {
+    const firstActionable = liveStatusMessages.find((message) => message.tone !== 'support') ?? liveStatusMessages[0];
+    return firstActionable ? `${tx(language, 'Neste', 'Next')}: ${firstActionable.text.replace(/^[🔴🟠🟡🟢]\s*/, '')}` : '';
+  }, [language, liveStatusMessages]);
+
+  useEffect(() => {
+    setSpeechSupported(typeof window !== 'undefined' && 'speechSynthesis' in window);
+  }, []);
+
+  useEffect(() => {
+    if (!voiceAlertsEnabled || !speechSupported || locationStatus !== 'active') return;
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    const now = Date.now();
+    const speakableMessages = liveStatusMessages.filter((message) => message.alertId && message.speakText);
+    const activeIds = new Set(speakableMessages.map((message) => message.alertId as string));
+
+    for (const id of Array.from(spokenAlertIdsRef.current.keys())) {
+      if (!activeIds.has(id)) spokenAlertIdsRef.current.delete(id);
+    }
+
+    for (const message of speakableMessages) {
+      const alertId = message.alertId as string;
+      const previous = spokenAlertIdsRef.current.get(alertId);
+      const distanceChanged =
+        typeof message.distanceKm === 'number' &&
+        typeof previous?.distanceKm === 'number' &&
+        Math.abs(message.distanceKm - previous.distanceKm) > 2;
+      const cooldownPassed = previous ? now - previous.lastSpokenAt > 10 * 60 * 1000 : false;
+
+      if (previous && !distanceChanged && !cooldownPassed) continue;
+
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(message.speakText);
+      utterance.lang = language === 'no' ? 'nb-NO' : 'en-US';
+      window.speechSynthesis.speak(utterance);
+      spokenAlertIdsRef.current.set(alertId, {
+        distanceKm: message.distanceKm,
+        lastSpokenAt: now,
+      });
+      break;
+    }
+  }, [language, liveStatusMessages, locationStatus, speechSupported, voiceAlertsEnabled]);
 
   useEffect(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
@@ -653,12 +784,30 @@ export function RouteCheckFutureSection({
         </div>
 
         <div className="route-check-map-panel">
+          {navigationStatusText ? (
+            <div
+              className="route-live-guidance-bar"
+              style={{
+                position: 'sticky',
+                top: '0.75rem',
+                zIndex: 5,
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                background: 'var(--panel)',
+                borderRadius: '999px',
+                padding: '0.65rem 0.9rem',
+                boxShadow: '0 10px 24px rgba(15, 23, 42, 0.12)',
+                fontWeight: 800,
+              }}
+            >
+              {navigationStatusText}
+            </div>
+          ) : null}
           <RouteMap
             language={language}
             routeFrom={routeFrom}
             routeTo={routeTo}
             warnings={routeWarningResult?.warnings ?? []}
-            roadwork={realRoadwork}
+            roadwork={displayedRoadwork}
             restStops={restStopsForMap}
             selectedWarning={selectedWarning}
             selectedAlert={selectedMapAlert}
@@ -669,6 +818,35 @@ export function RouteCheckFutureSection({
             Rute, tunnel, høyde og trafikkdata er veiledende. Sjekk alltid skilting, vegliste og
             offisielle kilder før kjøring. Ikke bruk som eneste grunnlag for transport.
           </p>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '0.75rem',
+              border: '1px solid rgba(148, 163, 184, 0.28)',
+              borderRadius: '14px',
+              padding: '0.75rem 0.9rem',
+            }}
+          >
+            <div style={{ display: 'grid', gap: '0.15rem' }}>
+              <strong>{tx(language, 'Talebeskjeder', 'Voice alerts')}</strong>
+              {!speechSupported ? (
+                <span className="helper" style={{ margin: 0 }}>
+                  {tx(language, 'Talebeskjeder støttes ikke i denne nettleseren', 'Voice alerts are not supported in this browser')}
+                </span>
+              ) : null}
+            </div>
+            <label className="checkbox-label" style={{ margin: 0 }}>
+              <input
+                type="checkbox"
+                checked={voiceAlertsEnabled}
+                disabled={!speechSupported}
+                onChange={(event) => setVoiceAlertsEnabled(event.target.checked)}
+              />
+              <span>{voiceAlertsEnabled ? tx(language, 'På', 'On') : tx(language, 'Av', 'Off')}</span>
+            </label>
+          </div>
           {liveStatusMessages.length > 0 ? (
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               <strong style={{ fontSize: '1rem' }}>{tx(language, 'Live status', 'Live status')}</strong>
@@ -905,6 +1083,14 @@ export function RouteCheckFutureSection({
                     </div>
                   )}
                   <h3>{tx(language, 'Veiarbeid og trafikk', 'Roadwork and traffic')}</h3>
+                  <label className="checkbox-label" style={{ margin: '0 0 0.5rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={testRoadworkEnabled}
+                      onChange={(event) => setTestRoadworkEnabled(event.target.checked)}
+                    />
+                    <span>{tx(language, 'Test veiarbeid', 'Test roadwork')}</span>
+                  </label>
                   <div className="helper" style={{ display: 'grid', gap: '0.15rem', margin: 0 }}>
                     <span>
                       {tx(language, 'Trafikkdata hentet', 'Traffic data fetched')}: {routeWarningResult.debug?.datexFetchedCount ?? 0}
@@ -914,11 +1100,17 @@ export function RouteCheckFutureSection({
                     </span>
                     {routeWarningResult.debug?.datexDebugReason ? <span>{routeWarningResult.debug.datexDebugReason}</span> : null}
                   </div>
-                  {realRoadwork.length === 0 ? (
-                    <p>{tx(language, 'Ingen registrerte veiarbeid eller trafikkmeldinger langs ruten akkurat nå.', 'No registered roadwork or traffic incidents along the route right now.')}</p>
-                  ) : (
+                  {(routeWarningResult.debug?.datexFetchedCount ?? 0) === 0 ? (
+                    <p>{tx(language, 'Ingen trafikkdata tilgjengelig', 'No traffic data available')}</p>
+                  ) : (routeWarningResult.debug?.datexMatchedRouteCount ?? 0) === 0 ? (
+                    <p>{tx(language, 'Ingen veiarbeid langs denne ruten akkurat nå', 'No roadwork along this route right now')}</p>
+                  ) : null}
+                  {displayedRoadwork.length === 0 && (routeWarningResult.debug?.datexMatchedRouteCount ?? 0) > 0 ? (
+                    <p>{tx(language, 'Ingen veiarbeid langs denne ruten akkurat nå', 'No roadwork along this route right now')}</p>
+                  ) : null}
+                  {displayedRoadwork.length > 0 ? (
                     <div style={{ display: 'grid', gap: '0.75rem' }}>
-                      {realRoadwork.map((incident, index) => (
+                      {displayedRoadwork.map((incident, index) => (
                         <div
                           key={`roadwork-${incident.lat}-${incident.lon}-${index}`}
                           style={{
@@ -944,7 +1136,7 @@ export function RouteCheckFutureSection({
                         </div>
                       ))}
                     </div>
-                  )}
+                  ) : null}
                   {shouldShowPauseStopSuggestion ? (
                     <>
                       <h3>{tx(language, 'Hvileplasser', 'Rest stops')}</h3>

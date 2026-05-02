@@ -427,10 +427,10 @@ async function fetchDatexRoadworkWarnings(route: Coordinate[] | undefined, debug
 
     debug.datexMatchedRouteCount = route ? matchedRoadwork.length : roadwork.length;
     debug.datexReturnedCount = roadwork.length;
-    if (records.length === 0) {
-      debug.datexDebugReason = 'DATEX returned 0 records';
-    } else if (route && roadwork.length === 0) {
-      debug.datexDebugReason = 'route filtering removed all';
+    if (debug.datexFetchedCount === 0) {
+      debug.datexDebugReason = 'No DATEX data fetched';
+    } else if (debug.datexFetchedCount > 0 && debug.datexMatchedRouteCount === 0) {
+      debug.datexDebugReason = 'No incidents near route';
     } else {
       debug.datexDebugReason = 'ok';
     }

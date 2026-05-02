@@ -126,6 +126,7 @@ export default function RouteMap({
   const mapRef = useRef<LeafletMapInstance | null>(null);
   const warningMarkerRefs = useRef<Map<string, LeafletMarkerInstance>>(new Map());
   const alertMarkerRefs = useRef<Map<string, LeafletMarkerInstance>>(new Map());
+  const lastGpsPanRef = useRef(0);
   const hasRouteInput = Boolean(routeFrom.trim() && routeTo.trim());
   const simplifiedRoute = useMemo(() => {
     const routePoints = routePath ?? [];
@@ -343,6 +344,9 @@ export default function RouteMap({
 
   useEffect(() => {
     if (!currentPosition || simplifiedRoute.length < 2) return;
+    const now = Date.now();
+    if (now - lastGpsPanRef.current < 8000) return;
+    lastGpsPanRef.current = now;
 
     let nearestIndex = 0;
     let nearestDistance = Infinity;
