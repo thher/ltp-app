@@ -33,26 +33,25 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      - name: Bundle JavaScript
+      - name: Create signing keystore
         run: |
-          mkdir -p android/app/src/main/assets
-          npx expo export:embed \
-            --platform android \
-            --entry-file node_modules/expo-router/entry.js \
-            --bundle-output android/app/src/main/assets/index.android.bundle \
-            --assets-dest android/app/src/main/res \
-            --dev false
+          mkdir -p ~/.android
+          keytool -genkeypair \
+            -keystore ~/.android/debug.keystore \
+            -alias androiddebugkey \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US" \
+            -noprompt
 
-      - name: Build debug APK
-        run: |
-          cd android
-          ./gradlew assembleDebug --no-daemon
+      - name: Build release APK
+        run: cd android && ./gradlew assembleRelease --no-daemon
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: DrinkMix-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: DrinkMix-release
+          path: android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
