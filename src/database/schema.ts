@@ -1,5 +1,5 @@
 import * as SQLite from 'expo-sqlite';
-import { seedFromJson } from '../services/seedService';
+import { seedFromJson, refreshImagesFromCocktailDB } from '../services/seedService';
 
 export const SCHEMA_VERSION = 1;
 
@@ -72,7 +72,11 @@ const DDL = `
 export async function ensureSchema(db: SQLite.SQLiteDatabase): Promise<void> {
   console.log('[DrinkMix] database initialized');
   await db.execAsync(DDL);
-  await seedFromJson(db);
+  const inserted = await seedFromJson(db);
+  // Fire-and-forget: fetch missing images from thecocktaildb after first seed
+  if (inserted > 0) {
+    refreshImagesFromCocktailDB(db).catch(() => {});
+  }
 }
 
 export async function initializeDatabase(db: SQLite.SQLiteDatabase): Promise<void> {

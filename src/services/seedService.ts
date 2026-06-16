@@ -1,4 +1,5 @@
 import * as SQLite from 'expo-sqlite';
+import { lookupCocktailDbImage } from './imageService';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const starterData = require('../../assets/drinkmix_starter_database.json');
@@ -126,4 +127,33 @@ export async function seedFromJson(
 
   console.log(`[DrinkMix] seed completed — ${inserted} drinks inserted`);
   return inserted;
+}
+
+/**
+ * Fetches fresh images from thecocktaildb for drinks that are missing one.
+ * Runs in background — does not block startup.
+ */
+export async function refreshImagesFromCocktailDB(db: SQLite.SQLiteDatabase): Promise<void> {
+  try {
+    const rows = await db.getAllAsync<{ id: number; name: string; image: string | null }>(
+      'SELECT id, name, image FROM drinks WHERE is_user_created = 0'
+    );
+
+    let updated = 0;
+    for (const row of rows) {
+      // Only refresh if image is missing; skip if already set
+      if (row.image) continue;
+
+      const url = await lookupCocktailDbImage(row.name);
+      if (url) {
+        await db.runAsync('UPDATE drinks SET image = ? WHERE id = ?', [url, row.id]);
+        console.log(`[DrinkMix] image refreshed for: ${row.name}`);
+        updated++;
+      }
+    }
+
+    if (updated > 0) console.log(`[DrinkMix] image refresh complete — ${updated} updated`);
+  } catch (e) {
+    console.warn('[DrinkMix] image refresh failed:', e);
+  }
 }

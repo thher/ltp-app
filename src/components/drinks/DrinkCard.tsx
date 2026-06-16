@@ -1,5 +1,5 @@
-import React, { memo } from 'react';
-import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
+import React, { memo, useState } from 'react';
+import { TouchableOpacity, View, Text } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
@@ -21,6 +21,7 @@ export const DrinkCard = memo(function DrinkCard({
 }: DrinkCardProps) {
   const { theme } = useTheme();
   const { colors, radius, spacing, typography } = theme;
+  const [imgError, setImgError] = useState(false);
 
   return (
     <TouchableOpacity
@@ -41,12 +42,13 @@ export const DrinkCard = memo(function DrinkCard({
       }}
     >
       <View style={{ position: 'relative' }}>
-        {drink.image ? (
+        {drink.image && !imgError ? (
           <Image
             source={{ uri: drink.image }}
             style={{ width: '100%', height: 180 }}
             contentFit="cover"
             transition={200}
+            onError={() => setImgError(true)}
           />
         ) : (
           <View

@@ -3,6 +3,40 @@ import * as ImagePicker from 'expo-image-picker';
 
 const IMAGE_DIR = `${FileSystem.documentDirectory}drinkmix/images/`;
 
+// Maps Norwegian/custom drink names to thecocktaildb search terms
+const COCKTAILDB_NAME_MAP: Record<string, string> = {
+  'Jordbær Daiquiri': 'Strawberry Daiquiri',
+  'Jordbær Banan Smoothie': 'Strawberry Banana',
+  'Grønn Detox Smoothie': 'Green Smoothie',
+  'Alkoholfri Aperol Spritz': 'Aperol Spritz',
+  'Blåbær Havre Smoothie': 'Blueberry Smoothie',
+  'Vannmelon Limonade': 'Watermelon Drink',
+  'Agurk Cooler': 'Cucumber Cooler',
+  'Gin & Tonic': 'Gin and Tonic',
+  "Dark 'n' Stormy": 'Dark and Stormy',
+  "Bee's Knees": 'Bees Knees',
+  "Tommy's Margarita": 'Margarita',
+  'Hugo Spritz': 'Hugo',
+  'Mango Lassi': 'Mango Lassi',
+  'Arnold Palmer': 'Arnold Palmer',
+};
+
+const COCKTAILDB_API = 'https://www.thecocktaildb.com/api/json/v1/1/search.php?s=';
+
+export async function lookupCocktailDbImage(drinkName: string): Promise<string | null> {
+  const searchName = COCKTAILDB_NAME_MAP[drinkName] ?? drinkName;
+  try {
+    const res = await fetch(`${COCKTAILDB_API}${encodeURIComponent(searchName)}`, {
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return (json?.drinks?.[0]?.strDrinkThumb as string) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function ensureImageDir(): Promise<void> {
   const dirInfo = await FileSystem.getInfoAsync(IMAGE_DIR);
   if (!dirInfo.exists) {
