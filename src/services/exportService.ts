@@ -36,6 +36,8 @@ export async function importDatabase(): Promise<boolean> {
     if (result.canceled || !result.assets[0]) return false;
 
     const dbPath = `${FileSystem.documentDirectory}SQLite/drinkmix.db`;
+    await FileSystem.deleteAsync(dbPath + '-wal', { idempotent: true });
+    await FileSystem.deleteAsync(dbPath + '-shm', { idempotent: true });
     await FileSystem.copyAsync({ from: result.assets[0].uri, to: dbPath });
     return true;
   } catch {
