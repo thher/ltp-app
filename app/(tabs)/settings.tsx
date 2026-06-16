@@ -8,6 +8,7 @@ import { SwitchRow } from '../../src/components/ui/SwitchRow';
 import { SettingsRow } from '../../src/components/ui/SettingsRow';
 import { Divider } from '../../src/components/ui/Divider';
 import { exportDatabase, importDatabase } from '../../src/services/exportService';
+import { seedFromJson } from '../../src/services/seedService';
 import { Language } from '../../src/types';
 import Constants from 'expo-constants';
 
@@ -35,6 +36,19 @@ export default function SettingsScreen() {
       ]);
     } else {
       Alert.alert(t.common.error, 'Kunne ikke importere database.');
+    }
+  };
+
+  const handleImportStarter = async () => {
+    try {
+      const count = await seedFromJson(db, true);
+      if (count > 0) {
+        Alert.alert(t.common.success, `${count} ${t.settings.importStarterDbSuccess}`);
+      } else {
+        Alert.alert(t.common.success, t.settings.importStarterDbNone);
+      }
+    } catch {
+      Alert.alert(t.common.error, 'Kunne ikke importere startdatabasen.');
     }
   };
 
@@ -172,6 +186,12 @@ export default function SettingsScreen() {
             icon="cloud-upload-outline"
             label={t.settings.importDatabase}
             onPress={handleImport}
+          />
+          <Divider style={{ marginVertical: 0, marginHorizontal: spacing.base }} />
+          <SettingsRow
+            icon="flask-outline"
+            label={t.settings.importStarterDb}
+            onPress={handleImportStarter}
           />
           <Divider style={{ marginVertical: 0, marginHorizontal: spacing.base }} />
           <SettingsRow
