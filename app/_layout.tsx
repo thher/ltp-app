@@ -45,11 +45,15 @@ function LoadingFallback() {
 async function setupDatabase(): Promise<void> {
   const dbDir = FileSystem.documentDirectory + 'SQLite/';
   const dbPath = dbDir + 'drinkmix.db';
-  const info = await FileSystem.getInfoAsync(dbPath);
 
+  // Always remove stale WAL/SHM files first — these cause "invisible data"
+  // when a DB file was replaced without clearing them (e.g. failed import)
+  await FileSystem.deleteAsync(dbPath + '-wal', { idempotent: true });
+  await FileSystem.deleteAsync(dbPath + '-shm', { idempotent: true });
+
+  const info = await FileSystem.getInfoAsync(dbPath);
   if (!info.exists) {
     await FileSystem.makeDirectoryAsync(dbDir, { intermediates: true });
-    // Copy pre-populated database from bundled assets
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const asset = Asset.fromModule(require('../assets/drinkmix.db'));
     await asset.downloadAsync();
