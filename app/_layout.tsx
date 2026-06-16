@@ -46,19 +46,26 @@ async function setupDatabase(): Promise<void> {
   const dbDir = FileSystem.documentDirectory + 'SQLite/';
   const dbPath = dbDir + 'drinkmix.db';
 
-  // Always remove stale WAL/SHM files first — these cause "invisible data"
-  // when a DB file was replaced without clearing them (e.g. failed import)
-  await FileSystem.deleteAsync(dbPath + '-wal', { idempotent: true });
-  await FileSystem.deleteAsync(dbPath + '-shm', { idempotent: true });
+  // Remove stale WAL/SHM files — these make data invisible after a failed import
+  try {
+    await FileSystem.deleteAsync(dbPath + '-wal', { idempotent: true });
+    await FileSystem.deleteAsync(dbPath + '-shm', { idempotent: true });
+  } catch {
+    // Non-fatal
+  }
 
   const info = await FileSystem.getInfoAsync(dbPath);
   if (!info.exists) {
-    await FileSystem.makeDirectoryAsync(dbDir, { intermediates: true });
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const asset = Asset.fromModule(require('../assets/drinkmix.db'));
-    await asset.downloadAsync();
-    if (asset.localUri) {
-      await FileSystem.copyAsync({ from: asset.localUri, to: dbPath });
+    try {
+      await FileSystem.makeDirectoryAsync(dbDir, { intermediates: true });
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const asset = Asset.fromModule(require('../assets/drinkmix.db'));
+      await asset.downloadAsync();
+      if (asset.localUri) {
+        await FileSystem.copyAsync({ from: asset.localUri, to: dbPath });
+      }
+    } catch (e) {
+      console.warn('[DrinkMix] Could not copy bundled DB, will seed from JSON:', e);
     }
   }
 }

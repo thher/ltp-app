@@ -25,15 +25,19 @@ const COCKTAILDB_API = 'https://www.thecocktaildb.com/api/json/v1/1/search.php?s
 
 export async function lookupCocktailDbImage(drinkName: string): Promise<string | null> {
   const searchName = COCKTAILDB_NAME_MAP[drinkName] ?? drinkName;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000);
   try {
     const res = await fetch(`${COCKTAILDB_API}${encodeURIComponent(searchName)}`, {
-      signal: AbortSignal.timeout(6000),
+      signal: controller.signal,
     });
     if (!res.ok) return null;
     const json = await res.json();
     return (json?.drinks?.[0]?.strDrinkThumb as string) ?? null;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

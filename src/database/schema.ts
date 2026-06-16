@@ -71,16 +71,27 @@ const DDL = `
 
 export async function ensureSchema(db: SQLite.SQLiteDatabase): Promise<void> {
   console.log('[DrinkMix] database initialized');
+  // DDL must succeed — tables are required for the app to function
   await db.execAsync(DDL);
-  const inserted = await seedFromJson(db);
-  // Fire-and-forget: fetch missing images from thecocktaildb after first seed
-  if (inserted > 0) {
-    refreshImagesFromCocktailDB(db).catch(() => {});
+  // Seeding is non-fatal: catch errors so the app always loads
+  try {
+    const inserted = await seedFromJson(db);
+    console.log(`[DrinkMix] ensureSchema done — inserted ${inserted}`);
+    // Fire-and-forget background image refresh
+    if (inserted > 0) {
+      refreshImagesFromCocktailDB(db).catch(() => {});
+    }
+  } catch (e) {
+    console.error('[DrinkMix] seeding failed (non-fatal):', e);
   }
 }
 
 export async function initializeDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
   console.log('[DrinkMix] database initialized (fallback)');
   await db.execAsync(DDL);
-  await seedFromJson(db);
+  try {
+    await seedFromJson(db);
+  } catch (e) {
+    console.error('[DrinkMix] seeding failed (fallback, non-fatal):', e);
+  }
 }
