@@ -2,11 +2,13 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SQLiteProvider } from 'expo-sqlite';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
+import * as FileSystem from 'expo-file-system';
+import { Asset } from 'expo-asset';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
 import { LanguageProvider } from '../src/context/LanguageContext';
-import { initializeDatabase } from '../src/database/schema';
+import { ensureSchema } from '../src/database/schema';
 
 function AppContent() {
   const { theme, colorScheme } = useTheme();
@@ -40,18 +42,46 @@ function LoadingFallback() {
   );
 }
 
+async function setupDatabase(): Promise<void> {
+  const dbDir = FileSystem.documentDirectory + 'SQLite/';
+  const dbPath = dbDir + 'drinkmix.db';
+  const info = await FileSystem.getInfoAsync(dbPath);
+
+  if (!info.exists) {
+    await FileSystem.makeDirectoryAsync(dbDir, { intermediates: true });
+    // Copy pre-populated database from bundled assets
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const asset = Asset.fromModule(require('../assets/drinkmix.db'));
+    await asset.downloadAsync();
+    if (asset.localUri) {
+      await FileSystem.copyAsync({ from: asset.localUri, to: dbPath });
+    }
+  }
+}
+
 export default function RootLayout() {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    setupDatabase()
+      .then(() => setReady(true))
+      .catch((e) => {
+        console.error('DB setup error:', e);
+        setReady(true); // fall through to runtime seeding via onInit
+      });
+  }, []);
+
+  if (!ready) return <LoadingFallback />;
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Suspense fallback={<LoadingFallback />}>
-        <SQLiteProvider databaseName="drinkmix.db" onInit={initializeDatabase} useSuspense>
-          <ThemeProvider>
-            <LanguageProvider>
-              <AppContent />
-            </LanguageProvider>
-          </ThemeProvider>
-        </SQLiteProvider>
-      </Suspense>
+      <SQLiteProvider databaseName="drinkmix.db" onInit={ensureSchema}>
+        <ThemeProvider>
+          <LanguageProvider>
+            <AppContent />
+          </LanguageProvider>
+        </ThemeProvider>
+      </SQLiteProvider>
     </GestureHandlerRootView>
   );
 }
