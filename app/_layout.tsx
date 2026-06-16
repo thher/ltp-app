@@ -40,20 +40,11 @@ function LoadingFallback() {
   );
 }
 
-async function initDB(db: Parameters<typeof initializeDatabase>[0]) {
-  try {
-    await initializeDatabase(db);
-  } catch (e) {
-    console.error('Database init error:', e);
-    throw e;
-  }
-}
-
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Suspense fallback={<LoadingFallback />}>
-        <SQLiteProvider databaseName="drinkmix.db" onInit={initDB} useSuspense>
+        <SQLiteProvider databaseName="drinkmix.db" onInit={initializeDatabase} useSuspense>
           <ThemeProvider>
             <LanguageProvider>
               <AppContent />
