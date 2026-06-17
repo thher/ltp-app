@@ -8,6 +8,7 @@ import {
   Alert,
   ScrollView,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,8 +24,117 @@ import { MatchCard } from '../../src/components/drinks/MatchCard';
 import { Empty } from '../../src/components/ui/Empty';
 import { LoadingSpinner } from '../../src/components/ui/LoadingSpinner';
 import { InventoryItem } from '../../src/types';
+import * as ImagePicker from 'expo-image-picker';
+import { scanIngredientsFromImage, getApiKey } from '../../src/services/aiService';
 
 type TabType = 'inventory' | 'matches';
+
+function ScanResultModal({
+  visible, ingredients, onConfirm, onClose, colors, spacing, typography, radius, insets,
+}: {
+  visible: boolean;
+  ingredients: string[];
+  onConfirm: (selected: string[]) => void;
+  onClose: () => void;
+  colors: ReturnType<typeof useTheme>['theme']['colors'];
+  spacing: ReturnType<typeof useTheme>['theme']['spacing'];
+  typography: ReturnType<typeof useTheme>['theme']['typography'];
+  radius: ReturnType<typeof useTheme>['theme']['radius'];
+  insets: ReturnType<typeof useSafeAreaInsets>;
+}) {
+  const [selected, setSelected] = useState<Set<string>>(new Set(ingredients));
+
+  useEffect(() => {
+    setSelected(new Set(ingredients));
+  }, [ingredients]);
+
+  const toggle = (name: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' }}>
+        <View style={{
+          backgroundColor: colors.surface,
+          borderTopLeftRadius: radius.xl,
+          borderTopRightRadius: radius.xl,
+          padding: spacing.xl,
+          paddingBottom: insets.bottom + spacing.xl,
+          maxHeight: '80%',
+        }}>
+          <Text style={[typography.headlineSmall, { color: colors.text, marginBottom: spacing.xs }]}>
+            Funnet ingredienser
+          </Text>
+          <Text style={[typography.bodySmall, { color: colors.textMuted, marginBottom: spacing.lg }]}>
+            Velg hvilke du vil legge til i lageret
+          </Text>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {ingredients.map(name => {
+              const on = selected.has(name);
+              return (
+                <TouchableOpacity
+                  key={name}
+                  onPress={() => toggle(name)}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: spacing.md,
+                    paddingHorizontal: spacing.base,
+                    marginBottom: spacing.sm,
+                    borderRadius: radius.md,
+                    borderWidth: 1,
+                    borderColor: on ? colors.primary : colors.borderSubtle,
+                    backgroundColor: on ? `${colors.primary}18` : colors.surfaceElevated,
+                  }}
+                >
+                  <Ionicons
+                    name={on ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={22}
+                    color={on ? colors.primary : colors.textMuted}
+                    style={{ marginRight: spacing.md }}
+                  />
+                  <Text style={[typography.bodyLarge, { color: colors.text, flex: 1, textTransform: 'capitalize' }]}>
+                    {name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+          <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg }}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={{
+                flex: 1, paddingVertical: spacing.md, borderRadius: radius.md,
+                backgroundColor: colors.surfaceElevated, alignItems: 'center',
+              }}
+            >
+              <Text style={[typography.labelLarge, { color: colors.textSecondary }]}>Avbryt</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => onConfirm(Array.from(selected))}
+              disabled={selected.size === 0}
+              style={{
+                flex: 1, paddingVertical: spacing.md, borderRadius: radius.md,
+                backgroundColor: selected.size > 0 ? colors.primary : colors.surfaceElevated,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={[typography.labelLarge, { color: selected.size > 0 ? colors.textInverse : colors.textMuted }]}>
+                Legg til {selected.size} stk
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
 
 export default function InventoryScreen() {
   const { theme } = useTheme();
@@ -40,6 +150,9 @@ export default function InventoryScreen() {
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [matchFilter, setMatchFilter] = useState<'all' | 'perfect' | 'almost'>('all');
+  const [scanning, setScanning] = useState(false);
+  const [scannedIngredients, setScannedIngredients] = useState<string[]>([]);
+  const [showScanModal, setShowScanModal] = useState(false);
 
   const { inventory, inventoryIds, loading, fetchInventory, addIngredient, removeIngredient } = useInventory();
 
@@ -71,6 +184,60 @@ export default function InventoryScreen() {
     setNewIngredient('');
     setShowAddModal(false);
   }, [newIngredient, addIngredient]);
+
+  const handleScanIngredients = useCallback(async () => {
+    const apiKey = await getApiKey();
+    if (!apiKey) {
+      Alert.alert(
+        'API-nøkkel mangler',
+        'Legg til din Anthropic API-nøkkel i Innstillinger for å bruke denne funksjonen.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Tilgang nektet', 'Appen trenger kamera-tilgang for å skanne ingredienser.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: false,
+      quality: 0.7,
+    });
+
+    if (result.canceled || !result.assets[0]) return;
+
+    setScanning(true);
+    try {
+      const found = await scanIngredientsFromImage(result.assets[0].uri);
+      if (found.length === 0) {
+        Alert.alert('Ingen ingredienser funnet', 'Prøv å ta et klarere bilde av flaskene eller ingrediensene.');
+        return;
+      }
+      setScannedIngredients(found);
+      setShowScanModal(true);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : '';
+      if (msg === 'INVALID_API_KEY') {
+        Alert.alert('Ugyldig API-nøkkel', 'Sjekk API-nøkkelen din i Innstillinger.');
+      } else {
+        Alert.alert('Feil', 'Kunne ikke skanne bildet. Sjekk internettforbindelsen og prøv igjen.');
+      }
+    } finally {
+      setScanning(false);
+    }
+  }, []);
+
+  const handleAddScanned = useCallback(async (selected: string[]) => {
+    for (const name of selected) {
+      await addIngredient(name);
+    }
+    setShowScanModal(false);
+    setScannedIngredients([]);
+    setActiveTab('matches');
+  }, [addIngredient]);
 
   const handleRemove = useCallback((item: InventoryItem) => {
     Alert.alert(
@@ -118,19 +285,41 @@ export default function InventoryScreen() {
               {inventory.length} ingredienser i lager
             </Text>
           </View>
-          <TouchableOpacity
-            onPress={() => setShowAddModal(true)}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: radius.full,
-              backgroundColor: colors.primary,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Ionicons name="add" size={24} color={colors.textInverse} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            <TouchableOpacity
+              onPress={handleScanIngredients}
+              disabled={scanning}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: radius.full,
+                backgroundColor: colors.surfaceElevated,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            >
+              {scanning ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Ionicons name="camera-outline" size={22} color={colors.primary} />
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setShowAddModal(true)}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: radius.full,
+                backgroundColor: colors.primary,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="add" size={24} color={colors.textInverse} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Tab bar */}
@@ -310,6 +499,19 @@ export default function InventoryScreen() {
           )}
         </View>
       )}
+
+      {/* Scan Results Modal */}
+      <ScanResultModal
+        visible={showScanModal}
+        ingredients={scannedIngredients}
+        onConfirm={handleAddScanned}
+        onClose={() => { setShowScanModal(false); setScannedIngredients([]); }}
+        colors={colors}
+        spacing={spacing}
+        typography={typography}
+        radius={radius}
+        insets={insets}
+      />
 
       {/* Add Ingredient Modal */}
       <Modal

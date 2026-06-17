@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { View, Text, ScrollView, Alert } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, ScrollView, Alert, TextInput, TouchableOpacity, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useTheme } from '../../src/context/ThemeContext';
@@ -9,6 +9,7 @@ import { SettingsRow } from '../../src/components/ui/SettingsRow';
 import { Divider } from '../../src/components/ui/Divider';
 import { exportDatabase, importDatabase } from '../../src/services/exportService';
 import { seedFromJson } from '../../src/services/seedService';
+import { getApiKey, saveApiKey, deleteApiKey } from '../../src/services/aiService';
 import { Language } from '../../src/types';
 import Constants from 'expo-constants';
 
@@ -18,6 +19,14 @@ export default function SettingsScreen() {
   const { colors, spacing, typography, radius } = theme;
   const insets = useSafeAreaInsets();
   const db = useSQLiteContext();
+  const [apiKey, setApiKey] = useState('');
+  const [showApiModal, setShowApiModal] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [hasApiKey, setHasApiKey] = useState(false);
+
+  useEffect(() => {
+    getApiKey().then(k => setHasApiKey(!!k));
+  }, []);
 
   const handleExport = async () => {
     const success = await exportDatabase();
@@ -202,6 +211,46 @@ export default function SettingsScreen() {
           />
         </View>
 
+        {/* AI / Skann */}
+        <SectionHeader title="AI Ingrediens-skanner" />
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderRadius: radius.lg,
+            marginHorizontal: spacing.base,
+            overflow: 'hidden',
+            borderWidth: 1,
+            borderColor: colors.borderSubtle,
+          }}
+        >
+          <SettingsRow
+            icon="key-outline"
+            label="Anthropic API-nøkkel"
+            value={hasApiKey ? '●●●●●●●●' : 'Ikke satt'}
+            onPress={() => { setApiKeyInput(''); setShowApiModal(true); }}
+          />
+          {hasApiKey && (
+            <SettingsRow
+              icon="trash-outline"
+              label="Slett API-nøkkel"
+              onPress={() =>
+                Alert.alert('Slett nøkkel', 'Er du sikker?', [
+                  { text: 'Avbryt', style: 'cancel' },
+                  {
+                    text: 'Slett',
+                    style: 'destructive',
+                    onPress: async () => { await deleteApiKey(); setHasApiKey(false); },
+                  },
+                ])
+              }
+              dangerous
+            />
+          )}
+        </View>
+        <Text style={[typography.bodySmall, { color: colors.textMuted, marginHorizontal: spacing.base + 4, marginTop: spacing.sm, marginBottom: spacing.xl }]}>
+          Trengs for å skanne ingredienser med kamera. Få gratis nøkkel på console.anthropic.com
+        </Text>
+
         {/* About */}
         <SectionHeader title={t.settings.about} />
         <View
@@ -236,6 +285,64 @@ export default function SettingsScreen() {
           DrinkMix © 2025
         </Text>
       </ScrollView>
+
+      <Modal visible={showApiModal} transparent animationType="slide" onRequestClose={() => setShowApiModal(false)}>
+        <View style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' }}>
+          <View style={{
+            backgroundColor: colors.surface,
+            borderTopLeftRadius: radius.xl,
+            borderTopRightRadius: radius.xl,
+            padding: spacing.xl,
+            paddingBottom: insets.bottom + spacing.xl,
+          }}>
+            <Text style={[typography.headlineSmall, { color: colors.text, marginBottom: spacing.xs }]}>
+              Anthropic API-nøkkel
+            </Text>
+            <Text style={[typography.bodySmall, { color: colors.textMuted, marginBottom: spacing.lg }]}>
+              Hent gratis nøkkel på console.anthropic.com
+            </Text>
+            <TextInput
+              value={apiKeyInput}
+              onChangeText={setApiKeyInput}
+              placeholder="sk-ant-..."
+              placeholderTextColor={colors.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              secureTextEntry
+              style={[typography.bodyMedium, {
+                color: colors.text,
+                backgroundColor: colors.surfaceElevated,
+                borderRadius: radius.md,
+                borderWidth: 1,
+                borderColor: colors.border,
+                paddingHorizontal: spacing.md,
+                paddingVertical: spacing.md,
+                marginBottom: spacing.lg,
+              }]}
+            />
+            <View style={{ flexDirection: 'row', gap: spacing.md }}>
+              <TouchableOpacity
+                onPress={() => setShowApiModal(false)}
+                style={{ flex: 1, paddingVertical: spacing.md, borderRadius: radius.md, backgroundColor: colors.surfaceElevated, alignItems: 'center' }}
+              >
+                <Text style={[typography.labelLarge, { color: colors.textSecondary }]}>Avbryt</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={async () => {
+                  if (!apiKeyInput.trim()) return;
+                  await saveApiKey(apiKeyInput.trim());
+                  setHasApiKey(true);
+                  setShowApiModal(false);
+                  Alert.alert('Lagret', 'API-nøkkel er lagret sikkert på enheten.');
+                }}
+                style={{ flex: 1, paddingVertical: spacing.md, borderRadius: radius.md, backgroundColor: colors.primary, alignItems: 'center' }}
+              >
+                <Text style={[typography.labelLarge, { color: colors.textInverse }]}>Lagre</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

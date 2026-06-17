@@ -132,27 +132,33 @@ export async function seedFromJson(
 /**
  * Fetches fresh images from thecocktaildb for drinks that are missing one.
  * Runs in background — does not block startup.
+ * Uses batched concurrent requests (5 at a time) for speed.
  */
 export async function refreshImagesFromCocktailDB(db: SQLite.SQLiteDatabase): Promise<void> {
   try {
     const rows = await db.getAllAsync<{ id: number; name: string; image: string | null }>(
-      'SELECT id, name, image FROM drinks WHERE is_user_created = 0'
+      'SELECT id, name, image FROM drinks WHERE is_user_created = 0 AND image IS NULL'
     );
 
-    let updated = 0;
-    for (const row of rows) {
-      // Only refresh if image is missing; skip if already set
-      if (row.image) continue;
+    if (rows.length === 0) return;
 
-      const url = await lookupCocktailDbImage(row.name);
-      if (url) {
-        await db.runAsync('UPDATE drinks SET image = ? WHERE id = ?', [url, row.id]);
-        console.log(`[DrinkMix] image refreshed for: ${row.name}`);
-        updated++;
-      }
+    const BATCH = 5;
+    let updated = 0;
+
+    for (let i = 0; i < rows.length; i += BATCH) {
+      const batch = rows.slice(i, i + BATCH);
+      await Promise.allSettled(
+        batch.map(async (row) => {
+          const url = await lookupCocktailDbImage(row.name);
+          if (url) {
+            await db.runAsync('UPDATE drinks SET image = ? WHERE id = ?', [url, row.id]);
+            updated++;
+          }
+        })
+      );
     }
 
-    if (updated > 0) console.log(`[DrinkMix] image refresh complete — ${updated} updated`);
+    if (updated > 0) console.log(`[DrinkMix] image refresh complete — ${updated}/${rows.length} updated`);
   } catch (e) {
     console.warn('[DrinkMix] image refresh failed:', e);
   }
