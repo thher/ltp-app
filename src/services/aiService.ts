@@ -1,29 +1,34 @@
 import * as FileSystem from 'expo-file-system';
-import * as SecureStore from 'expo-secure-store';
 
-const API_KEY_STORAGE_KEY = 'anthropic_api_key';
+const API_KEY_PATH = `${FileSystem.documentDirectory}drinkmix_apikey.txt`;
 
 export async function getApiKey(): Promise<string | null> {
   try {
-    return await SecureStore.getItemAsync(API_KEY_STORAGE_KEY);
+    const info = await FileSystem.getInfoAsync(API_KEY_PATH);
+    if (!info.exists) return null;
+    const key = await FileSystem.readAsStringAsync(API_KEY_PATH);
+    return key.trim() || null;
   } catch {
     return null;
   }
 }
 
 export async function saveApiKey(key: string): Promise<void> {
-  await SecureStore.setItemAsync(API_KEY_STORAGE_KEY, key.trim());
+  await FileSystem.writeAsStringAsync(API_KEY_PATH, key.trim());
 }
 
 export async function deleteApiKey(): Promise<void> {
-  await SecureStore.deleteItemAsync(API_KEY_STORAGE_KEY);
+  try {
+    await FileSystem.deleteAsync(API_KEY_PATH, { idempotent: true });
+  } catch {
+    // ignore
+  }
 }
 
 export async function scanIngredientsFromImage(imageUri: string): Promise<string[]> {
   const apiKey = await getApiKey();
   if (!apiKey) throw new Error('NO_API_KEY');
 
-  // Read image and convert to base64
   const base64 = await FileSystem.readAsStringAsync(imageUri, {
     encoding: FileSystem.EncodingType.Base64,
   });
@@ -69,8 +74,8 @@ Respond with ONLY the JSON array, nothing else.`,
   });
 
   if (!response.ok) {
-    const err = await response.text();
     if (response.status === 401) throw new Error('INVALID_API_KEY');
+    const err = await response.text();
     throw new Error(`API error: ${err}`);
   }
 
@@ -83,7 +88,6 @@ Respond with ONLY the JSON array, nothing else.`,
       return parsed.filter((x): x is string => typeof x === 'string' && x.length > 0);
     }
   } catch {
-    // Extract JSON array from text if wrapped in other content
     const match = text.match(/\[.*\]/s);
     if (match) {
       const parsed = JSON.parse(match[0]);

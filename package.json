@@ -24,7 +24,6 @@
     "expo-linking": "~7.0.5",
     "expo-modules-core": "~2.2.3",
     "expo-router": "~4.0.20",
-    "expo-secure-store": "^56.0.4",
     "expo-sharing": "~13.0.1",
     "expo-sqlite": "~15.1.4",
     "expo-status-bar": "~2.0.1",
