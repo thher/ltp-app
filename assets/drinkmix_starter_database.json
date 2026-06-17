@@ -392,7 +392,7 @@
       {
         "name": "Hugo Spritz",
         "description": "Skandinavias favorittspritz med hylleblomst og mynte. Lett og blomstrende — perfekt sommerdrikk.",
-        "image": "https://www.thecocktaildb.com/images/media/drink/ikg2ax1504372491.jpg",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Vinglass",
@@ -820,7 +820,7 @@
       {
         "name": "Rob Roy",
         "description": "Skotsk variant av Manhattan — Scotch whisky i stedet for rye. Røykfull, rik og raffinert.",
-        "image": "https://www.thecocktaildb.com/images/media/drink/yk70e31606771240.jpg",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -927,7 +927,7 @@
       {
         "name": "Hemingway Daiquiri",
         "description": "Ernest Hemingways favorittdrink — tørr og syrlig daiquiri med grapefrukt og maraschino.",
-        "image": "https://www.thecocktaildb.com/images/media/drink/mrz9091589574515.jpg",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -1076,7 +1076,7 @@
       {
         "name": "Screwdriver",
         "description": "Det kan ikke bli enklere — vodka og appelsinjuice. Sagt å ha blitt laget av oljearbeidere som rørte med skrutrekkeren.",
-        "image": "https://www.thecocktaildb.com/images/media/drink/tqyrpw1439905311.jpg",
+        "image": null,
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -1114,7 +1114,7 @@
       {
         "name": "Kir Royale",
         "description": "Fransk aperitiff med champagne og crème de cassis. Elegant, enkel og alltid stilfull.",
-        "image": "https://www.thecocktaildb.com/images/media/drink/6looc01504349547.jpg",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Champagneglass",
@@ -1153,7 +1153,7 @@
       {
         "name": "El Diablo",
         "description": "Djevelens cocktail — tequila med solbærlikør og ingefærøl. Søtt, spicy og overraskende godt.",
-        "image": "https://www.thecocktaildb.com/images/media/drink/rt5huu1606769556.jpg",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -1322,6 +1322,931 @@
           { "name": "Havregryn", "amount": "3", "unit": "ss" },
           { "name": "Melk", "amount": "15", "unit": "cl" },
           { "name": "Honning", "amount": "1", "unit": "ts" }
+        ]
+      },
+      {
+        "name": "Bramble",
+        "description": "Britisk gin-klassiker fra 1984 skapt av Dick Bradsell. Fruktig og syrlig med brombærlikør dryppet over knust is.",
+        "image": null,
+        "category": "Cocktail",
+        "alcoholic": true,
+        "glass_type": "Rocks-glass",
+        "garnish": "Brombær og sitronskive",
+        "instructions": [
+          "1. Fyll en shaker med is.",
+          "2. Tilsett gin, sitronsaft og sukkersirup.",
+          "3. Rist godt i 15 sekunder.",
+          "4. Fyll glasset med knust is.",
+          "5. Sil drinken over isen.",
+          "6. Drypp brombærlikør (crème de mûre) sakte over toppen slik at den renner ned gjennom isen.",
+          "7. Pynt med friske brombær og sitronskive."
+        ],
+        "ingredients": [
+          { "name": "Gin", "amount": "5", "unit": "cl" },
+          { "name": "Sitronsaft", "amount": "2.5", "unit": "cl" },
+          { "name": "Sukkersirup", "amount": "1.5", "unit": "cl" },
+          { "name": "Brombærlikør (crème de mûre)", "amount": "1.5", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Aviation",
+        "description": "Forbudstidens lilla perle — gin med maraschino og creme de violette gir en vakker blomstersmak og lys lilla farge.",
+        "image": null,
+        "category": "Cocktail",
+        "alcoholic": true,
+        "glass_type": "Cocktailglass",
+        "garnish": "Maraschino-kirsebær",
+        "instructions": [
+          "1. Fyll en shaker med is.",
+          "2. Tilsett gin, maraschino-likør, creme de violette og sitronsaft.",
+          "3. Rist godt i 15 sekunder.",
+          "4. Sil over i et avkjølt cocktailglass.",
+          "5. Pynt med maraschino-kirsebær."
+        ],
+        "ingredients": [
+          { "name": "Gin", "amount": "5", "unit": "cl" },
+          { "name": "Maraschino-likør", "amount": "1.5", "unit": "cl" },
+          { "name": "Creme de violette", "amount": "0.75", "unit": "cl" },
+          { "name": "Sitronsaft", "amount": "2", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Last Word",
+        "description": "Prohibition-klassiker med fire like deler — balansen mellom gin, chartreuse, maraschino og lime er magisk.",
+        "image": null,
+        "category": "Cocktail",
+        "alcoholic": true,
+        "glass_type": "Cocktailglass",
+        "garnish": "Limeskive",
+        "instructions": [
+          "1. Fyll en shaker med is.",
+          "2. Tilsett like deler gin, grønn chartreuse, maraschino-likør og limejuice (2,25 cl av hver).",
+          "3. Rist godt i 15 sekunder.",
+          "4. Sil over i et avkjølt cocktailglass.",
+          "5. Pynt med limeskive."
+        ],
+        "ingredients": [
+          { "name": "Gin", "amount": "2.25", "unit": "cl" },
+          { "name": "Grønn chartreuse", "amount": "2.25", "unit": "cl" },
+          { "name": "Maraschino-likør", "amount": "2.25", "unit": "cl" },
+          { "name": "Limejuice", "amount": "2.25", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Penicillin",
+        "description": "Moderne klassiker fra New York, 2005. Blended scotch møter honning-ingefærsirup og sitron, toppet med en dram røykfull Islay scotch.",
+        "image": null,
+        "category": "Cocktail",
+        "alcoholic": true,
+        "glass_type": "Rocks-glass",
+        "garnish": "Kandisert ingefær og sitronskall",
+        "instructions": [
+          "1. Lag honning-ingefærsirup ved å koke honning og fersk ingefær sammen, avkjøl.",
+          "2. Fyll en shaker med is.",
+          "3. Tilsett blended scotch, sitronsaft og honning-ingefærsirup.",
+          "4. Rist godt i 15 sekunder.",
+          "5. Sil over stor isklump i rocks-glass.",
+          "6. Drypp islay scotch forsiktig over toppen.",
+          "7. Pynt med kandisert ingefær og sitronskall."
+        ],
+        "ingredients": [
+          { "name": "Blended scotch whisky", "amount": "6", "unit": "cl" },
+          { "name": "Islay scotch whisky", "amount": "0.75", "unit": "cl" },
+          { "name": "Sitronsaft", "amount": "2.25", "unit": "cl" },
+          { "name": "Honning-ingefærsirup", "amount": "2.25", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "New York Sour",
+        "description": "Whiskey Sour løftet til nye høyder med en float av rødvin på toppen. Dramatisk, vakker og deilig.",
+        "image": null,
+        "category": "Cocktail",
+        "alcoholic": true,
+        "glass_type": "Rocks-glass",
+        "garnish": "Appelsinskive og kirsebær",
+        "instructions": [
+          "1. Ha bourbon, sitronsaft, sukkersirup og eggehvite i shaker uten is og rist (dry shake) i 10 sek.",
+          "2. Tilsett is og rist igjen kraftig i 15 sekunder.",
+          "3. Sil over i glass med is.",
+          "4. Hell forsiktig rødvinen over en barteskje slik at den flyter på toppen.",
+          "5. Pynt med appelsinskive og kirsebær."
+        ],
+        "ingredients": [
+          { "name": "Bourbon whiskey", "amount": "5", "unit": "cl" },
+          { "name": "Sitronsaft", "amount": "3", "unit": "cl" },
+          { "name": "Sukkersirup", "amount": "2", "unit": "cl" },
+          { "name": "Eggehvite", "amount": "1", "unit": "stk" },
+          { "name": "Rødvin (fruktrik)", "amount": "2", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Gold Rush",
+        "description": "Enkel moderne klassiker fra New York — bourbon, honningsirup og sitron i perfekt balanse. Bare tre ingredienser, uendelig god.",
+        "image": null,
+        "category": "Cocktail",
+        "alcoholic": true,
+        "glass_type": "Rocks-glass",
+        "garnish": "Sitronskall",
+        "instructions": [
+          "1. Lag honningsirup ved å blande honning og varmt vann 1:1, avkjøl.",
+          "2. Fyll en shaker med is.",
+          "3. Tilsett bourbon, honningsirup og sitronsaft.",
+          "4. Rist godt i 15 sekunder.",
+          "5. Sil over stor isklump i rocks-glass.",
+          "6. Pynt med sitronskall."
+        ],
+        "ingredients": [
+          { "name": "Bourbon whiskey", "amount": "6", "unit": "cl" },
+          { "name": "Honningsirup", "amount": "2.25", "unit": "cl" },
+          { "name": "Sitronsaft", "amount": "2.25", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Naked and Famous",
+        "description": "Moderne Paper Plane-variant med mezcal og gul chartreuse. Fire like deler som gir en røykfull, urteaktig og syrlig opplevelse.",
+        "image": null,
+        "category": "Cocktail",
+        "alcoholic": true,
+        "glass_type": "Cocktailglass",
+        "garnish": "Limeskive",
+        "instructions": [
+          "1. Fyll en shaker med is.",
+          "2. Tilsett like deler mezcal, gul chartreuse, Aperol og limejuice (2,25 cl av hver).",
+          "3. Rist godt i 15 sekunder.",
+          "4. Sil over i avkjølt cocktailglass.",
+          "5. Pynt med limeskive."
+        ],
+        "ingredients": [
+          { "name": "Mezcal", "amount": "2.25", "unit": "cl" },
+          { "name": "Gul chartreuse", "amount": "2.25", "unit": "cl" },
+          { "name": "Aperol", "amount": "2.25", "unit": "cl" },
+          { "name": "Limejuice", "amount": "2.25", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Corpse Reviver #2",
+        "description": "Forbudstidens hangover-kur — gin, sitrus, Cointreau og Lillet Blanc, toppet med noen dråper absint for det lille ekstra.",
+        "image": null,
+        "category": "Cocktail",
+        "alcoholic": true,
+        "glass_type": "Cocktailglass",
+        "garnish": "Sitronskall og kirsebær",
+        "instructions": [
+          "1. Skyll et avkjølt cocktailglass med absint og kast overskuddet (eller behold det).",
+          "2. Fyll en shaker med is.",
+          "3. Tilsett gin, sitronsaft, Cointreau og Lillet Blanc.",
+          "4. Rist godt i 15 sekunder.",
+          "5. Sil over i det absintvaskede glasset.",
+          "6. Pynt med sitronskall."
+        ],
+        "ingredients": [
+          { "name": "Gin", "amount": "2.25", "unit": "cl" },
+          { "name": "Sitronsaft", "amount": "2.25", "unit": "cl" },
+          { "name": "Cointreau", "amount": "2.25", "unit": "cl" },
+          { "name": "Lillet Blanc", "amount": "2.25", "unit": "cl" },
+          { "name": "Absint", "amount": "1", "unit": "sprut" }
+        ]
+      },
+      {
+        "name": "Spagliato",
+        "description": "Negroni-varianten hvor gin erstattes med prosecco — lettere, boblende og like elegant. Perfekt aperitivo.",
+        "image": null,
+        "category": "Cocktail",
+        "alcoholic": true,
+        "glass_type": "Rocks-glass",
+        "garnish": "Appelsinskive",
+        "instructions": [
+          "1. Fyll et rocks-glass med isbiter.",
+          "2. Hell over Campari og søt vermouth.",
+          "3. Rør forsiktig.",
+          "4. Fyll opp med kjølt prosecco.",
+          "5. Rør én gang til og pynt med appelsinskive."
+        ],
+        "ingredients": [
+          { "name": "Campari", "amount": "3", "unit": "cl" },
+          { "name": "Søt vermouth", "amount": "3", "unit": "cl" },
+          { "name": "Prosecco", "amount": "6", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Blood and Sand",
+        "description": "Unik skotsk klassiker fra 1930 oppkalt etter en Rudolph Valentino-film. Like deler scotch, vermouth, cherry brandy og appelsinjuice.",
+        "image": null,
+        "category": "Cocktail",
+        "alcoholic": true,
+        "glass_type": "Cocktailglass",
+        "garnish": "Appelsinskall",
+        "instructions": [
+          "1. Fyll en shaker med is.",
+          "2. Tilsett like deler scotch whisky, søt vermouth, cherry brandy og appelsinjuice (2 cl av hver).",
+          "3. Rist godt i 15 sekunder.",
+          "4. Sil over i avkjølt cocktailglass.",
+          "5. Pynt med appelsinskall."
+        ],
+        "ingredients": [
+          { "name": "Scotch whisky", "amount": "2", "unit": "cl" },
+          { "name": "Søt vermouth", "amount": "2", "unit": "cl" },
+          { "name": "Cherry brandy", "amount": "2", "unit": "cl" },
+          { "name": "Appelsinjuice", "amount": "2", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Southside",
+        "description": "Chicagos svar på Mojitoen — gin erstatter rom for en skarpere, mer aromatisk myntedrikk. Elegant og forfriskende.",
+        "image": null,
+        "category": "Cocktail",
+        "alcoholic": true,
+        "glass_type": "Cocktailglass",
+        "garnish": "Mynteblader",
+        "instructions": [
+          "1. Ha mynte og sukkersirup i shaker og knus forsiktig.",
+          "2. Tilsett is, gin og limejuice.",
+          "3. Rist kraftig i 15 sekunder.",
+          "4. Dobbel-sil over i avkjølt cocktailglass.",
+          "5. Pynt med ferske mynteblader."
+        ],
+        "ingredients": [
+          { "name": "Gin", "amount": "6", "unit": "cl" },
+          { "name": "Limejuice", "amount": "2.5", "unit": "cl" },
+          { "name": "Sukkersirup", "amount": "2", "unit": "cl" },
+          { "name": "Fersk mynte", "amount": "8", "unit": "blader" }
+        ]
+      },
+      {
+        "name": "Mezcal Negroni",
+        "description": "Røykfull og dristig vri på den klassiske Negroni — mezcal erstatter gin og gir en dybde som er vanskelig å glemme.",
+        "image": null,
+        "category": "Cocktail",
+        "alcoholic": true,
+        "glass_type": "Rocks-glass",
+        "garnish": "Appelsinskall",
+        "instructions": [
+          "1. Fyll glasset med en stor isklump.",
+          "2. Hell over mezcal, Campari og søt vermouth.",
+          "3. Rør forsiktig i 20–30 sekunder.",
+          "4. Pynt med appelsinskall."
+        ],
+        "ingredients": [
+          { "name": "Mezcal", "amount": "3", "unit": "cl" },
+          { "name": "Campari", "amount": "3", "unit": "cl" },
+          { "name": "Søt vermouth", "amount": "3", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Gold Fashioned",
+        "description": "Old Fashioned med honning i stedet for sukker — rundere, mykere og like tidløs. Et godt glass bourbon fortjener det beste.",
+        "image": null,
+        "category": "Cocktail",
+        "alcoholic": true,
+        "glass_type": "Rocks-glass",
+        "garnish": "Appelsinskall og kirsebær",
+        "instructions": [
+          "1. Ha honning og appelsinbitter i glasset og rør til honningen er oppløst.",
+          "2. Tilsett bourbon og rør godt.",
+          "3. Fyll med én stor isklump.",
+          "4. Uttrykk appelsinskallet over drinken og bruk det som pynt.",
+          "5. Pynt med kirsebær."
+        ],
+        "ingredients": [
+          { "name": "Bourbon whiskey", "amount": "6", "unit": "cl" },
+          { "name": "Honning", "amount": "1", "unit": "ts" },
+          { "name": "Appelsinbitter", "amount": "2", "unit": "dråper" },
+          { "name": "Appelsinskall", "amount": "1", "unit": "bit" }
+        ]
+      },
+      {
+        "name": "Garibaldi",
+        "description": "Den enkleste Campari-drinken som finnes — bitter Campari møter friskpresset appelsinjuice. Italiensk frokost i et glass.",
+        "image": null,
+        "category": "Cocktail",
+        "alcoholic": true,
+        "glass_type": "Highball-glass",
+        "garnish": "Appelsinskive",
+        "instructions": [
+          "1. Fyll et highball-glass med isbiter.",
+          "2. Hell over Campari.",
+          "3. Fyll opp med friskpresset appelsinjuice.",
+          "4. Rør forsiktig og pynt med appelsinskive."
+        ],
+        "ingredients": [
+          { "name": "Campari", "amount": "5", "unit": "cl" },
+          { "name": "Friskpresset appelsinjuice", "amount": "15", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Aperol Negroni",
+        "description": "Mildere og fruktigere Negroni-variant — Aperol gir lavere alkohol og en lys, appelsinaktig bitterhet. Perfekt for aperitivo.",
+        "image": null,
+        "category": "Cocktail",
+        "alcoholic": true,
+        "glass_type": "Rocks-glass",
+        "garnish": "Appelsinskive",
+        "instructions": [
+          "1. Fyll glasset med store isbiter.",
+          "2. Hell over Aperol, gin og søt vermouth.",
+          "3. Rør forsiktig i 20–30 sekunder.",
+          "4. Pynt med appelsinskive."
+        ],
+        "ingredients": [
+          { "name": "Aperol", "amount": "3", "unit": "cl" },
+          { "name": "Gin", "amount": "3", "unit": "cl" },
+          { "name": "Søt vermouth", "amount": "3", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Lemon Drop Shot",
+        "description": "Frisk og syrlig sitron-shot med sukkerkant. Populær og enkel — perfekt som velkomstshot.",
+        "image": null,
+        "category": "Shot",
+        "alcoholic": true,
+        "glass_type": "Shotglass",
+        "garnish": "Sukkerkant",
+        "instructions": [
+          "1. Fukt kanten av shotglasset med sitron og dypp i sukker.",
+          "2. Fyll en shaker med is.",
+          "3. Tilsett sitronsmakvodi (sitronvodka) og litt sitronsaft.",
+          "4. Rist godt og sil over i shotglasset."
+        ],
+        "ingredients": [
+          { "name": "Sitronvodka", "amount": "4", "unit": "cl" },
+          { "name": "Sitronsaft", "amount": "1", "unit": "cl" },
+          { "name": "Sukker", "amount": "", "unit": "til kanten" }
+        ]
+      },
+      {
+        "name": "Baby Guinness",
+        "description": "Ser ut som en liten pint Guinness — kaffelikør toppet med Irish Cream som lager det perfekte 'skumhodet'. Søtt og morsomt.",
+        "image": null,
+        "category": "Shot",
+        "alcoholic": true,
+        "glass_type": "Shotglass",
+        "garnish": "",
+        "instructions": [
+          "1. Hell kaffelikør i shotglasset — fyll til ca. 3/4.",
+          "2. Legg en barteskje bakover mot glasskanten.",
+          "3. Hell Irish Cream sakte over skjeen slik at den flyter på toppen.",
+          "4. Ikke rør — la 'Guinness-effekten' vises."
+        ],
+        "ingredients": [
+          { "name": "Kaffelikør (Kahlúa)", "amount": "3", "unit": "cl" },
+          { "name": "Irish Cream (Baileys)", "amount": "1", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Butterscotch Shot",
+        "description": "Søtt og kremete shot med smaken av smørkaramell og Irish Cream. En dessert i shotform.",
+        "image": null,
+        "category": "Shot",
+        "alcoholic": true,
+        "glass_type": "Shotglass",
+        "garnish": "",
+        "instructions": [
+          "1. Fyll en shaker med is.",
+          "2. Tilsett butterscotch schnapps og Irish Cream.",
+          "3. Rist godt.",
+          "4. Sil over i shotglass."
+        ],
+        "ingredients": [
+          { "name": "Butterscotch schnapps", "amount": "2", "unit": "cl" },
+          { "name": "Irish Cream (Baileys)", "amount": "2", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Sambuca Shot",
+        "description": "Klassisk italiensk anislikør servert med tre kaffebønner — symboliserer helse, lykke og velstand. Valgfritt i brann.",
+        "image": null,
+        "category": "Shot",
+        "alcoholic": true,
+        "glass_type": "Shotglass",
+        "garnish": "3 kaffebønner",
+        "instructions": [
+          "1. Hell sambuca i shotglasset.",
+          "2. Legg tre kaffebønner oppi.",
+          "3. Valgfritt: tenn forsiktig på med en lighter, la brenne noen sekunder.",
+          "4. Dekk til med hånden for å slukke, rist lett og drikk."
+        ],
+        "ingredients": [
+          { "name": "Sambuca", "amount": "4", "unit": "cl" },
+          { "name": "Kaffebønner", "amount": "3", "unit": "stk" }
+        ]
+      },
+      {
+        "name": "Melon Shot",
+        "description": "Sommer i et shotglass — søt melonlikør møter frisk ananassaft. Fargerikt, enkelt og alltid populært.",
+        "image": null,
+        "category": "Shot",
+        "alcoholic": true,
+        "glass_type": "Shotglass",
+        "garnish": "",
+        "instructions": [
+          "1. Fyll en shaker med is.",
+          "2. Tilsett melonlikør og ananassaft.",
+          "3. Rist godt.",
+          "4. Sil over i shotglass."
+        ],
+        "ingredients": [
+          { "name": "Melonlikør (Midori)", "amount": "2", "unit": "cl" },
+          { "name": "Ananassaft", "amount": "2", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Cuba Libre",
+        "description": "Frihetens drink — rom, cola og lime. Enkel, forfriskende og alltid på moten siden 1900.",
+        "image": null,
+        "category": "Longdrink",
+        "alcoholic": true,
+        "glass_type": "Highball-glass",
+        "garnish": "Limebåt",
+        "instructions": [
+          "1. Fyll et highball-glass med isbiter.",
+          "2. Klem limebåten over glasset og slipp den oppi.",
+          "3. Hell over rom.",
+          "4. Fyll opp med kjølt cola.",
+          "5. Rør forsiktig og server."
+        ],
+        "ingredients": [
+          { "name": "Hvit rom", "amount": "5", "unit": "cl" },
+          { "name": "Cola", "amount": "15", "unit": "cl" },
+          { "name": "Limejuice", "amount": "1", "unit": "cl" },
+          { "name": "Lime", "amount": "0.5", "unit": "stk" }
+        ]
+      },
+      {
+        "name": "Vodka Tranebær",
+        "description": "Enkel og frisk longdrink med vodka og tranebærjuice — nesten som en Cosmo, men uten shaking. Lett og populær.",
+        "image": null,
+        "category": "Longdrink",
+        "alcoholic": true,
+        "glass_type": "Highball-glass",
+        "garnish": "Limeskive",
+        "instructions": [
+          "1. Fyll et glass med isbiter.",
+          "2. Hell over vodka.",
+          "3. Fyll opp med tranebærjuice.",
+          "4. Klem over litt limejuice.",
+          "5. Rør forsiktig og pynt med limeskive."
+        ],
+        "ingredients": [
+          { "name": "Vodka", "amount": "5", "unit": "cl" },
+          { "name": "Tranebærjuice", "amount": "15", "unit": "cl" },
+          { "name": "Limejuice", "amount": "1", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Harvey Wallbanger",
+        "description": "70-tallets ikoniske partydrink — Screwdriver toppet med Galliano-likør. Søtt, fruktig og nostalgisk.",
+        "image": null,
+        "category": "Longdrink",
+        "alcoholic": true,
+        "glass_type": "Highball-glass",
+        "garnish": "Appelsinskive",
+        "instructions": [
+          "1. Fyll et highball-glass med isbiter.",
+          "2. Hell over vodka og appelsinjuice og rør.",
+          "3. Hell Galliano forsiktig over en barteskje slik at det flyter på toppen.",
+          "4. Pynt med appelsinskive."
+        ],
+        "ingredients": [
+          { "name": "Vodka", "amount": "4.5", "unit": "cl" },
+          { "name": "Appelsinjuice", "amount": "10", "unit": "cl" },
+          { "name": "Galliano", "amount": "1.5", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Americano Highball",
+        "description": "Negronis lettere bror — Campari og vermouth toppet med sodavann. Opprinnelig Negroni-drinken før gin kom med.",
+        "image": null,
+        "category": "Longdrink",
+        "alcoholic": true,
+        "glass_type": "Highball-glass",
+        "garnish": "Appelsinskive og sitronskall",
+        "instructions": [
+          "1. Fyll et highball-glass med isbiter.",
+          "2. Hell over Campari og søt vermouth.",
+          "3. Fyll opp med sodavann.",
+          "4. Rør forsiktig og pynt med appelsinskive og sitronskall."
+        ],
+        "ingredients": [
+          { "name": "Campari", "amount": "3", "unit": "cl" },
+          { "name": "Søt vermouth", "amount": "3", "unit": "cl" },
+          { "name": "Sodavann", "amount": "10", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Shandy",
+        "description": "Britisk pub-klassiker — halvparten lyst øl, halvparten sitronbrus. Lett og forfriskende med lav alkohol.",
+        "image": null,
+        "category": "Longdrink",
+        "alcoholic": true,
+        "glass_type": "Pintglass",
+        "garnish": "Sitronskive",
+        "instructions": [
+          "1. Kjøl glasset godt.",
+          "2. Hell halvparten lyst øl forsiktig ned langs glasskanten.",
+          "3. Fyll opp med kjølt sitronbrus (lemonade).",
+          "4. Rør minst mulig for å bevare bobblene.",
+          "5. Pynt med sitronskive."
+        ],
+        "ingredients": [
+          { "name": "Lyst øl (lager)", "amount": "25", "unit": "cl" },
+          { "name": "Sitronbrus (lemonade)", "amount": "25", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Radler",
+        "description": "Tysk sykkeldrink — øl og grapefruktjuice blandet for en frisk, lett og sitrusrik smak. Perfekt etter en aktiv dag.",
+        "image": null,
+        "category": "Longdrink",
+        "alcoholic": true,
+        "glass_type": "Ølglass",
+        "garnish": "Grapefruktskive",
+        "instructions": [
+          "1. Kjøl glasset.",
+          "2. Hell lyst øl forsiktig i glasset.",
+          "3. Fyll opp med kjølt grapefruktjuice.",
+          "4. Rør forsiktig og pynt med grapefruktskive."
+        ],
+        "ingredients": [
+          { "name": "Lyst øl (lager)", "amount": "25", "unit": "cl" },
+          { "name": "Grapefruktjuice", "amount": "25", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Ranch Water",
+        "description": "Texas' foretrukne sommerdrink — enkel blanco tequila med kullsyreholdig vann og lime. Tørr, frisk og uimotståelig.",
+        "image": null,
+        "category": "Longdrink",
+        "alcoholic": true,
+        "glass_type": "Flaskeglass eller highball-glass",
+        "garnish": "Limebåt",
+        "instructions": [
+          "1. Fyll et glass med isbiter.",
+          "2. Hell over blanco tequila.",
+          "3. Klem limebåten over glasset og slipp den oppi.",
+          "4. Fyll opp med Topo Chico eller annet kullsyreholdig mineralvann.",
+          "5. Server umiddelbart."
+        ],
+        "ingredients": [
+          { "name": "Blanco tequila", "amount": "5", "unit": "cl" },
+          { "name": "Limejuice", "amount": "2", "unit": "cl" },
+          { "name": "Kullsyreholdig vann", "amount": "15", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Vodka Soda",
+        "description": "Den aller enkleste og reneste longdrinken — vodka og sodavann med litt lime. Kalorivennlig og alltid frisk.",
+        "image": null,
+        "category": "Longdrink",
+        "alcoholic": true,
+        "glass_type": "Highball-glass",
+        "garnish": "Limeskive",
+        "instructions": [
+          "1. Fyll et glass med isbiter.",
+          "2. Hell over vodka.",
+          "3. Fyll opp med sodavann.",
+          "4. Klem over limejuice og pynt med limeskive."
+        ],
+        "ingredients": [
+          { "name": "Vodka", "amount": "5", "unit": "cl" },
+          { "name": "Sodavann", "amount": "15", "unit": "cl" },
+          { "name": "Limejuice", "amount": "1", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Virgin Piña Colada",
+        "description": "All den tropiske kremede godheten av Piña Colada — uten alkohol. Perfekt for alle ved stranden.",
+        "image": null,
+        "category": "Alkoholfri",
+        "alcoholic": false,
+        "glass_type": "Hurricane-glass",
+        "garnish": "Ananasbit og kirsebær",
+        "instructions": [
+          "1. Ha ananasjuice, kokosmjølk og en kopp knust is i blender.",
+          "2. Bland på høy hastighet til glatt og kremaktig.",
+          "3. Hell over i glass.",
+          "4. Pynt med ananasbit og kirsebær."
+        ],
+        "ingredients": [
+          { "name": "Ananasjuice", "amount": "15", "unit": "cl" },
+          { "name": "Kokosmjølk", "amount": "8", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Pasjonsfrukt Limonade",
+        "description": "Eksotisk og syrlig limonade med pasjonsfruktens tropiske sødme. Frisk og festlig uten alkohol.",
+        "image": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=800&q=80",
+        "category": "Alkoholfri",
+        "alcoholic": false,
+        "glass_type": "Highball-glass",
+        "garnish": "Halvt pasjonsfrukt og mynteblad",
+        "instructions": [
+          "1. Skjær pasjonsfruktene i to og skrap ut innholdet.",
+          "2. Bland pasjonsfrukten med sitronsaft og sukkersirup.",
+          "3. Sil blandingen for å fjerne frø om ønskelig.",
+          "4. Fyll glass med is og hell over pasjonsfruktblandingen.",
+          "5. Fyll opp med vann eller sodavann og pynt."
+        ],
+        "ingredients": [
+          { "name": "Pasjonsfrukt", "amount": "2", "unit": "stk" },
+          { "name": "Sitronsaft", "amount": "3", "unit": "cl" },
+          { "name": "Sukkersirup", "amount": "2", "unit": "cl" },
+          { "name": "Vann", "amount": "15", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Ingefær Limonade",
+        "description": "Varm og frisk ingefærlimonade med honning og sitron. Beroligende, naturlig og full av smak.",
+        "image": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80",
+        "category": "Alkoholfri",
+        "alcoholic": false,
+        "glass_type": "Highball-glass",
+        "garnish": "Sitronskive og ingefærbit",
+        "instructions": [
+          "1. Riv eller press fersk ingefær og bland med varm vann for å lage ingefærte.",
+          "2. Avkjøl og sil.",
+          "3. Rør inn honning mens det fortsatt er lunkent.",
+          "4. Tilsett sitronsaft og la avkjøle helt.",
+          "5. Server over is og pynt med sitronskive og ingefærbit."
+        ],
+        "ingredients": [
+          { "name": "Fersk ingefær", "amount": "3", "unit": "cm" },
+          { "name": "Sitronsaft", "amount": "4", "unit": "cl" },
+          { "name": "Honning", "amount": "2", "unit": "ss" },
+          { "name": "Vann", "amount": "20", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Blå Limonade",
+        "description": "Vakker blålilla limonade med ferske blåbær, sitron og mynte. Imponerende på farge og smak.",
+        "image": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=800&q=80",
+        "category": "Alkoholfri",
+        "alcoholic": false,
+        "glass_type": "Highball-glass",
+        "garnish": "Ferske blåbær og mynteblad",
+        "instructions": [
+          "1. Mos blåbær med sukkersirup i bunnen av glasset.",
+          "2. Sil over sitronsaften og rør.",
+          "3. Fyll glasset med isbiter.",
+          "4. Fyll opp med vann eller sodavann.",
+          "5. Pynt med ferske blåbær og mynte."
+        ],
+        "ingredients": [
+          { "name": "Blåbær", "amount": "80", "unit": "g" },
+          { "name": "Sitronsaft", "amount": "3", "unit": "cl" },
+          { "name": "Sukkersirup", "amount": "2", "unit": "cl" },
+          { "name": "Fersk mynte", "amount": "5", "unit": "blader" },
+          { "name": "Vann", "amount": "15", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Jordbær Sitronvann",
+        "description": "Klassisk hjemmelaget jordbærlimonade med agave — naturlig søt og strålende rød. Barnas og voksnes favoritt.",
+        "image": "https://images.unsplash.com/photo-1542664022-2b29dcdee806?auto=format&fit=crop&w=800&q=80",
+        "category": "Alkoholfri",
+        "alcoholic": false,
+        "glass_type": "Highball-glass",
+        "garnish": "Jordbær og sitronskive",
+        "instructions": [
+          "1. Blend ferske jordbær til puré og sil.",
+          "2. Bland jordbærpuré med sitronsaft og agavenektar.",
+          "3. Fyll glass med is.",
+          "4. Hell over jordbærblandingen og fyll opp med vann.",
+          "5. Rør og pynt med jordbær og sitronskive."
+        ],
+        "ingredients": [
+          { "name": "Jordbær", "amount": "100", "unit": "g" },
+          { "name": "Sitronsaft", "amount": "4", "unit": "cl" },
+          { "name": "Agavenektar", "amount": "2", "unit": "cl" },
+          { "name": "Vann", "amount": "15", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Ananas Kokos Smoothie",
+        "description": "Tropisk og kremete smoothie med ananas, kokosmjølk og banan. Smaken av sørhavet i et glass.",
+        "image": "https://images.unsplash.com/photo-1607532941433-304659e8198a?auto=format&fit=crop&w=800&q=80",
+        "category": "Smoothie",
+        "alcoholic": false,
+        "glass_type": "Smoothieglass",
+        "garnish": "Ananasbit og kokosflak",
+        "instructions": [
+          "1. Ha ananas, kokosmjølk og banan i blender.",
+          "2. Tilsett en kopp is.",
+          "3. Blend på høy hastighet til glatt og kremaktig.",
+          "4. Hell over i glass.",
+          "5. Pynt med ananasbit og ristede kokosflak."
+        ],
+        "ingredients": [
+          { "name": "Ananas", "amount": "200", "unit": "g" },
+          { "name": "Kokosmjølk", "amount": "10", "unit": "cl" },
+          { "name": "Banan", "amount": "1", "unit": "stk" }
+        ]
+      },
+      {
+        "name": "Eple Kanel Smoothie",
+        "description": "Varm høststemning i et glass — eple, kanel og yoghurt gir en trøstende og næringsrik smoothie.",
+        "image": "https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?auto=format&fit=crop&w=800&q=80",
+        "category": "Smoothie",
+        "alcoholic": false,
+        "glass_type": "Smoothieglass",
+        "garnish": "Kanelstang og epleskive",
+        "instructions": [
+          "1. Skrell og kutt eple i biter.",
+          "2. Ha eple, yoghurt, honning og kanel i blender.",
+          "3. Tilsett noen isbiter.",
+          "4. Blend til glatt konsistens.",
+          "5. Hell over i glass og pynt med kanelstang og epleskive."
+        ],
+        "ingredients": [
+          { "name": "Eple", "amount": "2", "unit": "stk" },
+          { "name": "Kanel", "amount": "0.5", "unit": "ts" },
+          { "name": "Yoghurt", "amount": "100", "unit": "g" },
+          { "name": "Honning", "amount": "1", "unit": "ss" }
+        ]
+      },
+      {
+        "name": "Banan Jordnøtt Smoothie",
+        "description": "Mettende proteinsmoothie med banan, jordnøttsmør og havremelk. Perfekt etter trening eller som frokost.",
+        "image": "https://images.unsplash.com/photo-1553530666-dbf51e00f8a6?auto=format&fit=crop&w=800&q=80",
+        "category": "Smoothie",
+        "alcoholic": false,
+        "glass_type": "Smoothieglass",
+        "garnish": "Bananskive og litt jordnøttsmør",
+        "instructions": [
+          "1. Ha banan, jordnøttsmør og havremelk i blender.",
+          "2. Tilsett honning og noen isbiter.",
+          "3. Blend til glatt og kremaktig.",
+          "4. Smak til og tilsett mer honning om nødvendig.",
+          "5. Hell over i glass og pynt med bananskive."
+        ],
+        "ingredients": [
+          { "name": "Banan", "amount": "1", "unit": "stk" },
+          { "name": "Jordnøttsmør", "amount": "2", "unit": "ss" },
+          { "name": "Havremelk", "amount": "20", "unit": "cl" },
+          { "name": "Honning", "amount": "1", "unit": "ts" }
+        ]
+      },
+      {
+        "name": "Tropisk Grønn Smoothie",
+        "description": "Grønn smoothie som smaker tropisk — spinat er godt skjult bak mango, ananas og kokos. Sunn og deilig.",
+        "image": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80",
+        "category": "Smoothie",
+        "alcoholic": false,
+        "glass_type": "Smoothieglass",
+        "garnish": "Mynteblad og ananasbit",
+        "instructions": [
+          "1. Ha spinat og halvparten av kokosmjølken i blender og blend til glatt.",
+          "2. Tilsett mango og ananas.",
+          "3. Hell i resten av kokosmjølken.",
+          "4. Blend til kremaktig konsistens.",
+          "5. Hell over i glass og pynt med mynteblad."
+        ],
+        "ingredients": [
+          { "name": "Mango", "amount": "100", "unit": "g" },
+          { "name": "Ananas", "amount": "100", "unit": "g" },
+          { "name": "Spinat", "amount": "30", "unit": "g" },
+          { "name": "Kokosmjølk", "amount": "15", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Kirsebær Smoothie",
+        "description": "Rik og fyldig kirsebærsmoothie med gresk yoghurt og vanilje. Som en kirsebær-cheesecake i flytende form.",
+        "image": "https://images.unsplash.com/photo-1638439430466-b2bb7fdc1d67?auto=format&fit=crop&w=800&q=80",
+        "category": "Smoothie",
+        "alcoholic": false,
+        "glass_type": "Smoothieglass",
+        "garnish": "Ferske kirsebær",
+        "instructions": [
+          "1. Ha kirsebær (frosne eller ferske), banan og gresk yoghurt i blender.",
+          "2. Tilsett vaniljeekstrakt.",
+          "3. Blend til glatt og kremaktig.",
+          "4. Smak til og tilsett honning om ønskelig.",
+          "5. Hell over i glass og pynt med ferske kirsebær."
+        ],
+        "ingredients": [
+          { "name": "Kirsebær", "amount": "150", "unit": "g" },
+          { "name": "Banan", "amount": "1", "unit": "stk" },
+          { "name": "Gresk yoghurt", "amount": "100", "unit": "g" },
+          { "name": "Vaniljeekstrakt", "amount": "0.5", "unit": "ts" }
+        ]
+      },
+      {
+        "name": "Sangria",
+        "description": "Spansk festdrink som best lages dagen i forveien. Rødvin, appelsin, sitron og en splash brandy — fruktig og deilig.",
+        "image": null,
+        "category": "Punch",
+        "alcoholic": true,
+        "glass_type": "Vinglass eller punchbolle",
+        "garnish": "Appelsin- og sitronskiver",
+        "instructions": [
+          "1. Kutt appelsin og sitron i skiver og legg i en stor kanne.",
+          "2. Tilsett sukker og knus lett for å frigjøre saften.",
+          "3. Hell over rødvin og brandy.",
+          "4. Rør godt og la trekke i kjøleskap i minst 2 timer (gjerne over natten).",
+          "5. Rett før servering, fyll opp med sodavann og is.",
+          "6. Server med fruktbitene."
+        ],
+        "ingredients": [
+          { "name": "Rødvin", "amount": "75", "unit": "cl" },
+          { "name": "Appelsin", "amount": "1", "unit": "stk" },
+          { "name": "Sitron", "amount": "1", "unit": "stk" },
+          { "name": "Sukker", "amount": "2", "unit": "ss" },
+          { "name": "Brandy", "amount": "6", "unit": "cl" },
+          { "name": "Sodavann", "amount": "20", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Hvit Sangria",
+        "description": "Lysere og friskere variant av klassisk sangria med hvitvin og fersken. Perfekt for sommerlige hageselskaper.",
+        "image": null,
+        "category": "Punch",
+        "alcoholic": true,
+        "glass_type": "Vinglass eller punchbolle",
+        "garnish": "Fersken- og appelsinskiver",
+        "instructions": [
+          "1. Kutt fersken og appelsin i skiver.",
+          "2. Legg frukten i en kanne med hvitvin og honning.",
+          "3. Rør godt og la trekke kaldt i minst 1 time.",
+          "4. Rett før servering, fyll opp med sodavann og is.",
+          "5. Server med fruktbitene i glasset."
+        ],
+        "ingredients": [
+          { "name": "Hvitvin", "amount": "75", "unit": "cl" },
+          { "name": "Fersken", "amount": "2", "unit": "stk" },
+          { "name": "Appelsin", "amount": "1", "unit": "stk" },
+          { "name": "Honning", "amount": "2", "unit": "ss" },
+          { "name": "Sodavann", "amount": "20", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Gløgg",
+        "description": "Julestemning i et glass — varm rødvin med appelsin, kanel, nellik og ingefær. En nordisk juleklaissker som varmer kropp og sjel.",
+        "image": "https://images.unsplash.com/photo-1574226516831-e1dff420e562?auto=format&fit=crop&w=800&q=80",
+        "category": "Punch",
+        "alcoholic": true,
+        "glass_type": "Varmeglass eller keramikkkopp",
+        "garnish": "Kanelstang, appelsinskive og mandler",
+        "instructions": [
+          "1. Varm rødvinen forsiktig i en kjele — ikke la det koke.",
+          "2. Tilsett appelsinskall, kanel, nellik, ingefær og kardemomme.",
+          "3. La trekke på lav varme i 20–30 minutter.",
+          "4. Sil av krydder og appelsinskall.",
+          "5. Tilsett sukker og rør til oppløst.",
+          "6. Server varm i glass og pynt med kanelstang, appelsinskive og mandler."
+        ],
+        "ingredients": [
+          { "name": "Rødvin", "amount": "75", "unit": "cl" },
+          { "name": "Appelsin", "amount": "1", "unit": "stk" },
+          { "name": "Kanel", "amount": "2", "unit": "stenger" },
+          { "name": "Nellik", "amount": "6", "unit": "stk" },
+          { "name": "Frisk ingefær", "amount": "2", "unit": "cm" },
+          { "name": "Kardemomme", "amount": "4", "unit": "kapsler" },
+          { "name": "Sukker", "amount": "3", "unit": "ss" }
+        ]
+      },
+      {
+        "name": "Tropical Punch",
+        "description": "Fargerik og tropisk punchdrink perfekt til fest. Rom, ananas og appelsinjuice med et dryss grenadine for farge og sødme.",
+        "image": null,
+        "category": "Punch",
+        "alcoholic": true,
+        "glass_type": "Punchbolle eller highball-glass",
+        "garnish": "Appelsinskiver og kirsebær",
+        "instructions": [
+          "1. Bland rom, ananassaft og appelsinjuice i en punchbolle eller stor kanne.",
+          "2. Tilsett grenadine og rør godt.",
+          "3. La stå kaldt til servering.",
+          "4. Tilsett store isbiter rett før servering.",
+          "5. Server i glass og pynt med appelsinskive og kirsebær."
+        ],
+        "ingredients": [
+          { "name": "Hvit rom", "amount": "20", "unit": "cl" },
+          { "name": "Ananassaft", "amount": "40", "unit": "cl" },
+          { "name": "Appelsinjuice", "amount": "20", "unit": "cl" },
+          { "name": "Grenadine", "amount": "4", "unit": "cl" }
+        ]
+      },
+      {
+        "name": "Alkoholfri Gløgg",
+        "description": "Alle julesmagene uten alkohol — druesaft varmet med appelsin, kanel og nellik. Like god og like varm.",
+        "image": "https://images.unsplash.com/photo-1574226516831-e1dff420e562?auto=format&fit=crop&w=800&q=80",
+        "category": "Alkoholfri",
+        "alcoholic": false,
+        "glass_type": "Varmeglass eller keramikkkopp",
+        "garnish": "Kanelstang, appelsinskive og mandler",
+        "instructions": [
+          "1. Varm druesaften forsiktig i en kjele.",
+          "2. Tilsett appelsinskall, kanel, nellik og ingefær.",
+          "3. La trekke på lav varme i 20–30 minutter.",
+          "4. Sil av krydder og appelsinskall.",
+          "5. Smak til med sukker om ønskelig.",
+          "6. Server varm i glass og pynt med kanelstang og appelsinskive."
+        ],
+        "ingredients": [
+          { "name": "Druesaft (mørk)", "amount": "75", "unit": "cl" },
+          { "name": "Appelsin", "amount": "1", "unit": "stk" },
+          { "name": "Kanel", "amount": "2", "unit": "stenger" },
+          { "name": "Nellik", "amount": "6", "unit": "stk" },
+          { "name": "Frisk ingefær", "amount": "2", "unit": "cm" }
         ]
       }
     ]
