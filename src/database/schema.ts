@@ -77,10 +77,8 @@ export async function ensureSchema(db: SQLite.SQLiteDatabase): Promise<void> {
   try {
     const inserted = await seedFromJson(db);
     console.log(`[DrinkMix] ensureSchema done — inserted ${inserted}`);
-    // Fire-and-forget background image refresh
-    if (inserted > 0) {
-      refreshImagesFromCocktailDB(db).catch(() => {});
-    }
+    // Always refresh missing images in background (network permitting)
+    refreshImagesFromCocktailDB(db).catch(() => {});
   } catch (e) {
     console.error('[DrinkMix] seeding failed (non-fatal):', e);
   }
