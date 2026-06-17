@@ -19,7 +19,6 @@ export default function SettingsScreen() {
   const { colors, spacing, typography, radius } = theme;
   const insets = useSafeAreaInsets();
   const db = useSQLiteContext();
-  const [apiKey, setApiKey] = useState('');
   const [showApiModal, setShowApiModal] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [hasApiKey, setHasApiKey] = useState(false);

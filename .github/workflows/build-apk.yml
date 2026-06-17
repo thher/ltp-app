@@ -33,16 +33,44 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      - name: Create signing keystore
+      - name: Restore signing keystore
         run: |
-          mkdir -p ~/.android
-          keytool -genkeypair \
-            -keystore ~/.android/debug.keystore \
-            -alias androiddebugkey \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass android -keypass android \
-            -dname "CN=Android Debug,O=Android,C=US" \
-            -noprompt
+          base64 -d android-signing/drinkmix.keystore.b64 > android/app/drinkmix.keystore
+
+      - name: Configure release signing
+        run: |
+          cat >> android/gradle.properties << 'EOF'
+          DRINKMIX_STORE_FILE=drinkmix.keystore
+          DRINKMIX_KEY_ALIAS=drinkmix
+          DRINKMIX_STORE_PASSWORD=drinkmix2024
+          DRINKMIX_KEY_PASSWORD=drinkmix2024
+          EOF
+          python3 << 'PYEOF'
+          import re
+          with open('android/app/build.gradle') as f:
+              content = f.read()
+          signing_block = '''
+              signingConfigs {
+                  release {
+                      storeFile file(DRINKMIX_STORE_FILE)
+                      storePassword DRINKMIX_STORE_PASSWORD
+                      keyAlias DRINKMIX_KEY_ALIAS
+                      keyPassword DRINKMIX_KEY_PASSWORD
+                  }
+              }
+          '''
+          # Insert signing config before buildTypes
+          content = re.sub(r'(\s+buildTypes\s*\{)', signing_block + r'\1', content, count=1)
+          # Add signingConfig to release buildType
+          content = re.sub(
+              r'(release\s*\{)',
+              r'\1\n            signingConfig signingConfigs.release',
+              content, count=1
+          )
+          with open('android/app/build.gradle', 'w') as f:
+              f.write(content)
+          print('Signing configured successfully')
+          PYEOF
 
       - name: Build release APK
         run: cd android && ./gradlew assembleRelease --no-daemon
