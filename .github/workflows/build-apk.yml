@@ -59,14 +59,14 @@ jobs:
                   }
               }
           '''
-          # Insert signing config before buildTypes
-          content = re.sub(r'(\s+buildTypes\s*\{)', signing_block + r'\1', content, count=1)
-          # Add signingConfig to release buildType
+          # Step 1: patch buildTypes.release FIRST (only one "release {" exists at this point)
           content = re.sub(
               r'(release\s*\{)',
               r'\1\n            signingConfig signingConfigs.release',
               content, count=1
           )
+          # Step 2: then insert signingConfigs block before buildTypes
+          content = re.sub(r'(\s+buildTypes\s*\{)', signing_block + r'\1', content, count=1)
           with open('android/app/build.gradle', 'w') as f:
               f.write(content)
           print('Signing configured successfully')
