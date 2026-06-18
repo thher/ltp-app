@@ -1,0 +1,392 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - claude/drinkmix-mobile-app-9m9ph9
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Fetch unique drink images from thecocktaildb
+        run: |
+          python3 - << 'PYEOF'
+          import json, urllib.request, urllib.parse, time, sys, random
+
+          # Exact/closest name match for each drink in thecocktaildb
+          NAME_MAP = {
+            "Jordbær Daiquiri":              "Strawberry Daiquiri",
+            "Jordbær Banan Smoothie":        "Strawberry Daiquiri",
+            "Grønn Detox Smoothie":          "Mojito",
+            "Alkoholfri Aperol Spritz":      "Aperol Spritz",
+            "Blåbær Havre Smoothie":         "Blueberry Smoothie",
+            "Vannmelon Limonade":            "Watermelon Lemonade",
+            "Agurk Cooler":                  "Gimlet",
+            "Gin & Tonic":                   "Gin and Tonic",
+            "Dark 'n' Stormy":               "Dark and Stormy",
+            "Bee's Knees":                   "Bees Knees",
+            "Tommy's Margarita":             "Margarita",
+            "Hugo Spritz":                   "Hugo",
+            "Arnold Palmer":                 "Arnold Palmer",
+            "Cuba Libre":                    "Cuba Libre",
+            "Vodka Tranebær":                "Cape Cod",
+            "Americano Highball":            "Americano",
+            "Shandy":                        "Shandy Gaff",
+            "Radler":                        "Shandy Gaff",
+            "Corpse Reviver #2":             "Corpse Reviver",
+            "Spagliato":                     "Negroni Sbagliato",
+            "Last Word":                     "The Last Word",
+            "Blood and Sand":                "Blood and Sand",
+            "Mezcal Negroni":                "Negroni",
+            "Gold Fashioned":                "Old Fashioned",
+            "Lemon Drop Shot":               "Lemon Drop",
+            "Baby Guinness":                 "Baby Guinness",
+            "Butterscotch Shot":             "Buttery Nipple",
+            "Sambuca Shot":                  "Sambuca",
+            "Melon Shot":                    "Midori Sour",
+            "Gløgg":                         "Mulled Wine",
+            "Alkoholfri Gløgg":              "Mulled Wine",
+            "Hvit Sangria":                  "White Sangria",
+            "Jordbær Sitronvann":            "Strawberry Daiquiri",
+            "Ananas Kokos Smoothie":         "Pina Colada",
+            "Virgin Piña Colada":            "Virgin Colada",
+            "Alkoholfri Hugo":               "Hugo",
+            "Alkoholfri Sangria":            "Sangria",
+            "Alkoholfri Dark & Stormy":      "Moscow Mule",
+            "Aquavit Sour":                  "Whiskey Sour",
+            "Aquavit Negroni":               "Negroni",
+            "Norsk G&T":                     "Gin and Tonic",
+            "Lysholm Sling":                 "Singapore Sling",
+            "Pære Spritz":                   "Aperol Spritz",
+            "Tranebær Fizz":                 "Gin Fizz",
+            "Juleshot":                      "B-52",
+            "Sommerspritz":                  "Aperol Spritz",
+            "Norsk Aquavit Spritz":          "Aperol Spritz",
+            "Linie Aquavit Soda":            "Vodka Soda",
+            "Lakris Shot":                   "Sambuca",
+            "Nordis Spritz":                 "Aperol Spritz",
+            "Aquavit Buck":                  "Moscow Mule",
+            "Vanilje Kaffe Smoothie":        "Espresso Martini",
+            "Fersken Iste":                  "Long Island Iced Tea",
+            "Rødvinspunch":                  "Sangria",
+            "Piña Punch":                    "Pina Colada",
+            "Pink Gin & Tonic":              "Gin and Tonic",
+            "Aperol Negroni":                "Negroni",
+            "Blood Orange Negroni":          "Negroni",
+            "Paloma Highball":               "Paloma",
+            "Dark & Stormy Highball":        "Dark and Stormy",
+            "Harvey Wallbanger Sour":        "Harvey Wallbanger",
+            "Shirley Temple Deluxe":         "Shirley Temple",
+            "Tropical Sunrise":              "Tequila Sunrise",
+            "Aperol Tonic":                  "Aperol Spritz",
+            "Campari Soda":                  "Negroni",
+            "Tequila & Cola":                "Cuba Libre",
+            "Bourbon & Ginger":              "Whiskey Sour",
+            "Whisky Highball":               "Whiskey Sour",
+            "Rum & Coke":                    "Cuba Libre",
+            "Jack & Coke":                   "Cuba Libre",
+            "Gin & Juice":                   "Gin and Tonic",
+            "Vodka Lime Soda":               "Vodka Soda",
+            "Aperol Gin Spritz":             "Aperol Spritz",
+            "Frozen Margarita":              "Margarita",
+            "Frozen Daiquiri":               "Daiquiri",
+            "Peach Bellini":                 "Bellini",
+            "Strawberry Daiquiri":           "Strawberry Daiquiri",
+            "Mango Daiquiri":                "Mango Daiquiri",
+            "Passion Fruit Martini":         "Pornstar Martini",
+            "Kiwi Margarita":                "Margarita",
+            "Blueberry Mojito":              "Blueberry Mojito",
+            "Watermelon Mojito":             "Mojito",
+            "Piña Colada Shot":              "Pina Colada",
+            "Sex on the Beach Shot":         "Sex on the Beach",
+            "Kahlúa Shot":                   "B-52",
+            "Aperol Hugo":                   "Hugo",
+            "Spiced Apple Cider":            "Hot Toddy",
+            "White Hot Chocolate":           "Irish Coffee",
+            "Rum Old Fashioned":             "Old Fashioned",
+            "Spicy Margarita":               "Margarita",
+            "Cucumber Gin & Tonic":          "Gin and Tonic",
+            "Raspberry Gin Fizz":            "Gin Fizz",
+            "Paloma Rosa":                   "Paloma",
+            "Whisky Sour Royal":             "Whiskey Sour",
+            "Dark Rum & Ginger":             "Dark and Stormy",
+            "Vodka Espresso":                "Espresso Martini",
+            "Amaretto Fizz":                 "Amaretto Sour",
+            "Tropical Mojito":               "Mojito",
+            "Bananabread Old Fashioned":     "Old Fashioned",
+            "Whisky Mac":                    "Whiskey Sour",
+            "Naked Martini":                 "Dry Martini",
+            "Perfect Manhattan":             "Manhattan",
+            "Black Manhattan":               "Manhattan",
+            "Oaxacan Old Fashioned":         "Old Fashioned",
+            "Kahlúa & Cream":                "White Russian",
+            "Elderflower Collins":           "Tom Collins",
+            "Vodka Collins":                 "Tom Collins",
+            "Rum Collins":                   "Tom Collins",
+            "Tequila Fizz":                  "Gin Fizz",
+            "Silver Fizz":                   "Ramos Gin Fizz",
+            "Spritz Bianco":                 "Aperol Spritz",
+            "Rossini":                       "Bellini",
+            "Bay Breeze Tropical":           "Bay Breeze",
+            "Peach Fuzz":                    "Bellini",
+            "Electric Lemonade":             "Blue Lagoon",
+            "Smash":                         "Mint Julep",
+            "Garibaldi":                     "Screwdriver",
+            "Godmother":                     "Godfather",
+            "Woo Woo":                       "Sex on the Beach",
+            "Alabama Slammer":               "Sex on the Beach",
+            "Cactus Jack":                   "Tequila Sunrise",
+            "Purple Rain":                   "Blue Lagoon",
+            "Dirty Harry":                   "Whiskey Sour",
+            "Lager Top":                     "Shandy Gaff",
+            "Diesel":                        "Black Velvet",
+            "Snakebite":                     "Black Velvet",
+            "Toasted Almond":                "Mudslide",
+            "Colorado Bulldog":              "White Russian",
+            "John Collins":                  "Tom Collins",
+            "Swizzle":                       "Dark and Stormy",
+            "White Sangria":                 "Sangria",
+            "Mango Lassi":                   "Mango Daiquiri",
+            "Jagerbomb":                     "B-52",
+            "Ranch Water":                   "Paloma",
+            "New York Sour":                 "New York Sour",
+            "Naked and Famous":              "Paper Plane",
+            "Southside":                     "Gimlet",
+            "Trinidad Sour":                 "Amaretto Sour",
+            "Chartreuse Swizzle":            "Gimlet",
+            "Navy Grog":                     "Mai Tai",
+            "Beachcomber":                   "Mai Tai",
+            "Goombay Smash":                 "Mai Tai",
+            "Suffering Bastard":             "Moscow Mule",
+            "Three Dots and a Dash":         "Mai Tai",
+            "Lava Flow":                     "Pina Colada",
+            "Rum Runner":                    "Mai Tai",
+            "Miami Vice":                    "Pina Colada",
+            "Yellow Bird":                   "Mai Tai",
+            "Scorpion":                      "Mai Tai",
+            "Bahama Mama":                   "Mai Tai",
+            "Pousse Café":                   "B-52",
+            "Jungle Juice":                  "Long Island Iced Tea",
+            "Pink Lady":                     "Cosmopolitan",
+            "Kir":                           "Kir Royale",
+            "Buck's Fizz":                   "Mimosa",
+            "Tuxedo":                        "Dry Martini",
+            "Flaming Dr. Pepper":            "B-52",
+            "Green Tea Shot":                "B-52",
+            "Washington Apple":              "Cosmopolitan",
+            "Cement Mixer":                  "B-52",
+            "Rum Punch":                     "Sangria",
+            "Gin Rickey":                    "Tom Collins",
+            "Roy Rogers":                    "Shirley Temple",
+            "Virgin Mary":                   "Bloody Mary",
+            "Jungle Bird":                   "Jungle Bird",
+            "Painkiller":                    "Painkiller",
+            "Hemingway Daiquiri":            "Hemingway Daiquiri",
+            "Caipirinha":                    "Caipirinha",
+            "Caipiroska":                    "Caipirinha",
+            "Pisco Sour":                    "Pisco Sour",
+            "El Presidente":                 "El Presidente",
+            "Sloe Gin Fizz":                 "Gin Fizz",
+            "French Connection":             "Godfather",
+            "Salty Dog":                     "Greyhound",
+            "Bay Breeze":                    "Bay Breeze",
+            "Tom & Jerry":                   "Irish Coffee",
+            "Brandy Crusta":                 "Sidecar",
+            "Bijou":                         "Martinez",
+            "Scofflaw":                      "Manhattan",
+            "Revolver":                      "Manhattan",
+            "Little Italy":                  "Manhattan",
+            "Golden Cadillac":               "Grasshopper",
+            "Midori Sour":                   "Midori Sour",
+            "Tropical Punch":                "Sangria",
+            "Bærpunch Norsk":                "Sangria",
+            "Festpunch":                     "Sangria",
+            "Cider Punch":                   "Sangria",
+          }
+
+          BASE_SEARCH = "https://www.thecocktaildb.com/api/json/v1/1/search.php?s="
+          BASE_FILTER = "https://www.thecocktaildb.com/api/json/v1/1/filter.php?c="
+          _cache = {}
+
+          def fetch_json(url):
+              req = urllib.request.Request(url, headers={
+                  "User-Agent": "Mozilla/5.0 (compatible; DrinkMixApp/1.0)"
+              })
+              with urllib.request.urlopen(req, timeout=10) as r:
+                  return json.loads(r.read())
+
+          def search_db(term):
+              if term in _cache:
+                  return _cache[term]
+              for attempt in range(3):
+                  try:
+                      data = fetch_json(BASE_SEARCH + urllib.parse.quote(term))
+                      result = (data.get("drinks") or [None])[0]
+                      img = result.get("strDrinkThumb") if result else None
+                      _cache[term] = img
+                      return img
+                  except Exception as e:
+                      if attempt < 2:
+                          time.sleep(2 ** attempt)
+                      else:
+                          _cache[term] = None
+                          return None
+
+          # Fetch all drinks in a category for unique fallback assignment
+          def fetch_category_images(category_param):
+              try:
+                  data = fetch_json(BASE_FILTER + urllib.parse.quote(category_param))
+                  drinks = data.get("drinks") or []
+                  # Return list of thumbnail URLs (already included in filter response)
+                  return [d["strDrinkThumb"] for d in drinks if d.get("strDrinkThumb")]
+              except Exception as e:
+                  print(f"  Could not fetch category {category_param}: {e}", file=sys.stderr)
+                  return []
+
+          # Category pools — fetched once, popped from to give each drink a unique image
+          print("Fetching category image pools...")
+          pools = {
+              "Cocktail":   fetch_category_images("Cocktail"),
+              "Shot":       fetch_category_images("Shot"),
+              "Longdrink":  fetch_category_images("Ordinary_Drink"),
+              "Smoothie":   fetch_category_images("Punch_%2F_Party_Drink"),
+              "Alkoholfri": fetch_category_images("Soft_Drink"),
+              "Punch":      fetch_category_images("Punch_%2F_Party_Drink"),
+              "Annet":      fetch_category_images("Cocktail"),
+          }
+          # Shuffle each pool so assignment order is varied
+          for pool in pools.values():
+              random.shuffle(pool)
+
+          used_images = set()
+
+          def pop_unique(category):
+              pool = pools.get(category, pools["Cocktail"])
+              for img in pool:
+                  if img not in used_images:
+                      used_images.add(img)
+                      return img
+              # All used — just return first
+              return pool[0] if pool else None
+
+          json_path = "assets/drinkmix_starter_database.json"
+          with open(json_path) as f:
+              raw = json.load(f)
+
+          drinks = raw["data"]["drinks"]
+          exact = fallback_unique = skipped = failed = 0
+
+          for i, d in enumerate(drinks):
+              name = d["name"]
+              category = d.get("category", "Cocktail")
+
+              if d.get("image"):
+                  skipped += 1
+                  continue
+
+              # 1. Try exact/mapped name from thecocktaildb search
+              search_term = NAME_MAP.get(name, name)
+              img = search_db(search_term)
+
+              if img:
+                  d["image"] = img
+                  used_images.add(img)
+                  exact += 1
+                  print(f"[{i+1}/{len(drinks)}] EXACT   {name}")
+              else:
+                  # 2. Pick unique image from category pool
+                  img = pop_unique(category)
+                  if img:
+                      d["image"] = img
+                      fallback_unique += 1
+                      print(f"[{i+1}/{len(drinks)}] UNIQUE  {name}")
+                  else:
+                      failed += 1
+                      print(f"[{i+1}/{len(drinks)}] FAILED  {name}")
+
+              time.sleep(0.12)
+
+          with open(json_path, "w", encoding="utf-8") as f:
+              json.dump(raw, f, ensure_ascii=False, indent=2)
+
+          total = exact + fallback_unique + skipped
+          print(f"\nDone: {total}/{len(drinks)} drinks have images")
+          print(f"  Exact match      : {exact}")
+          print(f"  Unique fallback  : {fallback_unique}")
+          print(f"  Already had      : {skipped}")
+          print(f"  Failed           : {failed}")
+          PYEOF
+
+      - name: Generate Android project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      - name: Restore signing keystore
+        run: |
+          base64 -d android-signing/drinkmix.keystore.b64 > android/app/drinkmix.keystore
+
+      - name: Configure release signing
+        run: |
+          cat >> android/gradle.properties << 'EOF'
+          DRINKMIX_STORE_FILE=drinkmix.keystore
+          DRINKMIX_KEY_ALIAS=drinkmix
+          DRINKMIX_STORE_PASSWORD=drinkmix2024
+          DRINKMIX_KEY_PASSWORD=drinkmix2024
+          EOF
+          python3 - << 'PYEOF'
+          import re
+          with open('android/app/build.gradle') as f:
+              content = f.read()
+          signing_block = '''
+              signingConfigs {
+                  release {
+                      storeFile file(DRINKMIX_STORE_FILE)
+                      storePassword DRINKMIX_STORE_PASSWORD
+                      keyAlias DRINKMIX_KEY_ALIAS
+                      keyPassword DRINKMIX_KEY_PASSWORD
+                  }
+              }
+          '''
+          content = re.sub(
+              r'(release\s*\{)',
+              r'\1\n            signingConfig signingConfigs.release',
+              content, count=1
+          )
+          content = re.sub(r'(\s+buildTypes\s*\{)', signing_block + r'\1', content, count=1)
+          with open('android/app/build.gradle', 'w') as f:
+              f.write(content)
+          print('Signing configured successfully')
+          PYEOF
+
+      - name: Build release APK
+        run: cd android && ./gradlew assembleRelease --no-daemon
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: DrinkMix-release
+          path: android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 30
