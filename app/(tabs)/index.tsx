@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Image } from 'expo-image';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useTheme } from '../../src/context/ThemeContext';
 import { useLanguage } from '../../src/context/LanguageContext';
@@ -21,6 +22,7 @@ import { CategoryPill } from '../../src/components/categories/CategoryPill';
 import { LoadingSpinner } from '../../src/components/ui/LoadingSpinner';
 import { Drink, FilterCategory } from '../../src/types';
 import { refreshImagesFromCocktailDB } from '../../src/services/seedService';
+import { getRandomCocktails, CocktailDbDrink } from '../../src/services/cocktailDbService';
 
 const CATEGORIES: { key: FilterCategory; labelKey: string }[] = [
   { key: 'all', labelKey: 'allDrinks' },
@@ -41,6 +43,7 @@ export default function HomeScreen() {
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('all');
   const [searchResults, setSearchResults] = useState<Drink[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [exploreDrinks, setExploreDrinks] = useState<CocktailDbDrink[]>([]);
 
   const db = useSQLiteContext();
   const { drinks, loading, fetchDrinks, search } = useDrinks();
@@ -51,12 +54,13 @@ export default function HomeScreen() {
     fetchFavoriteIds();
   }, [activeFilter]);
 
-  // After initial load, refresh missing drink images from thecocktaildb in background,
-  // then re-fetch so the UI picks up the new image URLs without requiring a restart.
+  // Refresh missing images in background, then re-fetch to show them
   useEffect(() => {
     refreshImagesFromCocktailDB(db)
       .then(() => fetchDrinks('all'))
       .catch(() => {});
+    // Load random cocktails for Explore section
+    getRandomCocktails(8).then(setExploreDrinks).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -211,6 +215,60 @@ export default function HomeScreen() {
                         isFavorite={checkIsFavorite(drink.id)}
                       />
                     ))}
+                  </View>
+                )}
+
+                {/* Explore section — random drinks from thecocktaildb */}
+                {activeFilter === 'all' && exploreDrinks.length > 0 && (
+                  <View style={{ marginTop: spacing.xl }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md }}>
+                      <Ionicons name="globe-outline" size={18} color={colors.primary} />
+                      <Text style={[typography.headlineSmall, { color: colors.text }]}>
+                        Utforsk nye drinker
+                      </Text>
+                    </View>
+                    <Text style={[typography.bodySmall, { color: colors.textMuted, marginBottom: spacing.md }]}>
+                      Fra thecocktaildb · Trykk for å legge til i din samling
+                    </Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -spacing.base }}>
+                      <View style={{ flexDirection: 'row', paddingHorizontal: spacing.base, gap: spacing.md }}>
+                        {exploreDrinks.map(d => (
+                          <TouchableOpacity
+                            key={d.idDrink}
+                            onPress={() => router.push(`/explore/${d.idDrink}`)}
+                            activeOpacity={0.85}
+                            style={{
+                              width: 150,
+                              backgroundColor: colors.surface,
+                              borderRadius: radius.lg,
+                              overflow: 'hidden',
+                              borderWidth: 1,
+                              borderColor: colors.borderSubtle,
+                            }}
+                          >
+                            {d.strDrinkThumb ? (
+                              <Image
+                                source={{ uri: d.strDrinkThumb + '/preview' }}
+                                style={{ width: 150, height: 110 }}
+                                contentFit="cover"
+                              />
+                            ) : (
+                              <View style={{ width: 150, height: 110, backgroundColor: colors.surfaceElevated, alignItems: 'center', justifyContent: 'center' }}>
+                                <Ionicons name="wine-outline" size={36} color={colors.textMuted} />
+                              </View>
+                            )}
+                            <View style={{ padding: spacing.sm }}>
+                              <Text style={[typography.labelMedium, { color: colors.text }]} numberOfLines={2}>
+                                {d.strDrink}
+                              </Text>
+                              <Text style={[typography.labelSmall, { color: colors.textMuted, marginTop: spacing.xxs }]} numberOfLines={1}>
+                                {d.strCategory}
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </ScrollView>
                   </View>
                 )}
 
