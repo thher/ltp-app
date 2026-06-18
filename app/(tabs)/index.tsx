@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSQLiteContext } from 'expo-sqlite';
 import { useTheme } from '../../src/context/ThemeContext';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { useDrinks } from '../../src/hooks/useDrinks';
@@ -19,6 +20,7 @@ import { DrinkCard } from '../../src/components/drinks/DrinkCard';
 import { CategoryPill } from '../../src/components/categories/CategoryPill';
 import { LoadingSpinner } from '../../src/components/ui/LoadingSpinner';
 import { Drink, FilterCategory } from '../../src/types';
+import { refreshImagesFromCocktailDB } from '../../src/services/seedService';
 
 const CATEGORIES: { key: FilterCategory; labelKey: string }[] = [
   { key: 'all', labelKey: 'allDrinks' },
@@ -40,6 +42,7 @@ export default function HomeScreen() {
   const [searchResults, setSearchResults] = useState<Drink[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
+  const db = useSQLiteContext();
   const { drinks, loading, fetchDrinks, search } = useDrinks();
   const { favoriteIds, fetchFavoriteIds, toggleFavorite, checkIsFavorite } = useFavorites();
 
@@ -47,6 +50,15 @@ export default function HomeScreen() {
     fetchDrinks(activeFilter);
     fetchFavoriteIds();
   }, [activeFilter]);
+
+  // After initial load, refresh missing drink images from thecocktaildb in background,
+  // then re-fetch so the UI picks up the new image URLs without requiring a restart.
+  useEffect(() => {
+    refreshImagesFromCocktailDB(db)
+      .then(() => fetchDrinks('all'))
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSearch = useCallback(async (query: string) => {
     setSearchQuery(query);

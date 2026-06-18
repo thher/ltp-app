@@ -129,12 +129,10 @@ export async function seedFromJson(
   return inserted;
 }
 
-/**
- * Fetches fresh images from thecocktaildb for drinks that are missing one.
- * Runs in background — does not block startup.
- * Uses batched concurrent requests (5 at a time) for speed.
- */
-export async function refreshImagesFromCocktailDB(db: SQLite.SQLiteDatabase): Promise<void> {
+// Singleton promise so concurrent callers share one network run
+let _refreshPromise: Promise<void> | null = null;
+
+async function _doRefreshImages(db: SQLite.SQLiteDatabase): Promise<void> {
   try {
     const rows = await db.getAllAsync<{ id: number; name: string; image: string | null }>(
       'SELECT id, name, image FROM drinks WHERE is_user_created = 0 AND image IS NULL'
@@ -162,4 +160,15 @@ export async function refreshImagesFromCocktailDB(db: SQLite.SQLiteDatabase): Pr
   } catch (e) {
     console.warn('[DrinkMix] image refresh failed:', e);
   }
+}
+
+/**
+ * Fetches fresh images from thecocktaildb for drinks that are missing one.
+ * Deduplicates concurrent calls — all callers share the same in-flight promise.
+ */
+export function refreshImagesFromCocktailDB(db: SQLite.SQLiteDatabase): Promise<void> {
+  if (!_refreshPromise) {
+    _refreshPromise = _doRefreshImages(db).finally(() => { _refreshPromise = null; });
+  }
+  return _refreshPromise;
 }
