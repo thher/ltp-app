@@ -6,6 +6,16 @@ import { useTheme } from '../../context/ThemeContext';
 import { Drink } from '../../types';
 import { Badge } from '../ui/Badge';
 
+const CATEGORY_STYLES: Record<string, { bg: string; icon: keyof typeof Ionicons.glyphMap }> = {
+  Cocktail:   { bg: '#2D1B69', icon: 'wine-outline' },
+  Shot:       { bg: '#6B1A1A', icon: 'flask-outline' },
+  Longdrink:  { bg: '#1A3A5C', icon: 'beer-outline' },
+  Smoothie:   { bg: '#1A4A2A', icon: 'nutrition-outline' },
+  Alkoholfri: { bg: '#1A3D2B', icon: 'leaf-outline' },
+  Punch:      { bg: '#4A2D00', icon: 'bonfire-outline' },
+  Annet:      { bg: '#2D2D2D', icon: 'star-outline' },
+};
+
 interface DrinkCardProps {
   drink: Drink;
   onPress: (drink: Drink) => void;
@@ -22,6 +32,7 @@ export const DrinkCard = memo(function DrinkCard({
   const { theme } = useTheme();
   const { colors, radius, spacing, typography } = theme;
   const [imgError, setImgError] = useState(false);
+  const catStyle = CATEGORY_STYLES[drink.category_name ?? ''] ?? CATEGORY_STYLES.Annet;
 
   return (
     <TouchableOpacity
@@ -55,12 +66,27 @@ export const DrinkCard = memo(function DrinkCard({
             style={{
               width: '100%',
               height: 180,
-              backgroundColor: colors.surfaceHighlight,
+              backgroundColor: catStyle.bg,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Ionicons name="wine-outline" size={64} color={colors.textMuted} />
+            <Ionicons name={catStyle.icon} size={56} color="rgba(255,255,255,0.25)" />
+            <Text
+              style={{
+                position: 'absolute',
+                bottom: spacing.md,
+                left: spacing.md,
+                right: spacing.md,
+                color: 'rgba(255,255,255,0.5)',
+                fontSize: 11,
+                letterSpacing: 1.5,
+                textTransform: 'uppercase',
+              }}
+              numberOfLines={1}
+            >
+              {drink.category_name ?? 'Cocktail'}
+            </Text>
           </View>
         )}
         <TouchableOpacity
