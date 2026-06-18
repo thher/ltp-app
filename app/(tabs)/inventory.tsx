@@ -26,6 +26,7 @@ import { LoadingSpinner } from '../../src/components/ui/LoadingSpinner';
 import { InventoryItem } from '../../src/types';
 import * as ImagePicker from 'expo-image-picker';
 import { scanIngredientsFromImage, getApiKey } from '../../src/services/aiService';
+import { CameraModal } from '../../src/components/ui/CameraModal';
 
 type TabType = 'inventory' | 'matches';
 
@@ -154,6 +155,7 @@ export default function InventoryScreen() {
   const [scannedIngredients, setScannedIngredients] = useState<string[]>([]);
   const [showScanModal, setShowScanModal] = useState(false);
   const [showSourceModal, setShowSourceModal] = useState(false);
+  const [showCameraModal, setShowCameraModal] = useState(false);
 
   const { inventory, inventoryIds, loading, fetchInventory, addIngredient, removeIngredient } = useInventory();
 
@@ -217,49 +219,10 @@ export default function InventoryScreen() {
     }
   }, []);
 
-  const handleScanWithCamera = useCallback(async () => {
+  const handleScanWithCamera = useCallback(() => {
     setShowSourceModal(false);
-    // Small delay so modal fully dismisses before system dialogs appear
-    await new Promise(r => setTimeout(r, 300));
-
-    // Check existing permission first — don't request and launch in same call
-    // (on Android, requestCameraPermissionsAsync causes activity restart which
-    //  kills the subsequent launchCameraAsync call)
-    const existing = await ImagePicker.getCameraPermissionsAsync();
-
-    if (existing.status !== 'granted') {
-      if (!existing.canAskAgain) {
-        Alert.alert(
-          'Kamera blokkert',
-          'Gå til Innstillinger → Apper → DrinkMix → Tillatelser og slå på Kamera, og prøv igjen.',
-          [{ text: 'OK' }]
-        );
-        return;
-      }
-      // Request permission — activity will restart, camera must be opened on next tap
-      await ImagePicker.requestCameraPermissionsAsync();
-      Alert.alert(
-        'Tilgang gitt ✓',
-        'Trykk på kamera-ikonet én gang til for å ta bilde.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    // Permission already granted — launch camera directly
-    try {
-      const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-      if (!result.canceled && result.assets?.[0]) {
-        await processImageForScan(result.assets[0].uri);
-      }
-    } catch {
-      Alert.alert(
-        'Kamerafeil',
-        'Kameraet åpnet ikke. Bruk "Velg fra galleri": ta bilde med kameraappen din, kom tilbake og velg bildet.',
-        [{ text: 'OK' }]
-      );
-    }
-  }, [processImageForScan]);
+    setShowCameraModal(true);
+  }, []);
 
   const handleScanFromGallery = useCallback(async () => {
     setShowSourceModal(false);
@@ -562,6 +525,16 @@ export default function InventoryScreen() {
         typography={typography}
         radius={radius}
         insets={insets}
+      />
+
+      {/* In-app camera */}
+      <CameraModal
+        visible={showCameraModal}
+        onClose={() => setShowCameraModal(false)}
+        onCapture={async (uri) => {
+          setShowCameraModal(false);
+          await processImageForScan(uri);
+        }}
       />
 
       {/* Image Source Picker Modal */}

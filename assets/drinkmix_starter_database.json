@@ -946,7 +946,7 @@
       {
         "name": "Jordbær Banan Smoothie",
         "description": "Sunn, kremaktig og deilig smoothie. Perfekt til frokost eller som en rask snack.",
-        "image": "https://images.unsplash.com/photo-1553530666-dbf51e00f8a6?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Smoothie",
         "alcoholic": false,
         "glass_type": "Smoothieglass",
@@ -988,7 +988,7 @@
       {
         "name": "Grønn Detox Smoothie",
         "description": "Energigivende grønn smoothie med spinat, eple og ingefær. Frisk og full av næringsstoffer.",
-        "image": "https://images.unsplash.com/photo-1610970881699-44a5587cabec?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Smoothie",
         "alcoholic": false,
         "glass_type": "Smoothieglass",
@@ -2018,7 +2018,7 @@
       {
         "name": "Arnold Palmer",
         "description": "Halvt iskald te, halvt limonade — oppkalt etter golflegenden. Forfriskende og perfekt til sport og sommer.",
-        "image": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -2056,7 +2056,7 @@
       {
         "name": "Vannmelon Limonade",
         "description": "Frisk og sommerlig alkoholfri drink med saftig vannmelon og sitron. Vakker rød farge.",
-        "image": "https://images.unsplash.com/photo-1523677011781-c91d1bbe2f9e?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -2094,7 +2094,7 @@
       {
         "name": "Agurk Cooler",
         "description": "Ekstremt forfriskende alkoholfri drink med agurk, mynte og lime. Spa-vann tatt til neste nivå.",
-        "image": "https://images.unsplash.com/photo-1582056479830-31e7d9de91eb?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -2137,7 +2137,7 @@
       {
         "name": "Mango Lassi",
         "description": "Indisk klassiker med mango og yoghurt. Kremet, eksotisk og utrolig tilfredsstillende.",
-        "image": "https://images.unsplash.com/photo-1527661591475-527312dd65f5?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Smoothie",
         "alcoholic": false,
         "glass_type": "Smoothieglass",
@@ -2180,7 +2180,7 @@
       {
         "name": "Blåbær Havre Smoothie",
         "description": "Mettende og næringsrik smoothie med blåbær, havre og banan. Perfekt som frokostmåltid.",
-        "image": "https://images.unsplash.com/photo-1571748982800-fa51082c2224?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Smoothie",
         "alcoholic": false,
         "glass_type": "Smoothieglass",
@@ -3198,7 +3198,7 @@
       {
         "name": "Pasjonsfrukt Limonade",
         "description": "Eksotisk og syrlig limonade med pasjonsfruktens tropiske sødme. Frisk og festlig uten alkohol.",
-        "image": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -3236,7 +3236,7 @@
       {
         "name": "Ingefær Limonade",
         "description": "Varm og frisk ingefærlimonade med honning og sitron. Beroligende, naturlig og full av smak.",
-        "image": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -3274,7 +3274,7 @@
       {
         "name": "Blå Limonade",
         "description": "Vakker blålilla limonade med ferske blåbær, sitron og mynte. Imponerende på farge og smak.",
-        "image": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -3317,7 +3317,7 @@
       {
         "name": "Jordbær Sitronvann",
         "description": "Klassisk hjemmelaget jordbærlimonade med agave — naturlig søt og strålende rød. Barnas og voksnes favoritt.",
-        "image": "https://images.unsplash.com/photo-1542664022-2b29dcdee806?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -3355,7 +3355,7 @@
       {
         "name": "Ananas Kokos Smoothie",
         "description": "Tropisk og kremete smoothie med ananas, kokosmjølk og banan. Smaken av sørhavet i et glass.",
-        "image": "https://images.unsplash.com/photo-1607532941433-304659e8198a?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Smoothie",
         "alcoholic": false,
         "glass_type": "Smoothieglass",
@@ -3388,7 +3388,7 @@
       {
         "name": "Eple Kanel Smoothie",
         "description": "Varm høststemning i et glass — eple, kanel og yoghurt gir en trøstende og næringsrik smoothie.",
-        "image": "https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Smoothie",
         "alcoholic": false,
         "glass_type": "Smoothieglass",
@@ -3426,7 +3426,7 @@
       {
         "name": "Banan Jordnøtt Smoothie",
         "description": "Mettende proteinsmoothie med banan, jordnøttsmør og havremelk. Perfekt etter trening eller som frokost.",
-        "image": "https://images.unsplash.com/photo-1553530666-dbf51e00f8a6?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Smoothie",
         "alcoholic": false,
         "glass_type": "Smoothieglass",
@@ -3464,7 +3464,7 @@
       {
         "name": "Tropisk Grønn Smoothie",
         "description": "Grønn smoothie som smaker tropisk — spinat er godt skjult bak mango, ananas og kokos. Sunn og deilig.",
-        "image": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Smoothie",
         "alcoholic": false,
         "glass_type": "Smoothieglass",
@@ -3502,7 +3502,7 @@
       {
         "name": "Kirsebær Smoothie",
         "description": "Rik og fyldig kirsebærsmoothie med gresk yoghurt og vanilje. Som en kirsebær-cheesecake i flytende form.",
-        "image": "https://images.unsplash.com/photo-1638439430466-b2bb7fdc1d67?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Smoothie",
         "alcoholic": false,
         "glass_type": "Smoothieglass",
@@ -3632,7 +3632,7 @@
       {
         "name": "Gløgg",
         "description": "Julestemning i et glass — varm rødvin med appelsin, kanel, nellik og ingefær. En nordisk juleklaissker som varmer kropp og sjel.",
-        "image": "https://images.unsplash.com/photo-1574226516831-e1dff420e562?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Punch",
         "alcoholic": true,
         "glass_type": "Varmeglass eller keramikkkopp",
@@ -3724,7 +3724,7 @@
       {
         "name": "Alkoholfri Gløgg",
         "description": "Alle julesmagene uten alkohol — druesaft varmet med appelsin, kanel og nellik. Like god og like varm.",
-        "image": "https://images.unsplash.com/photo-1574226516831-e1dff420e562?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Varmeglass eller keramikkkopp",
@@ -3962,7 +3962,7 @@
       {
         "name": "Pink Gin & Tonic",
         "description": "Den rosa og elegante varianten av klassisk G&T — rosa gin med friske bringebær og tonic gir en vakker farge og fruktig smak.",
-        "image": "https://images.unsplash.com/photo-1606760227091-3dd870d97f1d?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Balloon-glass",
@@ -5022,7 +5022,7 @@
       {
         "name": "Shirley Temple Deluxe",
         "description": "Den klassiske Shirley Temple løftet til neste nivå — granatsirupsaft, sprite og frisk appelsin med kirsebærpynt.",
-        "image": "https://images.unsplash.com/photo-1568909344668-6f14a07b56a0?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -5136,7 +5136,7 @@
       {
         "name": "Tropical Sunrise",
         "description": "Fargerik tropisk soloppgang i glasset — appelsin, mango og grenadine gir et vakker spekter av farger og smaker.",
-        "image": "https://images.unsplash.com/photo-1621263764928-df1444c5e859?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -5174,7 +5174,7 @@
       {
         "name": "Cucumber Mint Sparkle",
         "description": "Frisk og elegant alkoholfri drink med agurk, mynte og tonic — som en spa-opplevelse i et glass.",
-        "image": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -5212,7 +5212,7 @@
       {
         "name": "Bringebær Soda",
         "description": "Norsk sommerklassiker — ferske bringebær, sitron og sukker blandet til en forfriskende hjemmelaget soda.",
-        "image": "https://images.unsplash.com/photo-1587794923550-f6f14a07b4af?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -5250,7 +5250,7 @@
       {
         "name": "Kiwi Limonade",
         "description": "Frisk og eksotisk limonade med kiwi, sitron og honning — naturlig søt og full av C-vitamin.",
-        "image": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -5288,7 +5288,7 @@
       {
         "name": "Fersken Iste",
         "description": "Norsk sommerdrøm — hjemmebrygget svart te avkjølt med fersk fersken, sitron og honning. Naturlig og tilfredsstillende.",
-        "image": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -5326,7 +5326,7 @@
       {
         "name": "Melon Smoothie",
         "description": "Sommer i et glass — søt honningsmelon blandet til en kremete og forfriskende smoothie med lime og yoghurt.",
-        "image": "https://images.unsplash.com/photo-1523473827353-1f1bbe8e4a17?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Smoothie",
         "alcoholic": false,
         "glass_type": "Smoothieglass",
@@ -5364,7 +5364,7 @@
       {
         "name": "Spinat Banan Smoothie",
         "description": "Grønn kraftpakke — spinat og eple skjules bak bananen for en næringsrik smoothie som smaker mye bedre enn den ser ut.",
-        "image": "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Smoothie",
         "alcoholic": false,
         "glass_type": "Smoothieglass",
@@ -5402,7 +5402,7 @@
       {
         "name": "Papaya Smoothie",
         "description": "Tropisk og C-vitaminrik smoothie med papaya, mango og appelsin — exotisk, fargerik og utrolig frisk.",
-        "image": "https://images.unsplash.com/photo-1607532941433-304659e8198a?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Smoothie",
         "alcoholic": false,
         "glass_type": "Smoothieglass",
@@ -5440,7 +5440,7 @@
       {
         "name": "Bær Acai Smoothie",
         "description": "Antioksidantrik superfood-smoothie med acaibær, bringebær og havremelk — næringsrik, mørkelilla og utrolig god.",
-        "image": "https://images.unsplash.com/photo-1638439430466-b2bb7fdc1d67?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Smoothie",
         "alcoholic": false,
         "glass_type": "Smoothieglass",
@@ -5478,7 +5478,7 @@
       {
         "name": "Gulrot Ingefær Smoothie",
         "description": "Antiinflammatorisk og energigivende smoothie med gulrot, ingefær og gurkemeie — gyllen, sunn og full av god smak.",
-        "image": "https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Smoothie",
         "alcoholic": false,
         "glass_type": "Smoothieglass",
@@ -5559,7 +5559,7 @@
       {
         "name": "Festpunch",
         "description": "Norsk favoritt til fest — vodka, hvitvin, appelsin og fersken med sprite gir en lett og fruktig punch som alle liker.",
-        "image": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Punch",
         "alcoholic": true,
         "glass_type": "Punchbolle eller vinglass",
@@ -5602,7 +5602,7 @@
       {
         "name": "Rødvinspunch",
         "description": "Varm og festlig rødvinspunch med appelsin, kanel og konjakk — perfekt til høst- og vinterselskaper.",
-        "image": "https://images.unsplash.com/photo-1574226516831-e1dff420e562?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Punch",
         "alcoholic": true,
         "glass_type": "Punchbolle eller varmeglass",
@@ -7590,7 +7590,7 @@
       {
         "name": "Aquavit Sour",
         "description": "En norsk vri på den klassiske Sour — aquavit med karve- og dillkarakter møter sitrus og eggehvite for en silkemyk og aromatisk cocktail.",
-        "image": "https://images.unsplash.com/photo-1574023278-b88a534e7bc6?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -7628,7 +7628,7 @@
       {
         "name": "Aquavit Negroni",
         "description": "En skandinavisk tolkning av den klassiske Negroni — aquavitens urte- og karvekarakter gir en nordisk dimensjon til den bitre italienske trekanten.",
-        "image": "https://images.unsplash.com/photo-1536935338788-846bb9981813?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -7660,7 +7660,7 @@
       {
         "name": "Lysholm Sling",
         "description": "En norsk sommerdrink inspirert av Singapore Sling — aquavit, ingefær, sitron og hylleblomst i frisk og blomsteraktig harmoni.",
-        "image": "https://images.unsplash.com/photo-1543353071-087092ec393a?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Collins-glass",
@@ -7699,7 +7699,7 @@
       {
         "name": "Norsk G&T",
         "description": "En nordisk Gin & Tonic der aquavit erstatter gin — dill og agurk fremhever de naturlige urtearomaene for en unikt norsk highball-opplevelse.",
-        "image": "https://images.unsplash.com/photo-1606760227091-3dd870d97f1d?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -7737,7 +7737,7 @@
       {
         "name": "Bærpunch Norsk",
         "description": "En særnorsk punch med aquavit og tyttebær — sursøtt, aromatisk og med den røde bærfargen som minner om norsk høst og skog.",
-        "image": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -7775,7 +7775,7 @@
       {
         "name": "Pære Spritz",
         "description": "En delikat norsk-inspirert spritz med søt pærelikør og sprudlende prosecco, løftet av ingefærølets krydder — elegant og lett.",
-        "image": "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Spritz-glass (stort vinglass)",
@@ -7808,7 +7808,7 @@
       {
         "name": "Tranebær Fizz",
         "description": "En alkoholfri, rødblinkende fizz med tranebær, bringebær og frisk sitron — fargerik, syrlig og perfekt for alle anledninger.",
-        "image": "https://images.unsplash.com/photo-1587794923550-f6f14a07b4af?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -7847,7 +7847,7 @@
       {
         "name": "Solbær Soda",
         "description": "En alkoholfri, intens og mørk sodadrink med norsk solbær, lime og ingefær — rik på antioksidanter og smak.",
-        "image": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -7885,7 +7885,7 @@
       {
         "name": "Juleshot",
         "description": "En varm og krydret norsk juleshot med aquavit, kanel og honning — perfekt til julefeiringen og de kalde desembernettene.",
-        "image": "https://images.unsplash.com/photo-1574226516831-e1dff420e562?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shot-glass",
@@ -7922,7 +7922,7 @@
       {
         "name": "Sommerspritz",
         "description": "En alkoholfri, frisk og blomsteraktig sommerdrink med hylleblomst, mynte og lime — som norsk sommer i et glass.",
-        "image": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Spritz-glass",
@@ -8113,7 +8113,7 @@
       {
         "name": "Bloody Mary",
         "description": "Krydret tomatcocktail — verdens beste morgendrikk.",
-        "image": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -8160,7 +8160,7 @@
       {
         "name": "Hot Toddy",
         "description": "Varm og trøstende whiskydrink — perfekt mot forkjølelse.",
-        "image": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Varmt glass",
@@ -8203,7 +8203,7 @@
       {
         "name": "Baileys Irish Cream",
         "description": "Klassisk irsk kremlikør — rik og fyldig.",
-        "image": "https://images.unsplash.com/photo-1608270586620-248524c67de9?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Old Fashioned-glass",
@@ -8224,7 +8224,7 @@
       {
         "name": "Grasshopper",
         "description": "Myntegrønn dessertdrink med krem og sjokolade.",
-        "image": "https://images.unsplash.com/photo-1542740348-39501cd6e2b4?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -8255,7 +8255,7 @@
       {
         "name": "Stinger",
         "description": "Elegant og klassisk peppermyntdrink.",
-        "image": "https://images.unsplash.com/photo-1560963689-b5682b6440f8?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -8281,7 +8281,7 @@
       {
         "name": "Pousse Café",
         "description": "Fargerik sjikt-shot med likører i lag.",
-        "image": "https://images.unsplash.com/photo-1545438102-799c3991ffb2?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Likeurglass",
@@ -8313,7 +8313,7 @@
       {
         "name": "White Sangria",
         "description": "Hvit sangria med hvitvin, fersken og myntesmak.",
-        "image": "https://images.unsplash.com/photo-1549188732-de8f99f70cde?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Punch",
         "alcoholic": true,
         "glass_type": "Vinglass",
@@ -8360,7 +8360,7 @@
       {
         "name": "Jungle Juice",
         "description": "Stor punch med masse frukt og sprut.",
-        "image": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Punch",
         "alcoholic": true,
         "glass_type": "Punchbolle",
@@ -8411,7 +8411,7 @@
       {
         "name": "Blue Lagoon",
         "description": "Knallblå tropisk drinkfavoritt.",
-        "image": "https://images.unsplash.com/photo-1551538827-9c037cb4f32a?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -8443,7 +8443,7 @@
       {
         "name": "Pink Lady",
         "description": "Lyserød og elegant cocktail med appel og grenadine.",
-        "image": "https://images.unsplash.com/photo-1570196922327-1bc9bc95f4e5?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -8485,7 +8485,7 @@
       {
         "name": "Bay Breeze Tropical",
         "description": "Lett og tropisk vodkadrink med ananas og tranebær.",
-        "image": "https://images.unsplash.com/photo-1551538827-9c037cb4f32a?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -8517,7 +8517,7 @@
       {
         "name": "Rum & Coke",
         "description": "Klassisk og enkel longdrink.",
-        "image": "https://images.unsplash.com/photo-1527661591475-527312dd65f5?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -8544,7 +8544,7 @@
       {
         "name": "Jack & Coke",
         "description": "Enkel og populær whiskydrink.",
-        "image": "https://images.unsplash.com/photo-1527661591475-527312dd65f5?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -8571,7 +8571,7 @@
       {
         "name": "Gin & Juice",
         "description": "Enkel sommerdrink med gin og ferskpresset juice.",
-        "image": "https://images.unsplash.com/photo-1498429089284-41f8cf3ffd39?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -8597,7 +8597,7 @@
       {
         "name": "Vodka Lime Soda",
         "description": "Frisk og lett drink — lavkalori favoritt.",
-        "image": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -8629,7 +8629,7 @@
       {
         "name": "Aperol Gin Spritz",
         "description": "Moderne vri på Aperol Spritz med gin.",
-        "image": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Vinglass",
@@ -8667,7 +8667,7 @@
       {
         "name": "Frozen Margarita",
         "description": "Isblandet margarita — perfekt sommerdrik.",
-        "image": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Margarita-glass",
@@ -8704,7 +8704,7 @@
       {
         "name": "Frozen Daiquiri",
         "description": "Klassisk daiquiri blandet med is.",
-        "image": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -8741,7 +8741,7 @@
       {
         "name": "Peach Bellini",
         "description": "Klassisk venerek med ferskenpuré og prosecco.",
-        "image": "https://images.unsplash.com/photo-1560963689-b5682b6440f8?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Champagneglass",
@@ -8767,7 +8767,7 @@
       {
         "name": "Strawberry Daiquiri",
         "description": "Fruktfylt og frisk jordbærdaiquiri.",
-        "image": "https://images.unsplash.com/photo-1498429089284-41f8cf3ffd39?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -8808,7 +8808,7 @@
       {
         "name": "Mango Daiquiri",
         "description": "Eksotisk mango-twist på den klassiske daiquirien.",
-        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -8839,7 +8839,7 @@
       {
         "name": "Passion Fruit Martini",
         "description": "Eksotisk og frisk martini med pasjonsfrukt.",
-        "image": "https://images.unsplash.com/photo-1581927692308-be9e43b4d860?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Martini-glass",
@@ -8880,7 +8880,7 @@
       {
         "name": "Kiwi Margarita",
         "description": "Frisk margarita med kiwi.",
-        "image": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Margarita-glass",
@@ -8916,7 +8916,7 @@
       {
         "name": "Blueberry Mojito",
         "description": "Frisk mojito med blåbær.",
-        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -8964,7 +8964,7 @@
       {
         "name": "Watermelon Mojito",
         "description": "Sommerlig mojito med vannmelon.",
-        "image": "https://images.unsplash.com/photo-1560963689-b5682b6440f8?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -9011,7 +9011,7 @@
       {
         "name": "Piña Colada Shot",
         "description": "Kremete shot med rom, kokos og ananas.",
-        "image": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass",
@@ -9041,7 +9041,7 @@
       {
         "name": "Sex on the Beach Shot",
         "description": "Klassisk shot — søt og fruktig.",
-        "image": "https://images.unsplash.com/photo-1545438102-799c3991ffb2?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass",
@@ -9076,7 +9076,7 @@
       {
         "name": "Kahlúa Shot",
         "description": "Enkelt og elegant kaffeshot.",
-        "image": "https://images.unsplash.com/photo-1545438102-799c3991ffb2?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass",
@@ -9096,7 +9096,7 @@
       {
         "name": "Red Headed Slut",
         "description": "Søt og sterk shot med ferskenlikør og Jäger.",
-        "image": "https://images.unsplash.com/photo-1551538827-9c037cb4f32a?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass",
@@ -9126,7 +9126,7 @@
       {
         "name": "Brain Hemorrhage",
         "description": "Skremmende Halloween-shot med Baileys og grenadine.",
-        "image": "https://images.unsplash.com/photo-1545438102-799c3991ffb2?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass",
@@ -9157,7 +9157,7 @@
       {
         "name": "Irish Car Bomb",
         "description": "Kjent pub-shot — drikkes raskt!",
-        "image": "https://images.unsplash.com/photo-1527661591475-527312dd65f5?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Pintglass",
@@ -9189,7 +9189,7 @@
       {
         "name": "Absinthe Drip",
         "description": "Tradisjonell absinthe servert på gammeldags vis.",
-        "image": "https://images.unsplash.com/photo-1560963689-b5682b6440f8?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Absintheglass",
@@ -9221,7 +9221,7 @@
       {
         "name": "Aperol Hugo",
         "description": "Sommerfusjon av Hugo og Aperol.",
-        "image": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Vinglass",
@@ -9263,7 +9263,7 @@
       {
         "name": "Cider Punch",
         "description": "Lett og frisk punchdrink med eplemost og ingefær.",
-        "image": "https://images.unsplash.com/photo-1549188732-de8f99f70cde?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Punch",
         "alcoholic": true,
         "glass_type": "Punchkopp",
@@ -9304,7 +9304,7 @@
       {
         "name": "Spiced Apple Cider",
         "description": "Varm og krydret epledrikk — perfekt om høsten.",
-        "image": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Varm mugge",
@@ -9351,7 +9351,7 @@
       {
         "name": "Mulled Wine",
         "description": "Tradisjonell varm rødvinspunch — juleglögg.",
-        "image": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Varmt glass",
@@ -9399,7 +9399,7 @@
       {
         "name": "White Hot Chocolate",
         "description": "Varm hvit sjokolade med snaps — vinterfavoritt.",
-        "image": "https://images.unsplash.com/photo-1542740348-39501cd6e2b4?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Varmt glass",
@@ -9436,7 +9436,7 @@
       {
         "name": "Tom & Jerry",
         "description": "Klassisk varmt juldrink fra Amerika.",
-        "image": "https://images.unsplash.com/photo-1542740348-39501cd6e2b4?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Varmt glass",
@@ -9479,7 +9479,7 @@
       {
         "name": "Brandy Crusta",
         "description": "Historisk gammel cocktail fra New Orleans.",
-        "image": "https://images.unsplash.com/photo-1570196922327-1bc9bc95f4e5?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Sour-glass",
@@ -9521,7 +9521,7 @@
       {
         "name": "Rum Old Fashioned",
         "description": "Old Fashioned laget med rom istedenfor whisky.",
-        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Old Fashioned-glass",
@@ -9558,7 +9558,7 @@
       {
         "name": "Spicy Margarita",
         "description": "Krydret margarita med jalapeño.",
-        "image": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Margarita-glass",
@@ -9595,7 +9595,7 @@
       {
         "name": "Cucumber Gin & Tonic",
         "description": "Frisk agurk-vri på klassisk G&T.",
-        "image": "https://images.unsplash.com/photo-1498429089284-41f8cf3ffd39?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -9633,7 +9633,7 @@
       {
         "name": "Raspberry Gin Fizz",
         "description": "Bringebær og gin — perfekt sommerdrink.",
-        "image": "https://images.unsplash.com/photo-1570196922327-1bc9bc95f4e5?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -9670,7 +9670,7 @@
       {
         "name": "Peach Fuzz",
         "description": "Myk og kremete ferskendrink.",
-        "image": "https://images.unsplash.com/photo-1542740348-39501cd6e2b4?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -9700,7 +9700,7 @@
       {
         "name": "Electric Lemonade",
         "description": "Blå elektrisk limonade — festdrink!",
-        "image": "https://images.unsplash.com/photo-1551538827-9c037cb4f32a?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -9737,7 +9737,7 @@
       {
         "name": "Paloma Rosa",
         "description": "Rosa vri på klassisk Paloma med grapefruktjuice.",
-        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -9775,7 +9775,7 @@
       {
         "name": "Whisky Sour Royal",
         "description": "Whisky Sour toppet med rødvin for lagneffekt.",
-        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Old Fashioned-glass",
@@ -9817,7 +9817,7 @@
       {
         "name": "Smash",
         "description": "Enkel og forfriskende drink med fersk mynte og sitrus.",
-        "image": "https://images.unsplash.com/photo-1498429089284-41f8cf3ffd39?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Old Fashioned-glass",
@@ -9855,7 +9855,7 @@
       {
         "name": "Dark Rum & Ginger",
         "description": "Enkelt og krydret longdrink med mørk rom og ingefær.",
-        "image": "https://images.unsplash.com/photo-1527661591475-527312dd65f5?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -9882,7 +9882,7 @@
       {
         "name": "Vodka Espresso",
         "description": "Kraftfull espresso-shot blandet med vodka.",
-        "image": "https://images.unsplash.com/photo-1581927692308-be9e43b4d860?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -9919,7 +9919,7 @@
       {
         "name": "Amaretto Fizz",
         "description": "Søt og nøtteaktig amaretto med brus og sitrus.",
-        "image": "https://images.unsplash.com/photo-1570196922327-1bc9bc95f4e5?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -9950,7 +9950,7 @@
       {
         "name": "Midori Sour",
         "description": "Ljus grønn melon-drink med syrlighet.",
-        "image": "https://images.unsplash.com/photo-1570196922327-1bc9bc95f4e5?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Sour-glass",
@@ -9986,7 +9986,7 @@
       {
         "name": "Tropical Mojito",
         "description": "Ananas og kokosvri på klassisk mojito.",
-        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -10033,7 +10033,7 @@
       {
         "name": "Bananabread Old Fashioned",
         "description": "Dessertaktig Old Fashioned med bananlikør.",
-        "image": "https://images.unsplash.com/photo-1542740348-39501cd6e2b4?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Old Fashioned-glass",
@@ -10070,7 +10070,7 @@
       {
         "name": "Norsk Aquavit Spritz",
         "description": "Spritz med norsk aquavit og tonic.",
-        "image": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Vinglass",
@@ -10107,7 +10107,7 @@
       {
         "name": "Linie Aquavit Soda",
         "description": "Enkel og frisk aquavit-drink.",
-        "image": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -10134,7 +10134,7 @@
       {
         "name": "Lakris Shot",
         "description": "Norsk lakris-inspirert shot med pastis.",
-        "image": "https://images.unsplash.com/photo-1545438102-799c3991ffb2?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass",
@@ -10159,7 +10159,7 @@
       {
         "name": "Nordis Spritz",
         "description": "Norsk vri på spritz med bringebærlikør.",
-        "image": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Vinglass",
@@ -10191,7 +10191,7 @@
       {
         "name": "Aquavit Buck",
         "description": "Aquavit med ingefær og sitron — norsk mule.",
-        "image": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Kobberkrus",
@@ -10223,7 +10223,7 @@
       {
         "name": "Kefir Smoothie",
         "description": "Syrlig kefir-smoothie med bær og honning.",
-        "image": "https://images.unsplash.com/photo-1553530666-ba11a7da3888?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Smoothie",
         "alcoholic": false,
         "glass_type": "Høyt glass",
@@ -10260,7 +10260,7 @@
       {
         "name": "Pasjonsfrukt Yoghurt Smoothie",
         "description": "Kremet og syrlig smoothie med pasjonsfrukt.",
-        "image": "https://images.unsplash.com/photo-1553530666-ba11a7da3888?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Smoothie",
         "alcoholic": false,
         "glass_type": "Høyt glass",
@@ -10296,7 +10296,7 @@
       {
         "name": "Tropical Green Smoothie",
         "description": "Grønn superfood-smoothie med spinat og mango.",
-        "image": "https://images.unsplash.com/photo-1553530666-ba11a7da3888?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Smoothie",
         "alcoholic": false,
         "glass_type": "Høyt glass",
@@ -10332,7 +10332,7 @@
       {
         "name": "Ananas Ingefær Smoothie",
         "description": "Tropisk og krydret smoothie med ananas og ingefær.",
-        "image": "https://images.unsplash.com/photo-1553530666-ba11a7da3888?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Smoothie",
         "alcoholic": false,
         "glass_type": "Høyt glass",
@@ -10368,7 +10368,7 @@
       {
         "name": "Vanilje Kaffe Smoothie",
         "description": "Søt og kremet kaffe-smoothie.",
-        "image": "https://images.unsplash.com/photo-1553530666-ba11a7da3888?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Smoothie",
         "alcoholic": false,
         "glass_type": "Høyt glass",
@@ -10409,7 +10409,7 @@
       {
         "name": "Tranebær Vanilje Lemonade",
         "description": "Søt og syrlig limonade med tranebær og vanilje.",
-        "image": "https://images.unsplash.com/photo-1498429089284-41f8cf3ffd39?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -10451,7 +10451,7 @@
       {
         "name": "Rosemary Lemonade",
         "description": "Urteaktig limonade med rosmarin.",
-        "image": "https://images.unsplash.com/photo-1498429089284-41f8cf3ffd39?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -10483,7 +10483,7 @@
       {
         "name": "Matcha Lemonade",
         "description": "Trendy og frisk matcha-limonade.",
-        "image": "https://images.unsplash.com/photo-1498429089284-41f8cf3ffd39?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -10520,7 +10520,7 @@
       {
         "name": "Alkoholfri Hugo",
         "description": "Alkoholfri versjon av den klassiske Hugo Spritz.",
-        "image": "https://images.unsplash.com/photo-1498429089284-41f8cf3ffd39?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Vinglass",
@@ -10562,7 +10562,7 @@
       {
         "name": "Alkoholfri Sangria",
         "description": "Alkoholfri sangria med druemost og frukt.",
-        "image": "https://images.unsplash.com/photo-1549188732-de8f99f70cde?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Vinglass",
@@ -10609,7 +10609,7 @@
       {
         "name": "Alkoholfri Dark & Stormy",
         "description": "Alkoholfri versjon med kombucha og ingefær.",
-        "image": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80",
+        "image": null,
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
