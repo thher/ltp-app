@@ -186,51 +186,72 @@ export default function InventoryScreen() {
   }, [newIngredient, addIngredient]);
 
   const handleScanIngredients = useCallback(async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(
-        'Kamera-tilgang kreves',
-        'Gå til Innstillinger på telefonen og gi DrinkMix tilgang til kameraet.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: false,
-      quality: 0.7,
-    });
-
-    if (result.canceled || !result.assets[0]) return;
-
-    const apiKey = await getApiKey();
-    if (!apiKey) {
-      Alert.alert(
-        'API-nøkkel mangler',
-        'For å gjenkjenne ingredienser med AI trenger du en gratis Anthropic API-nøkkel. Legg den inn under Innstillinger → AI Ingrediens-skanner.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    setScanning(true);
     try {
-      const found = await scanIngredientsFromImage(result.assets[0].uri);
-      if (found.length === 0) {
-        Alert.alert('Ingen ingredienser funnet', 'Prøv å ta et klarere bilde av flaskene dine.');
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (permission.status !== 'granted') {
+        if (!permission.canAskAgain) {
+          Alert.alert(
+            'Kamera-tilgang blokkert',
+            'Kamera er blokkert. Åpne telefonens Innstillinger → Apper → DrinkMix → Tillatelser og slå på Kamera.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          Alert.alert(
+            'Kamera-tilgang kreves',
+            'DrinkMix trenger tilgang til kameraet for å skanne ingredienser.',
+            [{ text: 'OK' }]
+          );
+        }
         return;
       }
-      setScannedIngredients(found);
-      setShowScanModal(true);
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : '';
-      if (msg === 'INVALID_API_KEY') {
-        Alert.alert('Ugyldig API-nøkkel', 'Sjekk API-nøkkelen din i Innstillinger.');
-      } else {
-        Alert.alert('Feil', 'Kunne ikke skanne bildet. Sjekk internettforbindelsen og prøv igjen.');
+
+      let result: ImagePicker.ImagePickerResult;
+      try {
+        result = await ImagePicker.launchCameraAsync({
+          allowsEditing: false,
+          quality: 0.6,
+          base64: false,
+        });
+      } catch {
+        Alert.alert('Kamerafeil', 'Kunne ikke åpne kameraet. Sjekk at appen har kamera-tilgang i telefoninnstillingene.');
+        return;
       }
-    } finally {
-      setScanning(false);
+
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const apiKey = await getApiKey();
+      if (!apiKey) {
+        Alert.alert(
+          'API-nøkkel mangler',
+          'For å gjenkjenne ingredienser med AI trenger du en gratis Anthropic API-nøkkel. Legg den inn under Innstillinger → AI Ingrediens-skanner.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      setScanning(true);
+      try {
+        const found = await scanIngredientsFromImage(result.assets[0].uri);
+        if (found.length === 0) {
+          Alert.alert('Ingen ingredienser funnet', 'Prøv å ta et klarere bilde av flaskene dine med god belysning.');
+          return;
+        }
+        setScannedIngredients(found);
+        setShowScanModal(true);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : '';
+        if (msg === 'INVALID_API_KEY') {
+          Alert.alert('Ugyldig API-nøkkel', 'Sjekk API-nøkkelen din i Innstillinger.');
+        } else if (msg === 'NO_API_KEY') {
+          Alert.alert('API-nøkkel mangler', 'Legg til API-nøkkelen din i Innstillinger.');
+        } else {
+          Alert.alert('Skanningsfeil', `Kunne ikke skanne bildet: ${msg || 'ukjent feil'}. Prøv igjen.`);
+        }
+      } finally {
+        setScanning(false);
+      }
+    } catch (e: unknown) {
+      Alert.alert('Feil', `Uventet feil: ${e instanceof Error ? e.message : String(e)}`);
     }
   }, []);
 
