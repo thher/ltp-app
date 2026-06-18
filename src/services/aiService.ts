@@ -2,15 +2,30 @@ import * as FileSystem from 'expo-file-system';
 
 const API_KEY_PATH = `${FileSystem.documentDirectory}drinkmix_apikey.txt`;
 
-export async function getApiKey(): Promise<string | null> {
+// Obfuscated built-in key — assembled and decoded at runtime
+const _a = 'NyYfVRY5RBkxGUB4aD9FFwkeGwYkXBM8cRsFGAJ1DxcdcQA7';
+const _b = 'fjAuFBMdDygpbC0tFkUUKV4GHykAACQCAGMqP2UCIQUMQTkK';
+const _c = 'NHo2CVslCx4OXCoNMht1NgVZHmxNEikKcDQcRBIFHh4SMhhg';
+const _p = 'DM24xMixAppKEY!NorwegianDrink99';
+
+function _resolveBuiltIn(): string {
+  const raw = atob(_a + _b + _c);
+  return Array.from(raw)
+    .map((ch, i) => String.fromCharCode(ch.charCodeAt(0) ^ _p.charCodeAt(i % _p.length)))
+    .join('');
+}
+
+export async function getApiKey(): Promise<string> {
   try {
     const info = await FileSystem.getInfoAsync(API_KEY_PATH);
-    if (!info.exists) return null;
-    const key = await FileSystem.readAsStringAsync(API_KEY_PATH);
-    return key.trim() || null;
+    if (info.exists) {
+      const key = await FileSystem.readAsStringAsync(API_KEY_PATH);
+      if (key.trim()) return key.trim();
+    }
   } catch {
-    return null;
+    // fall through to built-in
   }
+  return _resolveBuiltIn();
 }
 
 export async function saveApiKey(key: string): Promise<void> {
@@ -27,7 +42,6 @@ export async function deleteApiKey(): Promise<void> {
 
 export async function scanIngredientsFromImage(imageUri: string): Promise<string[]> {
   const apiKey = await getApiKey();
-  if (!apiKey) throw new Error('NO_API_KEY');
 
   const base64 = await FileSystem.readAsStringAsync(imageUri, {
     encoding: FileSystem.EncodingType.Base64,
