@@ -153,6 +153,7 @@ export default function InventoryScreen() {
   const [scanning, setScanning] = useState(false);
   const [scannedIngredients, setScannedIngredients] = useState<string[]>([]);
   const [showScanModal, setShowScanModal] = useState(false);
+  const [showSourceModal, setShowSourceModal] = useState(false);
 
   const { inventory, inventoryIds, loading, fetchInventory, addIngredient, removeIngredient } = useInventory();
 
@@ -185,75 +186,79 @@ export default function InventoryScreen() {
     setShowAddModal(false);
   }, [newIngredient, addIngredient]);
 
-  const handleScanIngredients = useCallback(async () => {
+  const processImageForScan = useCallback(async (uri: string) => {
+    const apiKey = await getApiKey();
+    if (!apiKey) {
+      Alert.alert(
+        'API-nøkkel mangler',
+        'Legg inn din Anthropic API-nøkkel under Innstillinger → AI Ingrediens-skanner.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    setScanning(true);
     try {
-      const permission = await ImagePicker.requestCameraPermissionsAsync();
-      if (permission.status !== 'granted') {
-        if (!permission.canAskAgain) {
-          Alert.alert(
-            'Kamera-tilgang blokkert',
-            'Kamera er blokkert. Åpne telefonens Innstillinger → Apper → DrinkMix → Tillatelser og slå på Kamera.',
-            [{ text: 'OK' }]
-          );
-        } else {
-          Alert.alert(
-            'Kamera-tilgang kreves',
-            'DrinkMix trenger tilgang til kameraet for å skanne ingredienser.',
-            [{ text: 'OK' }]
-          );
-        }
+      const found = await scanIngredientsFromImage(uri);
+      if (found.length === 0) {
+        Alert.alert('Ingen ingredienser funnet', 'Prøv et klarere bilde av flaskene med god belysning.');
         return;
       }
-
-      let result: ImagePicker.ImagePickerResult;
-      try {
-        result = await ImagePicker.launchCameraAsync({
-          allowsEditing: false,
-          quality: 0.6,
-          base64: false,
-        });
-      } catch {
-        Alert.alert('Kamerafeil', 'Kunne ikke åpne kameraet. Sjekk at appen har kamera-tilgang i telefoninnstillingene.');
-        return;
+      setScannedIngredients(found);
+      setShowScanModal(true);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : '';
+      if (msg === 'INVALID_API_KEY') {
+        Alert.alert('Ugyldig API-nøkkel', 'Sjekk API-nøkkelen din i Innstillinger.');
+      } else {
+        Alert.alert('Skanningsfeil', 'Kunne ikke skanne bildet. Sjekk internettforbindelsen.');
       }
+    } finally {
+      setScanning(false);
+    }
+  }, []);
 
-      if (result.canceled || !result.assets?.[0]) return;
-
-      const apiKey = await getApiKey();
-      if (!apiKey) {
+  const handleScanWithCamera = useCallback(async () => {
+    setShowSourceModal(false);
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (perm.status !== 'granted') {
         Alert.alert(
-          'API-nøkkel mangler',
-          'For å gjenkjenne ingredienser med AI trenger du en gratis Anthropic API-nøkkel. Legg den inn under Innstillinger → AI Ingrediens-skanner.',
+          perm.canAskAgain ? 'Kamera-tilgang kreves' : 'Kamera blokkert',
+          perm.canAskAgain
+            ? 'DrinkMix trenger kamera-tilgang.'
+            : 'Gå til Innstillinger → Apper → DrinkMix → Tillatelser og slå på Kamera.',
           [{ text: 'OK' }]
         );
         return;
       }
-
-      setScanning(true);
-      try {
-        const found = await scanIngredientsFromImage(result.assets[0].uri);
-        if (found.length === 0) {
-          Alert.alert('Ingen ingredienser funnet', 'Prøv å ta et klarere bilde av flaskene dine med god belysning.');
-          return;
-        }
-        setScannedIngredients(found);
-        setShowScanModal(true);
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : '';
-        if (msg === 'INVALID_API_KEY') {
-          Alert.alert('Ugyldig API-nøkkel', 'Sjekk API-nøkkelen din i Innstillinger.');
-        } else if (msg === 'NO_API_KEY') {
-          Alert.alert('API-nøkkel mangler', 'Legg til API-nøkkelen din i Innstillinger.');
-        } else {
-          Alert.alert('Skanningsfeil', `Kunne ikke skanne bildet: ${msg || 'ukjent feil'}. Prøv igjen.`);
-        }
-      } finally {
-        setScanning(false);
+      const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+      if (!result.canceled && result.assets?.[0]) {
+        await processImageForScan(result.assets[0].uri);
       }
-    } catch (e: unknown) {
-      Alert.alert('Feil', `Uventet feil: ${e instanceof Error ? e.message : String(e)}`);
+    } catch {
+      Alert.alert('Kamerafeil', 'Kunne ikke åpne kameraet. Prøv å velge bilde fra galleri i stedet.');
     }
-  }, []);
+  }, [processImageForScan]);
+
+  const handleScanFromGallery = useCallback(async () => {
+    setShowSourceModal(false);
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (perm.status !== 'granted') {
+        Alert.alert('Galleri-tilgang kreves', 'DrinkMix trenger tilgang til bildegalleriet.', [{ text: 'OK' }]);
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.7,
+      });
+      if (!result.canceled && result.assets?.[0]) {
+        await processImageForScan(result.assets[0].uri);
+      }
+    } catch {
+      Alert.alert('Feil', 'Kunne ikke åpne galleriet.');
+    }
+  }, [processImageForScan]);
 
   const handleAddScanned = useCallback(async (selected: string[]) => {
     for (const name of selected) {
@@ -312,7 +317,7 @@ export default function InventoryScreen() {
           </View>
           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
             <TouchableOpacity
-              onPress={handleScanIngredients}
+              onPress={() => setShowSourceModal(true)}
               disabled={scanning}
               style={{
                 width: 44,
@@ -537,6 +542,60 @@ export default function InventoryScreen() {
         radius={radius}
         insets={insets}
       />
+
+      {/* Image Source Picker Modal */}
+      <Modal visible={showSourceModal} transparent animationType="slide" onRequestClose={() => setShowSourceModal(false)}>
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' }}
+          activeOpacity={1}
+          onPress={() => setShowSourceModal(false)}
+        >
+          <View style={{
+            backgroundColor: colors.surface,
+            borderTopLeftRadius: radius.xl,
+            borderTopRightRadius: radius.xl,
+            padding: spacing.xl,
+            paddingBottom: insets.bottom + spacing.xl,
+          }}>
+            <Text style={[typography.headlineSmall, { color: colors.text, marginBottom: spacing.xs }]}>
+              Skann ingredienser
+            </Text>
+            <Text style={[typography.bodySmall, { color: colors.textMuted, marginBottom: spacing.lg }]}>
+              Ta bilde av flaskene dine — AI finner ut hva du kan lage
+            </Text>
+            <TouchableOpacity
+              onPress={handleScanWithCamera}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+                backgroundColor: colors.primary, borderRadius: radius.md,
+                paddingVertical: spacing.md, paddingHorizontal: spacing.lg,
+                marginBottom: spacing.sm,
+              }}
+            >
+              <Ionicons name="camera" size={24} color={colors.textInverse} />
+              <View>
+                <Text style={[typography.labelLarge, { color: colors.textInverse }]}>Ta bilde nå</Text>
+                <Text style={[typography.bodySmall, { color: `${colors.textInverse}99` }]}>Åpner kameraet</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleScanFromGallery}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+                backgroundColor: colors.surfaceElevated, borderRadius: radius.md,
+                paddingVertical: spacing.md, paddingHorizontal: spacing.lg,
+                borderWidth: 1, borderColor: colors.border,
+              }}
+            >
+              <Ionicons name="images" size={24} color={colors.primary} />
+              <View>
+                <Text style={[typography.labelLarge, { color: colors.text }]}>Velg fra galleri</Text>
+                <Text style={[typography.bodySmall, { color: colors.textMuted }]}>Ta bilde med kameraappen først</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Add Ingredient Modal */}
       <Modal
