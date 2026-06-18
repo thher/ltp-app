@@ -186,19 +186,13 @@ export default function InventoryScreen() {
   }, [newIngredient, addIngredient]);
 
   const handleScanIngredients = useCallback(async () => {
-    const apiKey = await getApiKey();
-    if (!apiKey) {
-      Alert.alert(
-        'API-nøkkel mangler',
-        'Legg til din Anthropic API-nøkkel i Innstillinger for å bruke denne funksjonen.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Tilgang nektet', 'Appen trenger kamera-tilgang for å skanne ingredienser.');
+      Alert.alert(
+        'Kamera-tilgang kreves',
+        'Gå til Innstillinger på telefonen og gi DrinkMix tilgang til kameraet.',
+        [{ text: 'OK' }]
+      );
       return;
     }
 
@@ -209,11 +203,21 @@ export default function InventoryScreen() {
 
     if (result.canceled || !result.assets[0]) return;
 
+    const apiKey = await getApiKey();
+    if (!apiKey) {
+      Alert.alert(
+        'API-nøkkel mangler',
+        'For å gjenkjenne ingredienser med AI trenger du en gratis Anthropic API-nøkkel. Legg den inn under Innstillinger → AI Ingrediens-skanner.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     setScanning(true);
     try {
       const found = await scanIngredientsFromImage(result.assets[0].uri);
       if (found.length === 0) {
-        Alert.alert('Ingen ingredienser funnet', 'Prøv å ta et klarere bilde av flaskene eller ingrediensene.');
+        Alert.alert('Ingen ingredienser funnet', 'Prøv å ta et klarere bilde av flaskene dine.');
         return;
       }
       setScannedIngredients(found);
