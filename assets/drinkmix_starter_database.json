@@ -4,7 +4,7 @@
       {
         "name": "Mojito",
         "description": "Klassisk cubansk forfriskende cocktail med fersk mynte og lime. Lett, syrlig og perfekt til sommervarmen.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -47,7 +47,7 @@
       {
         "name": "Margarita",
         "description": "Ikonisk mexicansk cocktail med tequila, triple sec og frisk limejuice. Klassisk servert med saltkant.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Margarita-glass",
@@ -85,7 +85,7 @@
       {
         "name": "Negroni",
         "description": "Balansert og kompleks italiensk aperitiff med lik del gin, Campari og søt vermouth.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1536935338788-846bb9981813?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -117,7 +117,7 @@
       {
         "name": "Old Fashioned",
         "description": "En av verdens eldste cocktailoppskrifter. Bourbon, sukker og bitters — enkelt og tidløst.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1571086803816-22d0c9e9fcc4?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -155,7 +155,7 @@
       {
         "name": "Aperol Spritz",
         "description": "Sommerens favorittdrink fra Italia. Lys, frisk og perfekt til en varm kveld ute.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1560963689-b5682b6440f8?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Vinglass",
@@ -188,7 +188,7 @@
       {
         "name": "Cosmopolitan",
         "description": "Rosa og elegant — en moderne klassiker popularisert av Sex and the City. Søt, syrlig og vodkabasert.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -226,7 +226,7 @@
       {
         "name": "Gin & Tonic",
         "description": "Enkel og forfriskende — alltid et godt valg. Gin og tonic er et klassisk par som aldri går av moten.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -254,7 +254,7 @@
       {
         "name": "Moscow Mule",
         "description": "Forfriskende vodkacocktail med ingefærøl og lime, tradisjonelt servert i et koppmug av kobber.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1536935338788-846bb9981813?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Kobbermug",
@@ -287,7 +287,7 @@
       {
         "name": "Whiskey Sour",
         "description": "Søt og syrlig whiskeyklassiker med eggehvite for et silkemykt skum på toppen.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1567696911980-2eed69a46042?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -324,7 +324,7 @@
       {
         "name": "Daiquiri",
         "description": "Enkel og elegant rombasert klassiker. Bare tre ingredienser, men perfekt balanse mellom syrlig og søtt.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1498429089284-41f8cf3ffd39?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -357,7 +357,7 @@
       {
         "name": "Piña Colada",
         "description": "Tropisk drøm i et glass. Rom, kokosnøtt og ananas — smaken av ferie og solskinn.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Hurricane-glass",
@@ -390,7 +390,7 @@
       {
         "name": "Long Island Iced Tea",
         "description": "Sterkere enn den ser ut! Fem ulike spriter blandet med sitrus og cola gir smaken av is-te.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1499638673689-79a0b5115d87?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -443,7 +443,7 @@
       {
         "name": "Sex on the Beach",
         "description": "Fargerik og tropisk sommerdrink med vodka, persikoschnaps og en deilig blanding av juicer.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -481,7 +481,7 @@
       {
         "name": "Tequila Sunrise",
         "description": "Vakker soloppgangseffekt i glasset. Appelsinjuice og grenadine skaper et spektakulært fargespill.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1495366691023-cc4eadcc2d7e?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -514,7 +514,7 @@
       {
         "name": "Espresso Martini",
         "description": "For de som vil ha kaffe og cocktail i ett. Vodka og kahlúa møter fersk espresso — kraftfull og velsmakende.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -552,7 +552,7 @@
       {
         "name": "Manhattan",
         "description": "Tidløs og sofistikert klassiker fra New York. Whiskey, vermouth og bitters i perfekt harmoni.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1560963689-b5682b6440f8?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -585,7 +585,7 @@
       {
         "name": "Paloma",
         "description": "Meksikos mest elskede cocktail — tequila med frisk grapefrukt. Lettere og friskere enn en margarita.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1571086803816-22d0c9e9fcc4?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -623,7 +623,7 @@
       {
         "name": "Dark 'n' Stormy",
         "description": "Kraftig og forfriskende med mørk rom og sprudlende ingefærøl. En storm i et glass.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1567696911980-2eed69a46042?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -656,7 +656,7 @@
       {
         "name": "Hugo Spritz",
         "description": "Skandinavias favorittspritz med hylleblomst og mynte. Lett og blomstrende — perfekt sommerdrikk.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Vinglass",
@@ -694,7 +694,7 @@
       {
         "name": "Singapore Sling",
         "description": "Eksotisk og fargerik signaturdrink fra Raffles Hotel i Singapore. Fruktig og festlig.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1516997121675-4c2d1684aa3e?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Hurricane-glass",
@@ -742,7 +742,7 @@
       {
         "name": "Jordbær Daiquiri",
         "description": "Fruktfull og frisk variant av klassisk daiquiri. Rom og ferske jordbær blandet til en vakker rosa drink.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1498429089284-41f8cf3ffd39?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -780,7 +780,7 @@
       {
         "name": "B-52",
         "description": "Imponerende trelags skudd med kaffe, irsk krem og appelsinlikør. Server lagvis — ikke rør!",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1595295333158-4742f28fbd85?auto=format&fit=crop&w=800&q=80",
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass",
@@ -812,7 +812,7 @@
       {
         "name": "Tequila Shot",
         "description": "Den klassiske måten å drikke tequila på — salt, shot og lime. Enkel og effektiv.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1495366691023-cc4eadcc2d7e?auto=format&fit=crop&w=800&q=80",
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass",
@@ -843,7 +843,7 @@
       {
         "name": "Virgin Mojito",
         "description": "Alle mojito-smakene uten alkohol. Like forfriskende og full av mynte og lime.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80",
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -881,7 +881,7 @@
       {
         "name": "Shirley Temple",
         "description": "Søt og festlig alkoholfri brusdrink oppkalt etter barnestjernen Shirley Temple. Populær blant alle aldre.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80",
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -914,7 +914,7 @@
       {
         "name": "Alkoholfri Aperol Spritz",
         "description": "Den populære spritze-smaken uten alkohol. Frisk, fruktig og like flott å se på.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1560963689-b5682b6440f8?auto=format&fit=crop&w=800&q=80",
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Vinglass",
@@ -1035,7 +1035,7 @@
       {
         "name": "French 75",
         "description": "Elegant og festlig — gin møter champagne med sitrus. Oppkalt etter en fransk kanon fra 1. verdenskrig.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1560963689-b5682b6440f8?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Champagneglass",
@@ -1074,7 +1074,7 @@
       {
         "name": "Tom Collins",
         "description": "Klassisk og forfriskende longdrink med gin, sitron og sodavann. En favoritt siden 1800-tallet.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1527661591475-527312dd65f5?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Collins-glass",
@@ -1112,7 +1112,7 @@
       {
         "name": "Gimlet",
         "description": "Enkel og smakfull gin-cocktail med limekordial. Skarp, søt og tidløs.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1571086803816-22d0c9e9fcc4?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -1140,7 +1140,7 @@
       {
         "name": "Bee's Knees",
         "description": "Forbudstidens elegante gin-cocktail. Honning erstatter sukker og gir en rund, blomstrende sødme.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1567696911980-2eed69a46042?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -1173,7 +1173,7 @@
       {
         "name": "Clover Club",
         "description": "Vakkert rosa gin-cocktail med bringebær og eggehvite. Silkemyk og fruktig — en pre-forbudstidens klassiker.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1516997121675-4c2d1684aa3e?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -1210,7 +1210,7 @@
       {
         "name": "White Lady",
         "description": "Ren og elegant gin Sidecar-variant. Gin, Cointreau og sitron i perfekt balanse.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1551538827-9c037cb4f32a?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -1243,7 +1243,7 @@
       {
         "name": "Sidecar",
         "description": "Cognac-klassiker fra Paris på 1920-tallet. Tørr, syrlig og sofistikert med sukkerkant.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -1277,7 +1277,7 @@
       {
         "name": "Brandy Alexander",
         "description": "Luksuriøs og kremet dessertdrink med cognac, kakaolikør og fløte. Sjokolademyk og uimotståelig.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1578664182786-72aa7bc62f70?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -1310,7 +1310,7 @@
       {
         "name": "Mint Julep",
         "description": "Kentucky Derbys offisielle cocktail. Bourbon, fersk mynte og knust is — sommer i et sølvbeger.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Sølvbeger eller rocks-glass",
@@ -1343,7 +1343,7 @@
       {
         "name": "Paper Plane",
         "description": "Moderne klassiker fra 2008 med fire like deler — bourbon, Aperol, Amaro og sitron. Perfekt balansert.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1536935338788-846bb9981813?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -1380,7 +1380,7 @@
       {
         "name": "Rob Roy",
         "description": "Skotsk variant av Manhattan — Scotch whisky i stedet for rye. Røykfull, rik og raffinert.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -1413,7 +1413,7 @@
       {
         "name": "Rusty Nail",
         "description": "Enkel skotsk klassiker med Drambuie — honninglikør basert på whisky og urter. Varm og inviterende.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1560963689-b5682b6440f8?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -1441,7 +1441,7 @@
       {
         "name": "Amaretto Sour",
         "description": "Søt og syrlig med mandel-aroma fra amaretto. Eggehvite gir det kremete skumet på toppen.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1608270586620-248524c67de9?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -1478,7 +1478,7 @@
       {
         "name": "Mai Tai",
         "description": "Tropisk tiki-klassiker fra 1944 med aged rom, lime og mandelsirup. Transporterer deg rett til Polynesia.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1571086803816-22d0c9e9fcc4?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass eller tiki-glass",
@@ -1521,7 +1521,7 @@
       {
         "name": "Painkiller",
         "description": "Kremaktig tropisk rom-drink fra British Virgin Islands. Kokos og ananas med en smule muskatnøtt på toppen.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1567696911980-2eed69a46042?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -1559,7 +1559,7 @@
       {
         "name": "Hemingway Daiquiri",
         "description": "Ernest Hemingways favorittdrink — tørr og syrlig daiquiri med grapefrukt og maraschino.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1498429089284-41f8cf3ffd39?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -1597,7 +1597,7 @@
       {
         "name": "Jungle Bird",
         "description": "Uventet kombinasjon av mørk rom og Campari med ananas — bittert, søtt og tropisk på én gang.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1516997121675-4c2d1684aa3e?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -1640,7 +1640,7 @@
       {
         "name": "Pornstar Martini",
         "description": "Britisk bartender-hit fra 2002. Pasjonsfrukt og vanilje møter vodka — server med liten prosecco-shot på siden.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -1684,7 +1684,7 @@
       {
         "name": "Black Russian",
         "description": "Enkel og kraftig — vodka og kaffe-likør over is. Klassikeren fra 1949.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1551538827-9c037cb4f32a?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -1710,7 +1710,7 @@
       {
         "name": "White Russian",
         "description": "The Dudes drink! Black Russian med kremfløte på toppen — myk, rik og uimotståelig god.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -1742,7 +1742,7 @@
       {
         "name": "Lemon Drop",
         "description": "Syrlig og frisk vodka-shot/cocktail med sukkerkant. Enkelt, friskt og alltid populært.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1578664182786-72aa7bc62f70?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -1775,7 +1775,7 @@
       {
         "name": "French Martini",
         "description": "Fruktfull og elegant vodka-martini med Chambord bringebærlikør og ananas. Vakker rosa farge.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -1808,7 +1808,7 @@
       {
         "name": "Screwdriver",
         "description": "Det kan ikke bli enklere — vodka og appelsinjuice. Sagt å ha blitt laget av oljearbeidere som rørte med skrutrekkeren.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -1835,7 +1835,7 @@
       {
         "name": "Bellini",
         "description": "Harry's Bar i Venezias signaturdrink siden 1948. Ferskenpuré og prosecco — frisk, fruktig og festlig.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Champagneglass",
@@ -1862,7 +1862,7 @@
       {
         "name": "Kir Royale",
         "description": "Fransk aperitiff med champagne og crème de cassis. Elegant, enkel og alltid stilfull.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1536935338788-846bb9981813?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Champagneglass",
@@ -1888,7 +1888,7 @@
       {
         "name": "Tommy's Margarita",
         "description": "Moderne margarita-klassiker fra San Francisco som bruker agavenektar i stedet for triple sec. Renere og mer tequila-fokusert.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -1921,7 +1921,7 @@
       {
         "name": "El Diablo",
         "description": "Djevelens cocktail — tequila med solbærlikør og ingefærøl. Søtt, spicy og overraskende godt.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -1959,7 +1959,7 @@
       {
         "name": "Kamikaze",
         "description": "Klassisk shot med vodka, triple sec og lime. Raskt, friskt og kraftig.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1545438102-799c3991ffb2?auto=format&fit=crop&w=800&q=80",
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass",
@@ -1991,7 +1991,7 @@
       {
         "name": "Jagerbomb",
         "description": "Energidrikk-klassiker på fest — Jägermeister drukket i energidrikk. Kraftig og populær.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1481247227604-b7ad7d012804?auto=format&fit=crop&w=800&q=80",
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass + pint-glass",
@@ -2223,7 +2223,7 @@
       {
         "name": "Bramble",
         "description": "Britisk gin-klassiker fra 1984 skapt av Dick Bradsell. Fruktig og syrlig med brombærlikør dryppet over knust is.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1560963689-b5682b6440f8?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -2263,7 +2263,7 @@
       {
         "name": "Aviation",
         "description": "Forbudstidens lilla perle — gin med maraschino og creme de violette gir en vakker blomstersmak og lys lilla farge.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1571086803816-22d0c9e9fcc4?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -2301,7 +2301,7 @@
       {
         "name": "Last Word",
         "description": "Prohibition-klassiker med fire like deler — balansen mellom gin, chartreuse, maraschino og lime er magisk.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1567696911980-2eed69a46042?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -2339,7 +2339,7 @@
       {
         "name": "Penicillin",
         "description": "Moderne klassiker fra New York, 2005. Blended scotch møter honning-ingefærsirup og sitron, toppet med en dram røykfull Islay scotch.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1516997121675-4c2d1684aa3e?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -2379,7 +2379,7 @@
       {
         "name": "New York Sour",
         "description": "Whiskey Sour løftet til nye høyder med en float av rødvin på toppen. Dramatisk, vakker og deilig.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1608270586620-248524c67de9?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -2422,7 +2422,7 @@
       {
         "name": "Gold Rush",
         "description": "Enkel moderne klassiker fra New York — bourbon, honningsirup og sitron i perfekt balanse. Bare tre ingredienser, uendelig god.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1551538827-9c037cb4f32a?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -2456,7 +2456,7 @@
       {
         "name": "Naked and Famous",
         "description": "Moderne Paper Plane-variant med mezcal og gul chartreuse. Fire like deler som gir en røykfull, urteaktig og syrlig opplevelse.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -2494,7 +2494,7 @@
       {
         "name": "Corpse Reviver #2",
         "description": "Forbudstidens hangover-kur — gin, sitrus, Cointreau og Lillet Blanc, toppet med noen dråper absint for det lille ekstra.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1578664182786-72aa7bc62f70?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -2538,7 +2538,7 @@
       {
         "name": "Spagliato",
         "description": "Negroni-varianten hvor gin erstattes med prosecco — lettere, boblende og like elegant. Perfekt aperitivo.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -2571,7 +2571,7 @@
       {
         "name": "Blood and Sand",
         "description": "Unik skotsk klassiker fra 1930 oppkalt etter en Rudolph Valentino-film. Like deler scotch, vermouth, cherry brandy og appelsinjuice.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1536935338788-846bb9981813?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -2609,7 +2609,7 @@
       {
         "name": "Southside",
         "description": "Chicagos svar på Mojitoen — gin erstatter rom for en skarpere, mer aromatisk myntedrikk. Elegant og forfriskende.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -2647,7 +2647,7 @@
       {
         "name": "Mezcal Negroni",
         "description": "Røykfull og dristig vri på den klassiske Negroni — mezcal erstatter gin og gir en dybde som er vanskelig å glemme.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1536935338788-846bb9981813?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -2679,7 +2679,7 @@
       {
         "name": "Gold Fashioned",
         "description": "Old Fashioned med honning i stedet for sukker — rundere, mykere og like tidløs. Et godt glass bourbon fortjener det beste.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1571086803816-22d0c9e9fcc4?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -2717,7 +2717,7 @@
       {
         "name": "Garibaldi",
         "description": "Den enkleste Campari-drinken som finnes — bitter Campari møter friskpresset appelsinjuice. Italiensk frokost i et glass.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1560963689-b5682b6440f8?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -2744,7 +2744,7 @@
       {
         "name": "Aperol Negroni",
         "description": "Mildere og fruktigere Negroni-variant — Aperol gir lavere alkohol og en lys, appelsinaktig bitterhet. Perfekt for aperitivo.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1536935338788-846bb9981813?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -2776,7 +2776,7 @@
       {
         "name": "Lemon Drop Shot",
         "description": "Frisk og syrlig sitron-shot med sukkerkant. Populær og enkel — perfekt som velkomstshot.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=800&q=80",
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass",
@@ -2808,7 +2808,7 @@
       {
         "name": "Baby Guinness",
         "description": "Ser ut som en liten pint Guinness — kaffelikør toppet med Irish Cream som lager det perfekte 'skumhodet'. Søtt og morsomt.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1574096079513-d8259312b785?auto=format&fit=crop&w=800&q=80",
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass",
@@ -2835,7 +2835,7 @@
       {
         "name": "Butterscotch Shot",
         "description": "Søtt og kremete shot med smaken av smørkaramell og Irish Cream. En dessert i shotform.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=800&q=80",
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass",
@@ -2862,7 +2862,7 @@
       {
         "name": "Sambuca Shot",
         "description": "Klassisk italiensk anislikør servert med tre kaffebønner — symboliserer helse, lykke og velstand. Valgfritt i brann.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=800&q=80",
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass",
@@ -2889,7 +2889,7 @@
       {
         "name": "Melon Shot",
         "description": "Sommer i et shotglass — søt melonlikør møter frisk ananassaft. Fargerikt, enkelt og alltid populært.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=800&q=80",
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass",
@@ -2916,7 +2916,7 @@
       {
         "name": "Cuba Libre",
         "description": "Frihetens drink — rom, cola og lime. Enkel, forfriskende og alltid på moten siden 1900.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1498429089284-41f8cf3ffd39?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -2954,7 +2954,7 @@
       {
         "name": "Vodka Tranebær",
         "description": "Enkel og frisk longdrink med vodka og tranebærjuice — nesten som en Cosmo, men uten shaking. Lett og populær.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1578664182786-72aa7bc62f70?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -2987,7 +2987,7 @@
       {
         "name": "Harvey Wallbanger",
         "description": "70-tallets ikoniske partydrink — Screwdriver toppet med Galliano-likør. Søtt, fruktig og nostalgisk.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -3019,7 +3019,7 @@
       {
         "name": "Americano Highball",
         "description": "Negronis lettere bror — Campari og vermouth toppet med sodavann. Opprinnelig Negroni-drinken før gin kom med.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -3051,7 +3051,7 @@
       {
         "name": "Shandy",
         "description": "Britisk pub-klassiker — halvparten lyst øl, halvparten sitronbrus. Lett og forfriskende med lav alkohol.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1563227812-0ea4c22e6cc8?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Pintglass",
@@ -3079,7 +3079,7 @@
       {
         "name": "Radler",
         "description": "Tysk sykkeldrink — øl og grapefruktjuice blandet for en frisk, lett og sitrusrik smak. Perfekt etter en aktiv dag.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1499638673689-79a0b5115d87?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Ølglass",
@@ -3106,7 +3106,7 @@
       {
         "name": "Ranch Water",
         "description": "Texas' foretrukne sommerdrink — enkel blanco tequila med kullsyreholdig vann og lime. Tørr, frisk og uimotståelig.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1527661591475-527312dd65f5?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Flaskeglass eller highball-glass",
@@ -3139,7 +3139,7 @@
       {
         "name": "Vodka Soda",
         "description": "Den aller enkleste og reneste longdrinken — vodka og sodavann med litt lime. Kalorivennlig og alltid frisk.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1578664182786-72aa7bc62f70?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -3171,7 +3171,7 @@
       {
         "name": "Virgin Piña Colada",
         "description": "All den tropiske kremede godheten av Piña Colada — uten alkohol. Perfekt for alle ved stranden.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=800&q=80",
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Hurricane-glass",
@@ -3540,7 +3540,7 @@
       {
         "name": "Sangria",
         "description": "Spansk festdrink som best lages dagen i forveien. Rødvin, appelsin, sitron og en splash brandy — fruktig og deilig.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1549188732-de8f99f70cde?auto=format&fit=crop&w=800&q=80",
         "category": "Punch",
         "alcoholic": true,
         "glass_type": "Vinglass eller punchbolle",
@@ -3589,7 +3589,7 @@
       {
         "name": "Hvit Sangria",
         "description": "Lysere og friskere variant av klassisk sangria med hvitvin og fersken. Perfekt for sommerlige hageselskaper.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1549188732-de8f99f70cde?auto=format&fit=crop&w=800&q=80",
         "category": "Punch",
         "alcoholic": true,
         "glass_type": "Vinglass eller punchbolle",
@@ -3686,7 +3686,7 @@
       {
         "name": "Tropical Punch",
         "description": "Fargerik og tropisk punchdrink perfekt til fest. Rom, ananas og appelsinjuice med et dryss grenadine for farge og sødme.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1549188732-de8f99f70cde?auto=format&fit=crop&w=800&q=80",
         "category": "Punch",
         "alcoholic": true,
         "glass_type": "Punchbolle eller highball-glass",
@@ -3768,7 +3768,7 @@
       {
         "name": "Caipirinha",
         "description": "Brasilias nasjonaldrink — cachaça, fersk lime og sukker knust over knust is. Frisk, syrlig og uimotståelig enkel.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1571086803816-22d0c9e9fcc4?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Old-Fashioned glass",
@@ -3806,7 +3806,7 @@
       {
         "name": "Caipiroska",
         "description": "Caipirinhaens vodkabaserte fetter — like frisk og syrlig, men med en mykere karakter. Perfekt for de som foretrekker vodka.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1567696911980-2eed69a46042?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Old-Fashioned glass",
@@ -3844,7 +3844,7 @@
       {
         "name": "Pisco Sour",
         "description": "Perus stolthet — pisco med lime, sukker og eggehvite gir et silkemykt skum og en perfekt balansert syrlig cocktail.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1608270586620-248524c67de9?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -3886,7 +3886,7 @@
       {
         "name": "El Presidente",
         "description": "Kubansk klassiker fra 1920-tallets Havana — rom møter curacao og tørr vermouth i en elegant og kompleks cocktail.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1516997121675-4c2d1684aa3e?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -3924,7 +3924,7 @@
       {
         "name": "Sloe Gin Fizz",
         "description": "Fruktfull og frisk fizz med sloe gin — bringebærlik sødme møter sitronens syre og sodavannets bobler. En forfriskende sommerklassiker.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -4000,7 +4000,7 @@
       {
         "name": "French Connection",
         "description": "En enkel og sofistikert duo — cognac og amaretto rører seg sammen for en varm, mandelaktig og fyldig kveldsdrikk.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1551538827-9c037cb4f32a?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -4028,7 +4028,7 @@
       {
         "name": "Godfather",
         "description": "Kraftfull og mandelaktig whisky-cocktail — Scotch og amaretto i perfekt balanse. Drinken til den som bestemmer.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -4056,7 +4056,7 @@
       {
         "name": "Godmother",
         "description": "Godfatherens elegante søster — vodka og amaretto gir en myk og mandelaktig cocktail uten whiskydominans.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1578664182786-72aa7bc62f70?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -4084,7 +4084,7 @@
       {
         "name": "Salty Dog",
         "description": "Greyhoundens syrlige søsken med saltkant — vodka og grapefruktjuice i et glass med salt, syrlig og tørr karakter.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -4117,7 +4117,7 @@
       {
         "name": "Greyhound",
         "description": "Enkel og forfriskende vodkadrink med grapefruktjuice — tørr, syrlig og lett. En klassiker som aldri skuffer.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1536935338788-846bb9981813?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -4144,7 +4144,7 @@
       {
         "name": "Bay Breeze",
         "description": "Tropisk og sommerlig vodkadrink med tranebær og ananas — søt, fruktig og alltid populær på stranden.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -4177,7 +4177,7 @@
       {
         "name": "Woo Woo",
         "description": "Søt og fruktig shot/cocktail med fersken og tranebær — enkel, fargerik og alltid et hit på fest.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1560963689-b5682b6440f8?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -4209,7 +4209,7 @@
       {
         "name": "Alabama Slammer",
         "description": "Søt og fruktig partycocktail med Southern Comfort, amaretto og sloe gin — en klassiker fra amerikanske college-barer.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1571086803816-22d0c9e9fcc4?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -4246,7 +4246,7 @@
       {
         "name": "Harvey Wallbanger Sour",
         "description": "En syrlig vri på den klassiske Harvey Wallbanger — vodka, galliano og appelsinjuice møter sitronens friske syre.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1608270586620-248524c67de9?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -4284,7 +4284,7 @@
       {
         "name": "Kir",
         "description": "Burgundys enkle aperitiff — hvitvin med crème de cassis. Oppkalt etter borgermesteren i Dijon, enkel og tidløs.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1567696911980-2eed69a46042?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Vinglass",
@@ -4311,7 +4311,7 @@
       {
         "name": "Buck's Fizz",
         "description": "Britisk brunchklassiker siden 1921 — champagne og appelsinjuice i en lystig og forfriskende kombinasjon. Enklere enn Mimosa og litt sterkere.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1516997121675-4c2d1684aa3e?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Champagneglass",
@@ -4338,7 +4338,7 @@
       {
         "name": "Mimosa",
         "description": "Elegantens brunchdrink — champagne og appelsinjuice med en splash triple sec for ekstra dybde. Festlig og uanstrengt.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1551538827-9c037cb4f32a?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Champagneglass",
@@ -4370,7 +4370,7 @@
       {
         "name": "Tuxedo",
         "description": "Forbudstidens elegante gin-martini med maraschino og absint — kompleks, tørr og svært sofistikert.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -4408,7 +4408,7 @@
       {
         "name": "Vesper",
         "description": "James Bonds egenkomponerte martini fra Casino Royale — gin, vodka og Lillet Blanc ristet (ikke rørt) til iskald perfeksjon.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1578664182786-72aa7bc62f70?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -4446,7 +4446,7 @@
       {
         "name": "Flaming Dr. Pepper",
         "description": "Spektakulær shot som brenner — amaretto settes i brann og slukkes ved å slippe shotglasset ned i øl. Smaker overraskende som Dr Pepper.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1551538827-9c037cb4f32a?auto=format&fit=crop&w=800&q=80",
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass + halvt pintglass",
@@ -4474,7 +4474,7 @@
       {
         "name": "Cactus Jack",
         "description": "Dobbelt sterkt shot med både vodka og tequila, pluss lime — raskt, kraftig og ikke for sarte sjeler.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1595295333158-4742f28fbd85?auto=format&fit=crop&w=800&q=80",
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass",
@@ -4507,7 +4507,7 @@
       {
         "name": "Purple Rain",
         "description": "Fargerik og festlig shot — blå curacao og tranebærjuice skaper en magisk lilla farge som imponerer i glasset.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1545438102-799c3991ffb2?auto=format&fit=crop&w=800&q=80",
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass",
@@ -4539,7 +4539,7 @@
       {
         "name": "Dirty Harry",
         "description": "Tequila møter Grand Marnier i et enkelt, elegant og kraftig shot — sitrusaktig og med tequilaens varme natur.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1481247227604-b7ad7d012804?auto=format&fit=crop&w=800&q=80",
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass",
@@ -4565,7 +4565,7 @@
       {
         "name": "Slippery Nipple",
         "description": "Søtt og anisaromatisk shot med sambuca og Irish Cream — to lag som glir ned som silke.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1574096079513-d8259312b785?auto=format&fit=crop&w=800&q=80",
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass",
@@ -4592,7 +4592,7 @@
       {
         "name": "Green Tea Shot",
         "description": "Smaker overraskende mye som grønn te — persikoschnaps, whisky og sour mix gir en frisk og lett shot.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=800&q=80",
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass",
@@ -4624,7 +4624,7 @@
       {
         "name": "Washington Apple",
         "description": "Fruktig og populært shot med canadisk whisky, apple schnapps og tranebærjuice — søtt, rødt og alltid festlig.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1551538827-9c037cb4f32a?auto=format&fit=crop&w=800&q=80",
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass",
@@ -4656,7 +4656,7 @@
       {
         "name": "Cement Mixer",
         "description": "Det mest kontroversielle shoten — Irish Cream og limejuice stivner i munnen og skaper en unik (og skremmende) tekstur.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1595295333158-4742f28fbd85?auto=format&fit=crop&w=800&q=80",
         "category": "Shot",
         "alcoholic": true,
         "glass_type": "Shotglass",
@@ -4683,7 +4683,7 @@
       {
         "name": "Paloma Highball",
         "description": "Meksikos forfriskende sommerhit i highball-format — tequila blanco med grapefruktbrus, lime og salt, perfekt til varm dag.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -4721,7 +4721,7 @@
       {
         "name": "Dark & Stormy Highball",
         "description": "Karibisk klassiker i highball-format — mørk rom og sprudlende ingefærøl med lime, storm i et glass.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1498429089284-41f8cf3ffd39?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -4754,7 +4754,7 @@
       {
         "name": "Horse's Neck",
         "description": "Elegant og ingefærfrisk longdrink med konjakk og ingefærøl — sitronskallet spiraler ned i glasset som en hestehals.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -4792,7 +4792,7 @@
       {
         "name": "Aperol Tonic",
         "description": "Lettere og mer bitter enn Aperol Spritz — tonic gir en tørrere og mer sprudlende karakter med frisk appelsinsmak.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1560963689-b5682b6440f8?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -4824,7 +4824,7 @@
       {
         "name": "Campari Soda",
         "description": "Italias enkleste og mest ikoniske aperitivo — rød Campari med boblende sodavann og appelsinskall. Bittert, friskt og uslåelig.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -4857,7 +4857,7 @@
       {
         "name": "Rum Punch",
         "description": "Fargerik og tropisk punch i glass — lys rom, ananas, appelsin og grenadine i en festlig og lettdrukket kombinasjon.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1516997121675-4c2d1684aa3e?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -4895,7 +4895,7 @@
       {
         "name": "Tequila & Cola",
         "description": "Enkel og overraskende god kombinasjon — tequila og cola med lime gir en spennende twist på den klassiske rum & cola.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1495366691023-cc4eadcc2d7e?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -4928,7 +4928,7 @@
       {
         "name": "Bourbon & Ginger",
         "description": "Varm og krydret bourbon møter sprudlende ingefærøl — en moderne klassiker med rustikk sjarm og frisk spice.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1567696911980-2eed69a46042?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -4961,7 +4961,7 @@
       {
         "name": "Gin Rickey",
         "description": "Klassisk sommerdrink fra Washington D.C. — gin, fersk lime og soda uten sukker. Tørr, lett og uendelig forfriskende.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -4994,7 +4994,7 @@
       {
         "name": "Whisky Highball",
         "description": "Japans foretrukne måte å drikke whisky på — japansk whisky og kjølt brus over is i et rent, rent glass. Enkelt og perfekt.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1567696911980-2eed69a46042?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -5060,7 +5060,7 @@
       {
         "name": "Roy Rogers",
         "description": "Oppkalt etter cowboy-stjernen Roy Rogers — cola med grenadine og kirsebær. En alkoholfri partydrink med attitude.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1498429089284-41f8cf3ffd39?auto=format&fit=crop&w=800&q=80",
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -5093,7 +5093,7 @@
       {
         "name": "Virgin Mary",
         "description": "Bloody Marys alkoholfrie søster — tomatjuice med tabasco, selleri og sitron gir en krydret og tilfredsstillende drink.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=800&q=80",
         "category": "Alkoholfri",
         "alcoholic": false,
         "glass_type": "Highball-glass",
@@ -5516,7 +5516,7 @@
       {
         "name": "Planter's Punch",
         "description": "Klassisk karibisk punchdrink fra Jamaica — mørk rom, appelsin og ananas med grenadine i en festlig og aromatisk blanding.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1549188732-de8f99f70cde?auto=format&fit=crop&w=800&q=80",
         "category": "Punch",
         "alcoholic": true,
         "glass_type": "Punchbolle eller highball-glass",
@@ -5645,7 +5645,7 @@
       {
         "name": "Piña Punch",
         "description": "Tropisk og kremete punchdrink med hvit rom, ananas og kokos — som en Piña Colada for hele gjengen.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1549188732-de8f99f70cde?auto=format&fit=crop&w=800&q=80",
         "category": "Punch",
         "alcoholic": true,
         "glass_type": "Punchbolle eller highball-glass",
@@ -5683,7 +5683,7 @@
       {
         "name": "Whisky Mac",
         "description": "En skotsk klassiker som varmer sjelen — blanding av røykfull scotch og søt ingefærvin. Perfekt til høstkvelder og kald vind.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1567696911980-2eed69a46042?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -5710,7 +5710,7 @@
       {
         "name": "Blood Orange Negroni",
         "description": "En fruktig og fargerik vri på den klassiske Negroni, hvor blodappelsin tilfører syrlig sødme og en vakker rubinrød farge.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1536935338788-846bb9981813?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -5747,7 +5747,7 @@
       {
         "name": "Naked Martini",
         "description": "Den tørreste av alle Martini-varianter — nærmest bare ren, iskald gin med et hint av vermouth. For de som virkelig elsker gin.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Martini-glass",
@@ -5776,7 +5776,7 @@
       {
         "name": "Dirty Martini",
         "description": "En salt og umami-rik Martini med olivenlake som gir dybde og karakter. Klassisk valg for de som liker noe utenom det vanlige.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Martini-glass",
@@ -5815,7 +5815,7 @@
       {
         "name": "Perfect Manhattan",
         "description": "En balansert Manhattan med like deler søt og tørr vermouth, som gir en mer kompleks og elegant smak enn den klassiske varianten.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1536935338788-846bb9981813?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -5854,7 +5854,7 @@
       {
         "name": "Dry Martini",
         "description": "Den klassiske Dry Martini med gin og et minimum av vermouth — iskald, elegant og tidløs. Garnert med friskt sitronskall.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Martini-glass",
@@ -5888,7 +5888,7 @@
       {
         "name": "Vodka Martini",
         "description": "Den James Bond-berømte Martini laget med vodka — ristet, ikke rørt — kald, ren og forfriskende.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Martini-glass",
@@ -5917,7 +5917,7 @@
       {
         "name": "Gibson",
         "description": "En klassisk Martini-variant garnert med cocktailløk i stedet for oliven — gir en mild, pikant smak som skiller seg fra originalen.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Martini-glass",
@@ -5951,7 +5951,7 @@
       {
         "name": "Martinez",
         "description": "Forgjengeren til den moderne Martini — laget med gammelstils genever gin, søt vermouth og maraskin. Rik, kompleks og historisk.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1560963689-b5682b6440f8?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -5989,7 +5989,7 @@
       {
         "name": "Hanky Panky",
         "description": "En mystisk og bitter cocktail skapt av barpioner Ada Coleman på 1920-tallet — gin, vermouth og Fernet-Branca i perfekt harmoni.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1571086803816-22d0c9e9fcc4?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -6022,7 +6022,7 @@
       {
         "name": "Toronto",
         "description": "En kanadisk whisky-klassiker med den karakteristiske bitterheten fra Fernet-Branca — dyp, aromatisk og perfekt for vinterkvelden.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1567696911980-2eed69a46042?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -6060,7 +6060,7 @@
       {
         "name": "Bijou",
         "description": "En juveltrinitet av gin, grønn chartreuse og søt vermouth — rikt, urtearomatisk og med en dyp smaragdgrønn farge.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1516997121675-4c2d1684aa3e?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -6098,7 +6098,7 @@
       {
         "name": "Alaska",
         "description": "En kraftfull, urtearomatisk cocktail med gin og gul chartreuse — enkel i sammensetning, men kompleks i smak.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1551538827-9c037cb4f32a?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -6131,7 +6131,7 @@
       {
         "name": "Scofflaw",
         "description": "En forbudstid-klassiker med rye whisky, tørr vermouth og grenadine — frisk, fruktig og med en intrikat balanse mellom søtt og syrlig.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -6174,7 +6174,7 @@
       {
         "name": "Revolver",
         "description": "En moderne whisky-klassiker fra San Francisco — bourbon og Kahlúa med orange bitters gir en rik, kaffe-duftet opplevelse.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1578664182786-72aa7bc62f70?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -6207,7 +6207,7 @@
       {
         "name": "Little Italy",
         "description": "En italiensk-inspirert whisky-cocktail med Cynar og søt vermouth — bitter, urtearomatisk og uimotståelig kompleks.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -6240,7 +6240,7 @@
       {
         "name": "Black Manhattan",
         "description": "En mørk og fyldig Manhattan-variant med Averna amaro i stedet for vanlig vermouth — rik på urter, karamell og bitterhet.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1536935338788-846bb9981813?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -6274,7 +6274,7 @@
       {
         "name": "Oaxacan Old Fashioned",
         "description": "Phil Wards moderne klassiker som kombinerer mezcal og tequila for en røykfull, agave-drevet vri på Old Fashioned. Ikonisk fra Death & Co.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1571086803816-22d0c9e9fcc4?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -6312,7 +6312,7 @@
       {
         "name": "Trinidad Sour",
         "description": "En dristig og uvanlig Sour der Angostura bitters er hovedspirituosen — intens, krydret og overraskende velbalansert.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1608270586620-248524c67de9?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -6350,7 +6350,7 @@
       {
         "name": "Chartreuse Swizzle",
         "description": "En tropisk tiki-cocktail med grønn chartreuse, falernum og ananas — urterik og eksotisk med en festlig smaragdgrønn farge.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Collins-glass",
@@ -6388,7 +6388,7 @@
       {
         "name": "Blue Hawaii",
         "description": "Den ikoniske, lyseblå tropiske cocktailen fra Hawaii — sødmefull med blue curacao og ananas, en fest for både øye og smak.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1551538827-9c037cb4f32a?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -6432,7 +6432,7 @@
       {
         "name": "Zombie",
         "description": "Den legendariske og potente tiki-drinken fra Donn Beach — tre typer rom, tropiske juicer og en grenadine-overflate. Server med forsiktighet!",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1560963689-b5682b6440f8?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Tiki-krus eller highball-glass",
@@ -6481,7 +6481,7 @@
       {
         "name": "Scorpion",
         "description": "En klassisk tiki-punch med rom og cognac, søtet med orgeat og sitrussaft — fruktig, blomsteraktig og festlig.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1571086803816-22d0c9e9fcc4?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Tiki-krus eller highball-glass",
@@ -6523,7 +6523,7 @@
       {
         "name": "Bahama Mama",
         "description": "En tropisk karibisk drink med mørk rom og kokosnøttlikør — søt, fruktig og perfekt for strandatmosfære.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1567696911980-2eed69a46042?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -6561,7 +6561,7 @@
       {
         "name": "Lava Flow",
         "description": "En spektakulær tropisk drink der jordbærpuré renner nedover som lava gjennom en kremete banan-ananas-kokossmoothie.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1516997121675-4c2d1684aa3e?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -6604,7 +6604,7 @@
       {
         "name": "Rum Runner",
         "description": "En søt og fruktig tiki-cocktail fra Florida Keys med rom, bananlikør og blackberry brandy — rik på tropiske smaker.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1516997121675-4c2d1684aa3e?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -6647,7 +6647,7 @@
       {
         "name": "Miami Vice",
         "description": "Den ikoniske, lagdelte drinken fra Miami — halvt Piña Colada og halvt Strawberry Daiquiri, servert side om side i ett glass.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1551538827-9c037cb4f32a?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass eller hurricanglass",
@@ -6695,7 +6695,7 @@
       {
         "name": "Yellow Bird",
         "description": "En solrik karibisk klassiker med rom, Galliano og curacao — søt, urtearomatisk og vakker gul som en kanariefugl.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -6733,7 +6733,7 @@
       {
         "name": "Goombay Smash",
         "description": "En cafédrink fra Bahamas med kokosnøttrom og ananasjuice — lett, søt og tropisk som en strand-ferie.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1578664182786-72aa7bc62f70?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -6766,7 +6766,7 @@
       {
         "name": "Suffering Bastard",
         "description": "Oppfunnet i Kairo under 2. verdenskrig for å helbrede bakrus — bourbon, gin og ingefærøl med sitron og bitters.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1563227812-0ea4c22e6cc8?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Collins-glass",
@@ -6810,7 +6810,7 @@
       {
         "name": "Three Dots and a Dash",
         "description": "Oppkalt etter morsetegnet for 'V' (seier) og skapt av Don the Beachcomber under andre verdenskrig — en festlig og kompleks tiki-drink.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Tiki-krus",
@@ -6858,7 +6858,7 @@
       {
         "name": "Swizzle",
         "description": "Den klassiske karibiske Rum Swizzle — rom, lime og sukker over knust is, rørt raskt til glasset blir rimete og drinken iskald.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1536935338788-846bb9981813?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Collins-glass",
@@ -6902,7 +6902,7 @@
       {
         "name": "Navy Grog",
         "description": "Inspirert av den britiske marinens daglige rom-rasjon — tre typer rom med honning, lime og grapefrukt for en kompleks og robust smak.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -6949,7 +6949,7 @@
       {
         "name": "Beachcomber",
         "description": "En enkel og raffinert daiquiri-variant med rom, triple sec og maraskin — ren, syrlig og perfekt for tropiske kvelder.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1560963689-b5682b6440f8?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -6987,7 +6987,7 @@
       {
         "name": "Golden Cadillac",
         "description": "En luksøs kremdrink fra 1950-tallets California med Galliano og hvit kakaolikør — søt, kremete og uimotståelig behagelig.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1571086803816-22d0c9e9fcc4?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Cocktailglass",
@@ -7020,7 +7020,7 @@
       {
         "name": "Irish Coffee",
         "description": "Den varme klassikeren fra Shannon flyplass i Irland — irsk whisky, sterk kaffe og brun sukker toppet med et tykt lag kremfløte.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1581927692308-be9e43b4d860?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Irish coffee-glass",
@@ -7059,7 +7059,7 @@
       {
         "name": "Kahlúa & Cream",
         "description": "Enklere kan det ikke bli — Kahlúa-likørens rike kaffeesmak møter kremfløten for en dessertdrink uten sidestykke.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1567696911980-2eed69a46042?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Rocks-glass",
@@ -7086,7 +7086,7 @@
       {
         "name": "Mudslide",
         "description": "En rik og dekadent dessertdrink med vodka, Kahlúa og Baileys — som en dessert i glassform.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1516997121675-4c2d1684aa3e?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -7123,7 +7123,7 @@
       {
         "name": "Toasted Almond",
         "description": "En nydelig krem-dessertcocktail med Kahlúa og amaretto — minner om et glass med ristede mandler og kaffe.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1551538827-9c037cb4f32a?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -7156,7 +7156,7 @@
       {
         "name": "Colorado Bulldog",
         "description": "En White Russian med en overraskende twist — cola gir brus og sødme til den klassiske krem-og-kaffe-kombinasjonen.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -7194,7 +7194,7 @@
       {
         "name": "Gin Fizz",
         "description": "En tidløs britisk highball med gin, sitron og sukker toppet med boblende sodavann — lett, syrlig og svært forfriskende.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -7233,7 +7233,7 @@
       {
         "name": "Ramos Gin Fizz",
         "description": "New Orleans' legendariske, kremete Gin Fizz med eggehvite, fløte og orangeblomstvann — krever lang risting, men resultatet er majestetisk.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -7291,7 +7291,7 @@
       {
         "name": "Silver Fizz",
         "description": "En klassisk Gin Fizz beriket med eggehvite som gir en silkemyk, skummende tekstur og en elegant hvit topp.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1499638673689-79a0b5115d87?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -7335,7 +7335,7 @@
       {
         "name": "John Collins",
         "description": "Den whisky-baserte broren til Tom Collins — bourbon med sitron, sukker og sodavann for en frisk og lett highball.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1527661591475-527312dd65f5?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Collins-glass",
@@ -7374,7 +7374,7 @@
       {
         "name": "Vodka Collins",
         "description": "En lett og alkoholvennlig Collins-variant med vodka — clean, syrlig og perfekt for de som foretrekker en nøytral base.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1578664182786-72aa7bc62f70?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Collins-glass",
@@ -7413,7 +7413,7 @@
       {
         "name": "Rum Collins",
         "description": "En tropisk vri på Collins-familien — hvit rom gir søthet og karibisk karakter til den klassiske sitrus-sodavann-kombinasjonen.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1516997121675-4c2d1684aa3e?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Collins-glass",
@@ -7452,7 +7452,7 @@
       {
         "name": "Elderflower Collins",
         "description": "En elegant, blomsteraktig vri på den klassiske Collins — hylleblomstsaft gir en delikat sødme og parfymert aroma til gin-sitruskomboen.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Collins-glass",
@@ -7491,7 +7491,7 @@
       {
         "name": "Tequila Fizz",
         "description": "En sprudlende og pikant highball der tequila møter sitrus og ingefærøl for en krydret, forfriskende meksikansk-inspirert drink.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1495366691023-cc4eadcc2d7e?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Highball-glass",
@@ -7530,7 +7530,7 @@
       {
         "name": "Spritz Bianco",
         "description": "En elegant og lett italiensk spritz med prosecco og hylleblomst-tonic — blomsteraktig, syrlig og perfekt til fordrink.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Spritz-glass (stort vinglass)",
@@ -7563,7 +7563,7 @@
       {
         "name": "Rossini",
         "description": "En elegant champagne-cocktail fra Italia oppkalt etter komponisten — jordbærpuré og prosecco i vakker rosa harmoni.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1578664182786-72aa7bc62f70?auto=format&fit=crop&w=800&q=80",
         "category": "Cocktail",
         "alcoholic": true,
         "glass_type": "Champagnefløyte",
@@ -7961,7 +7961,7 @@
       {
         "name": "Michelada",
         "description": "Mexikos svar på Bloody Mary — øl med limejuice, hot sauce og worcestershire over salt-rim er en frisk, pikant og forfriskende drinkoplevelse.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1498429089284-41f8cf3ffd39?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Ølkrus eller highball-glass",
@@ -8005,7 +8005,7 @@
       {
         "name": "Snakebite",
         "description": "En britisk pub-favoritt — halvt lyst øl og halvt eplecider gir en frisk og sprudlende drink som er mer enn summen av delene.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Ølkrus",
@@ -8032,7 +8032,7 @@
       {
         "name": "Black Velvet",
         "description": "En elegant og visuelt slående drink der mørk stout flyter over champagne — kontrastene i farge og smak er fenomenale.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Champagnefløyte eller halvpint-glass",
@@ -8059,7 +8059,7 @@
       {
         "name": "Diesel",
         "description": "En enkel og populær britisk pub-drink — halvt lager og halvt cola gir en overraskende frisk og søt kombinasjon.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1563227812-0ea4c22e6cc8?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Ølkrus",
@@ -8086,7 +8086,7 @@
       {
         "name": "Lager Top",
         "description": "En klassisk britisk highball der lys lager møter sitronbrus — lett, forfriskende og perfekt til varmere dager.",
-        "image": null,
+        "image": "https://images.unsplash.com/photo-1499638673689-79a0b5115d87?auto=format&fit=crop&w=800&q=80",
         "category": "Longdrink",
         "alcoholic": true,
         "glass_type": "Ølkrus eller highball-glass",

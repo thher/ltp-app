@@ -75,7 +75,8 @@ export async function ensureSchema(db: SQLite.SQLiteDatabase): Promise<void> {
   await db.execAsync(DDL);
   // Seeding is non-fatal: catch errors so the app always loads
   try {
-    const inserted = await seedFromJson(db);
+    // force=true: always upsert missing drinks so new recipes reach existing users
+    const inserted = await seedFromJson(db, true);
     console.log(`[DrinkMix] ensureSchema done — inserted ${inserted}`);
     // Always refresh missing images in background (network permitting)
     refreshImagesFromCocktailDB(db).catch(() => {});
