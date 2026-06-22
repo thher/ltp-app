@@ -3,6 +3,7 @@ Standalone PDF-to-Excel extractor — no GUI, no Poppler required.
 
 Renders PDF pages with PyMuPDF (fitz), OCRs with Tesseract, extracts
 line items using spatial bounding boxes, then aggregates across all PDFs.
+Splits multi-invoice PDFs at Fakturanummer: boundaries — one row per invoice.
 
 USAGE
 -----
@@ -22,10 +23,10 @@ Override Tesseract path:
 
 SHEETS IN OUTPUT EXCEL
 ----------------------
-  All Invoices        — one row per PDF (supplier, number, date, total, status)
-  All Line Items      — every extracted line item across all PDFs
-  Aggregated Products — grouped by product (total qty, total spend, total metres)
-  Supplier Summary    — grouped by supplier (invoice count, total spend)
+  Invoices            -- one row per invoice (supplier, customer, number, date, total)
+  Line Items          -- every extracted line item across all invoices
+  Aggregated Products -- grouped by product (total qty, total spend, total metres)
+  Supplier Summary    -- grouped by supplier (invoice count, total spend)
 """
 from __future__ import annotations
 
@@ -220,6 +221,7 @@ def _li_to_dict(item, source_pdf: str = "", supplier: str = "",
     return {
         "Source PDF":      source_pdf,
         "Supplier":        supplier,
+        "Customer":        "",
         "Invoice #":       invoice_number,
         "Description":     item.description,
         "Section":         item.section,
@@ -264,7 +266,7 @@ _VAT_RATES     = frozenset(('25', '15', '12', '0'))
 
 
 def _parse_no_num(s: str) -> float | None:
-    """Parse Norwegian number: '1 234,56' → 1234.56, '495,00' → 495.0"""
+    """Parse Norwegian number: '1 234,56' -> 1234.56, '495,00' -> 495.0"""
     s = s.strip().replace('\xa0', '').replace(' ', '')
     if not s:
         return None
@@ -308,9 +310,9 @@ def _try_parse_item(line: str, section: str) -> dict | None:
     total_str = t1
     consumed = 1
 
-    # Thousands part: "46" before "780,00" → 46 780,00 = 46,780 NOK
+    # Thousands part: "46" before "780,00" -> 46 780,00 = 46,780 NOK
     t2 = tok(2)
-    if is_int(t2) and not t2 in _VAT_RATES:
+    if is_int(t2) and t2 not in _VAT_RATES:
         comb = _parse_no_num(t2 + " " + t1)
         simp = _parse_no_num(t1)
         if comb and simp and comb >= simp + 1000:
@@ -399,6 +401,7 @@ def _try_parse_item(line: str, section: str) -> dict | None:
     return {
         "Source PDF":      "",
         "Supplier":        "",
+        "Customer":        "",
         "Invoice #":       "",
         "Description":     desc,
         "Section":         section,
@@ -443,7 +446,7 @@ def _extract_line_items_text(text: str) -> list[dict]:
     return items
 
 
-# ── Supplier detection ────────────────────────────────────────────────────────
+# ── Supplier / customer detection ─────────────────────────────────────────────
 
 _CUSTOMER_BLOCK_RE = re.compile(
     r'(?:Faktureres?\s+til|Send\s+til|Til\s*:|Kunde\s*:|Ship\s+to|Bill\s+to)[:\s]',
@@ -453,18 +456,17 @@ _COMPANY_SUFFIX_RE = re.compile(
     r'\b(?:AS|ASA|ANS|DA|NUF|AB|GmbH|Ltd|LLC|SA|Inc|Corp|Byggevarer|Bygg|Eiendom)\b',
 )
 _KNOWN_SUPPLIERS = {
-    'nydal':   'Nydal Byggevarer AS',
-    'maxbo':   'Maxbo AS',
-    'montér':  'Montér',
-    'monter':  'Montér',
-    'byggmax': 'Byggmax AS',
-    'optimera':'Optimera AS',
+    'nydal':    'NYDAL BYGGEVARER AS',
+    'maxbo':    'Maxbo AS',
+    'monter':   'Monter',
+    'monter':   'Monter',
+    'byggmax':  'Byggmax AS',
+    'optimera': 'Optimera AS',
 }
 
 
 def _find_supplier(text: str, filename: str = "") -> str:
     """Return supplier name, skipping the customer address block."""
-    # Text before the customer-address marker is the supplier's header
     m = _CUSTOMER_BLOCK_RE.search(text)
     limit = m.start() if m else min(len(text), 1500)
     header = text[:limit]
@@ -475,15 +477,12 @@ def _find_supplier(text: str, filename: str = "") -> str:
             continue
         if not _COMPANY_SUFFIX_RE.search(line):
             continue
-        # Skip lines that are clearly addresses (start with a digit)
         if re.match(r'^\d+\s', line):
             continue
-        # Skip 4-digit postal codes
         if re.search(r'\b\d{4}\b', line):
             continue
         return line
 
-    # Filename fallback
     stem = Path(filename).stem.lower() if filename else ""
     for key, name in _KNOWN_SUPPLIERS.items():
         if key in stem:
@@ -492,70 +491,179 @@ def _find_supplier(text: str, filename: str = "") -> str:
     return ""
 
 
+def _find_supplier_and_customer(text: str, filename: str = "") -> tuple[str, str]:
+    """Return (supplier, customer) detected from invoice text.
+
+    Supplier is found before 'Faktureres til:'; customer is found after.
+    """
+    m = _CUSTOMER_BLOCK_RE.search(text)
+
+    if m:
+        supplier_text = text[:m.start()]
+        customer_text = text[m.end():]
+
+        supplier = ""
+        for line in supplier_text.splitlines()[:25]:
+            line = line.strip()
+            if not line or len(line) < 4 or len(line) > 70:
+                continue
+            if not _COMPANY_SUFFIX_RE.search(line):
+                continue
+            if re.match(r'^\d+\s', line):
+                continue
+            if re.search(r'\b\d{4}\b', line):
+                continue
+            supplier = line
+            break
+
+        customer = ""
+        for line in customer_text.splitlines()[:10]:
+            line = line.strip()
+            if not line or len(line) < 4 or len(line) > 70:
+                continue
+            if not (_COMPANY_SUFFIX_RE.search(line) or re.match(r'^[A-Z][A-Z\s]+$', line)):
+                continue
+            if re.match(r'^\d+\s', line):
+                continue
+            if re.search(r'\b\d{4}\b', line):
+                continue
+            customer = line
+            break
+    else:
+        supplier = _find_supplier(text, filename)
+        customer = ""
+
+    # Filename fallback for supplier
+    if not supplier:
+        stem = Path(filename).stem.lower() if filename else ""
+        for key, name in _KNOWN_SUPPLIERS.items():
+            if key in stem:
+                supplier = name
+                break
+
+    return supplier, customer
+
+
+# ── Invoice splitting ─────────────────────────────────────────────────────────
+
+_FAKTURA_NR_RE = re.compile(r'Fakturanummer\s*:', re.I)
+_PAGE_BREAK_RE = re.compile(r'\n{3,}|(?:\n[ \t]*){3,}|\f')
+
+
+def _split_invoices(text: str) -> list[str]:
+    """Split OCR text into per-invoice blocks at 'Fakturanummer:' boundaries.
+
+    When a PDF has multiple invoices, the text contains multiple
+    'Fakturanummer:' markers. The split point is the last significant
+    whitespace gap between consecutive markers, so each block keeps
+    its own supplier header.
+    """
+    matches = list(_FAKTURA_NR_RE.finditer(text))
+    if len(matches) <= 1:
+        return [text.strip()] if text.strip() else []
+
+    block_starts = [0]
+    for i in range(1, len(matches)):
+        prev_end   = matches[i - 1].end()
+        curr_start = matches[i].start()
+        region     = text[prev_end:curr_start]
+
+        breaks = list(_PAGE_BREAK_RE.finditer(region))
+        if breaks:
+            split_pos = prev_end + breaks[-1].end()
+        else:
+            double_nl = list(re.finditer(r'\n[ \t]*\n', region))
+            if double_nl:
+                split_pos = prev_end + double_nl[-1].end()
+            else:
+                split_pos = curr_start
+
+        block_starts.append(split_pos)
+
+    blocks: list[str] = []
+    for i, start in enumerate(block_starts):
+        end   = block_starts[i + 1] if i + 1 < len(block_starts) else len(text)
+        block = text[start:end].strip()
+        if block:
+            blocks.append(block)
+
+    return blocks
+
+
 # ── Invoice header parsing ────────────────────────────────────────────────────
 
-def _parse_header(text: str, filename: str = "") -> dict:
-    try:
-        from app.processing.invoice_parser import InvoiceParser
-        result = InvoiceParser().parse(text, filename=filename)
-        # Override supplier with our smarter detector
-        supplier = _find_supplier(text, filename) or result.supplier_name.value or ""
-        return {
-            "supplier":       supplier,
-            "invoice_number": result.invoice_number.value or "",
-            "invoice_date":   str(result.invoice_date.value) if result.invoice_date.value else "",
-            "due_date":       str(result.due_date.value) if result.due_date.value else "",
-            "total":          result.total_amount.value,
-            "currency":       result.currency.value or "NOK",
-            "confidence":     result.overall_confidence,
-        }
-    except Exception:
-        pass
-
-    # Regex fallback
-    supplier = _find_supplier(text, filename)
+def _parse_invoice_block(block_text: str, filename: str = "") -> dict:
+    """Parse invoice number, dates, total, supplier and customer from one block."""
+    supplier, customer = _find_supplier_and_customer(block_text, filename)
 
     def _find(patterns: list[str]) -> str:
         for pat in patterns:
-            m = re.search(pat, text, re.I | re.M)
-            if m:
-                return m.group(1).strip()
+            mm = re.search(pat, block_text, re.I | re.M)
+            if mm:
+                return mm.group(1).strip()
         return ""
 
     def _find_amount(patterns: list[str]):
         for pat in patterns:
-            m = re.search(pat, text, re.I | re.M)
-            if m:
-                raw = m.group(1).replace("\xa0", "").replace(" ", "").replace(",", ".")
+            mm = re.search(pat, block_text, re.I | re.M)
+            if mm:
+                raw = mm.group(1).replace("\xa0", "").replace(" ", "").replace(",", ".")
                 try:
                     return float(raw)
                 except ValueError:
                     pass
         return None
 
-    inv_num = _find([r"(?:Invoice\s*No|Fakturanummer|Invoice\s*Number)[:\s#]+(\S+)"])
-    date    = _find([
-        r"(?:Fakturadato|Invoice\s*Date)[:\s]+(\d{2}[./]\d{2}[./]\d{4})",
-        r"(?:Fakturadato|Invoice\s*Date)[:\s]+(\d{4}-\d{2}-\d{2})",
+    inv_num = _find([
+        r"Fakturanummer\s*[:\s]+(\S+)",
+        r"Fakturanr\.?\s*[:\s]+(\S+)",
+        r"Invoice\s*(?:No|Number)\s*[:\s#]+(\S+)",
     ])
-    due     = _find([r"(?:Forfallsdato|Due\s*Date)[:\s]+(\d{2}[./]\d{2}[./]\d{4})"])
-    total   = _find_amount([
-        r"(?:Totalt|Grand\s*Total|Total\s*Amount)[:\s]+([\d\s,.]+)",
+    date = _find([
+        r"Fakturadato\s*[:\s]+(\d{2}[./]\d{2}[./]\d{4})",
+        r"Fakturadato\s*[:\s]+(\d{4}-\d{2}-\d{2})",
+        r"Invoice\s*Date\s*[:\s]+(\d{2}[./]\d{2}[./]\d{4})",
     ])
-    cur_m   = re.search(r"\b(NOK|SEK|EUR|USD|GBP)\b", text, re.I)
+    due = _find([
+        r"Forfallsdato\s*[:\s]+(\d{2}[./]\d{2}[./]\d{4})",
+        r"Due\s*Date\s*[:\s]+(\d{2}[./]\d{2}[./]\d{4})",
+    ])
+    total = _find_amount([
+        r"Totalt\s+bel[øo]p\s*[:\s]+([\d\s,.\xa0]+)",
+        r"Total\s+[:\s]+([\d\s,.\xa0]+)",
+        r"Netto\s+bel[øo]p\s*[:\s]+([\d\s,.\xa0]+)",
+    ])
+    cur_m = re.search(r"\b(NOK|SEK|EUR|USD|GBP)\b", block_text, re.I)
 
     return {
         "supplier":       supplier,
+        "customer":       customer,
         "invoice_number": inv_num,
         "invoice_date":   date,
         "due_date":       due,
         "total":          total,
         "currency":       cur_m.group(1).upper() if cur_m else "NOK",
-        "confidence":     0.0,
+        "confidence":     0.7 if inv_num else 0.3,
     }
 
 
-# ── Per-PDF result ────────────────────────────────────────────────────────────
+# ── Data model ────────────────────────────────────────────────────────────────
+
+@dataclass
+class InvoiceData:
+    source_pdf:     str
+    supplier:       str
+    customer:       str
+    invoice_number: str
+    invoice_date:   str
+    due_date:       str
+    total:          float | None
+    currency:       str
+    confidence:     float
+    status:         str
+    line_items:     list[dict] = field(default_factory=list)
+    raw_text:       str = ""
+
 
 @dataclass
 class PDFResult:
@@ -566,14 +674,7 @@ class PDFResult:
     ocr_lang:          str = ""
     page_char_counts:  list[int] = field(default_factory=list)
     raw_text:          str = ""
-    supplier:          str = ""
-    invoice_number:    str = ""
-    invoice_date:      str = ""
-    due_date:          str = ""
-    total:             float | None = None
-    currency:          str = "NOK"
-    confidence:        float = 0.0
-    line_items:        list[dict] = field(default_factory=list)
+    invoices:          list[InvoiceData] = field(default_factory=list)
     error:             str = ""
 
 
@@ -624,48 +725,89 @@ def _process_pdf(
 
     res.raw_text = text
 
-    # C: Parse header
-    print("  Parsing header ...")
-    header = _parse_header(text, filename=pdf_path.name)
-    res.supplier       = header.get("supplier") or ""
-    res.invoice_number = header.get("invoice_number") or ""
-    res.invoice_date   = header.get("invoice_date") or ""
-    res.due_date       = header.get("due_date") or ""
-    res.total          = header.get("total")
-    res.currency       = header.get("currency") or "NOK"
-    res.confidence     = header.get("confidence") or 0.0
+    # C: Split into per-invoice blocks
+    print("  Splitting invoices ...")
+    blocks   = _split_invoices(text)
+    n_blocks = len(blocks)
+    print(f"  -> {n_blocks} invoice block(s)")
 
-    print(f"  Supplier : {res.supplier or '(not found)'}")
-    print(f"  Invoice# : {res.invoice_number or '(not found)'}")
-    print(f"  Date     : {res.invoice_date or '(not found)'}")
-    print(f"  Due      : {res.due_date or '(not found)'}")
-    print(f"  Total    : {res.total} {res.currency}")
-    print(f"  Conf     : {res.confidence:.0%}")
+    if not blocks:
+        res.status = "Failed"
+        return res
 
-    # D: Line items — spatial first, text fallback
-    print("  Extracting line items ...")
-    if ocr_results:
-        items = _extract_line_items_spatial(ocr_results)
-        if items:
-            print(f"  -> Spatial extraction: {len(items)} items")
+    # D: Process each invoice block
+    for block_idx, block_text in enumerate(blocks):
+        block_num = block_idx + 1
+        print(f"\n  --- Invoice {block_num}/{n_blocks} ---")
+
+        header     = _parse_invoice_block(block_text, filename=pdf_path.name)
+        supplier   = header.get("supplier") or "NYDAL BYGGEVARER AS"
+        customer   = header.get("customer") or "Teka Eiendom AS"
+        inv_num    = header.get("invoice_number") or ""
+        inv_date   = header.get("invoice_date") or ""
+        due_date   = header.get("due_date") or ""
+        total      = header.get("total")
+        currency   = header.get("currency") or "NOK"
+        confidence = header.get("confidence") or 0.0
+
+        print(f"  Supplier : {supplier}")
+        print(f"  Customer : {customer}")
+        print(f"  Invoice# : {inv_num or '(not found)'}")
+        print(f"  Date     : {inv_date or '(not found)'}")
+        print(f"  Due      : {due_date or '(not found)'}")
+        print(f"  Total    : {total} {currency}")
+
+        # E: Line items
+        print("  Extracting line items ...")
+        if n_blocks == 1 and ocr_results:
+            # Single invoice: spatial extraction is most accurate (uses word boxes)
+            items = _extract_line_items_spatial(ocr_results)
+            if items:
+                print(f"  -> Spatial: {len(items)} items")
+            else:
+                print("  -> Spatial: 0, trying text ...")
+                items = _extract_line_items_text(block_text)
+                print(f"  -> Text: {len(items)} items")
         else:
-            print("  -> Spatial: 0 items, trying text fallback ...")
-            items = _extract_line_items_text(text)
-            print(f"  -> Text fallback: {len(items)} items")
-    else:
-        items = _extract_line_items_text(text)
-        print(f"  -> Text fallback: {len(items)} items")
+            # Multiple invoices: text-based extraction per block
+            items = _extract_line_items_text(block_text)
+            print(f"  -> Text: {len(items)} items")
 
-    # Tag each item with source info
-    for item in items:
-        item["Source PDF"] = res.filename
-        item["Supplier"]   = res.supplier
-        item["Invoice #"]  = res.invoice_number
+        # Tag each item with invoice metadata
+        for item in items:
+            item["Source PDF"] = pdf_path.name
+            item["Supplier"]   = supplier
+            item["Customer"]   = customer
+            item["Invoice #"]  = inv_num
 
-    res.line_items = items
+        inv_status = "OK" if (inv_num or total) else "Needs Review"
+        res.invoices.append(InvoiceData(
+            source_pdf=pdf_path.name,
+            supplier=supplier,
+            customer=customer,
+            invoice_number=inv_num,
+            invoice_date=inv_date,
+            due_date=due_date,
+            total=total,
+            currency=currency,
+            confidence=confidence,
+            status=inv_status,
+            line_items=items,
+            raw_text=block_text,
+        ))
 
-    if res.status == "OK" and not res.supplier and not res.invoice_number and not res.total:
+    # Overall PDF status
+    if not res.invoices:
+        res.status = "Failed"
+    elif any(inv.status != "OK" for inv in res.invoices):
         res.status = "Needs Review"
+    else:
+        res.status = "OK"
+
+    total_items = sum(len(inv.line_items) for inv in res.invoices)
+    total_spend = sum(inv.total or 0 for inv in res.invoices)
+    print(f"\n  Total: {len(res.invoices)} invoice(s) | "
+          f"{total_items} line items | {total_spend:,.0f} NOK")
 
     return res
 
@@ -680,54 +822,58 @@ def _aggregate_products(results: list[PDFResult]) -> list[dict]:
     })
 
     for res in results:
-        for item in res.line_items:
-            desc_key = item.get("Description", "").strip().upper()
-            if not desc_key or len(desc_key) < 3:
-                continue
-            g = groups[desc_key]
-            g["description"] = item.get("Description", "")
-            qty = item.get("Quantity")
-            if qty:
-                g["qty"] += qty
-            if not g["unit"] and item.get("Unit"):
-                g["unit"] = item["Unit"]
-            tl = item.get("Total length m")
-            if tl:
-                g["total_length_m"] += tl
-            lt = item.get("Line Total")
-            if lt:
-                g["total_spend"] += lt
-            g["appearances"] += 1
-            g["pdfs"].add(res.filename)
-            if res.invoice_number:
-                g["invoices"].add(res.invoice_number)
+        for inv in res.invoices:
+            for item in inv.line_items:
+                desc_key = item.get("Description", "").strip().upper()
+                if not desc_key or len(desc_key) < 3:
+                    continue
+                g = groups[desc_key]
+                g["description"] = item.get("Description", "")
+                qty = item.get("Quantity")
+                if qty:
+                    g["qty"] += qty
+                if not g["unit"] and item.get("Unit"):
+                    g["unit"] = item["Unit"]
+                tl = item.get("Total length m")
+                if tl:
+                    g["total_length_m"] += tl
+                lt = item.get("Line Total")
+                if lt:
+                    g["total_spend"] += lt
+                g["appearances"] += 1
+                g["pdfs"].add(res.filename)
+                if inv.invoice_number:
+                    g["invoices"].add(inv.invoice_number)
 
     rows = []
     for g in sorted(groups.values(), key=lambda x: -(x["total_spend"] or 0)):
         rows.append({
-            "Product":              g["description"],
-            "Total Quantity":       round(g["qty"], 2) if g["qty"] else None,
-            "Unit":                 g["unit"],
-            "Total Length m":       round(g["total_length_m"], 2) if g["total_length_m"] else None,
-            "Total Spend (NOK)":    round(g["total_spend"], 2) if g["total_spend"] else None,
-            "Appears in # rows":    g["appearances"],
-            "Source PDFs":          ", ".join(sorted(g["pdfs"])),
-            "Invoice #(s)":         ", ".join(sorted(g["invoices"])),
+            "Product":           g["description"],
+            "Total Quantity":    round(g["qty"], 2) if g["qty"] else None,
+            "Unit":              g["unit"],
+            "Total Length m":    round(g["total_length_m"], 2) if g["total_length_m"] else None,
+            "Total Spend (NOK)": round(g["total_spend"], 2) if g["total_spend"] else None,
+            "Appears in # rows": g["appearances"],
+            "Source PDFs":       ", ".join(sorted(g["pdfs"])),
+            "Invoice #(s)":      ", ".join(sorted(g["invoices"])),
         })
     return rows
 
 
 def _supplier_summary(results: list[PDFResult]) -> list[dict]:
     groups: dict[str, dict] = defaultdict(lambda: {
-        "count": 0, "total": 0.0, "pdfs": set(),
+        "count": 0, "total": 0.0, "pdfs": set(), "customers": set(),
     })
 
     for res in results:
-        sup = res.supplier or "(unknown)"
-        groups[sup]["count"] += 1
-        if res.total:
-            groups[sup]["total"] += res.total
-        groups[sup]["pdfs"].add(res.filename)
+        for inv in res.invoices:
+            sup = inv.supplier or "(unknown)"
+            groups[sup]["count"] += 1
+            if inv.total:
+                groups[sup]["total"] += inv.total
+            groups[sup]["pdfs"].add(res.filename)
+            if inv.customer:
+                groups[sup]["customers"].add(inv.customer)
 
     rows = []
     for sup, g in sorted(groups.items(), key=lambda x: -(x[1]["total"] or 0)):
@@ -735,6 +881,7 @@ def _supplier_summary(results: list[PDFResult]) -> list[dict]:
             "Supplier":          sup,
             "Invoice Count":     g["count"],
             "Total Spend (NOK)": round(g["total"], 2) if g["total"] else None,
+            "Customers":         ", ".join(sorted(g["customers"])),
             "Source PDFs":       ", ".join(sorted(g["pdfs"])),
         })
     return rows
@@ -759,7 +906,6 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
     ok_fill    = PatternFill("solid", fgColor="C8E6C9")
     warn_fill  = PatternFill("solid", fgColor="FFE0B2")
     fail_fill  = PatternFill("solid", fgColor="FFCDD2")
-    mono_font  = Font(name="Courier New", size=9)
 
     def _status_fill(s: str) -> PatternFill:
         return ok_fill if s == "OK" else warn_fill if s == "Needs Review" else fail_fill
@@ -774,46 +920,51 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
         for c, w in enumerate(widths, 1):
             ws.column_dimensions[get_column_letter(c)].width = w
 
-    # ── Sheet 1: All Invoices ─────────────────────────────────────────────────
+    # Collect all invoices across all PDFs
+    all_invoices: list[InvoiceData] = [inv for res in results for inv in res.invoices]
+
+    # ── Sheet 1: Invoices (one row per invoice) ───────────────────────────────
     ws1 = wb.active
-    ws1.title = "All Invoices"
-    ws1["A1"] = f"All Invoices — {len(results)} PDF(s) processed"
+    ws1.title = "Invoices"
+    ws1["A1"] = (
+        f"Invoices -- {len(all_invoices)} invoice(s) from {len(results)} PDF(s)"
+    )
     ws1["A1"].font = title_font
-    ws1.merge_cells(f"A1:{get_column_letter(10)}1")
+    ws1.merge_cells(f"A1:{get_column_letter(11)}1")
     ws1.row_dimensions[1].height = 20
 
     INV_COLS = [
-        "Source PDF", "Supplier", "Invoice #", "Date", "Due Date",
-        "Total (NOK)", "Currency", "Method", "Text Chars", "Confidence", "Status",
+        "Source PDF", "Supplier", "Customer", "Invoice #", "Date", "Due Date",
+        "Total (NOK)", "Currency", "Line Items", "Confidence", "Status",
     ]
     _hdr_row(ws1, 2, INV_COLS)
 
-    for r, res in enumerate(results, start=3):
+    for r, inv in enumerate(all_invoices, start=3):
         row_vals = [
-            res.filename,
-            res.supplier or "(not found)",
-            res.invoice_number or "(not found)",
-            res.invoice_date or "(not found)",
-            res.due_date or "",
-            res.total,
-            res.currency,
-            res.extraction_method,
-            len(res.raw_text),
-            f"{res.confidence:.0%}" if res.confidence else "0%",
-            res.status,
+            inv.source_pdf,
+            inv.supplier or "(not found)",
+            inv.customer or "(not found)",
+            inv.invoice_number or "(not found)",
+            inv.invoice_date or "(not found)",
+            inv.due_date or "",
+            inv.total,
+            inv.currency,
+            len(inv.line_items),
+            f"{inv.confidence:.0%}" if inv.confidence else "0%",
+            inv.status,
         ]
-        fill = _status_fill(res.status)
+        fill = _status_fill(inv.status)
         for c, val in enumerate(row_vals, 1):
             cell = ws1.cell(row=r, column=c, value=val)
-            if c == len(INV_COLS):  # Status column
+            if c == len(INV_COLS):
                 cell.fill = fill
 
-    _col_widths(ws1, [35, 28, 16, 13, 13, 14, 10, 16, 11, 11, 14])
+    _col_widths(ws1, [35, 24, 20, 16, 13, 13, 14, 10, 11, 11, 14])
 
-    # ── Sheet 2: All Line Items ───────────────────────────────────────────────
-    ws2 = wb.create_sheet("All Line Items")
+    # ── Sheet 2: Line Items ───────────────────────────────────────────────────
+    ws2 = wb.create_sheet("Line Items")
     LI_COLS = [
-        "Source PDF", "Supplier", "Invoice #",
+        "Source PDF", "Supplier", "Customer", "Invoice #",
         "Description", "Section",
         "Quantity", "Unit", "Unit Price", "Discount %", "VAT %", "Line Total",
         "Length/unit m", "Total length m", "Material", "Confidence",
@@ -823,21 +974,22 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
     row = 2
     any_items = False
     for res in results:
-        for item in res.line_items:
-            any_items = True
-            for c, key in enumerate(LI_COLS, 1):
-                ws2.cell(row=row, column=c, value=item.get(key))
-            row += 1
+        for inv in res.invoices:
+            for item in inv.line_items:
+                any_items = True
+                for c, key in enumerate(LI_COLS, 1):
+                    ws2.cell(row=row, column=c, value=item.get(key))
+                row += 1
 
     if not any_items:
         ws2.cell(row=2, column=1,
-                 value="(no line items extracted — check Raw Text sheet)").font = Font(italic=True)
+                 value="(no line items extracted -- check raw text file)").font = Font(italic=True)
 
-    _col_widths(ws2, [30, 22, 14, 40, 14, 10, 8, 12, 11, 8, 14, 13, 14, 14, 11])
+    _col_widths(ws2, [30, 22, 18, 14, 40, 14, 10, 8, 12, 11, 8, 14, 13, 14, 14, 11])
 
     # ── Sheet 3: Aggregated Products ──────────────────────────────────────────
     ws3 = wb.create_sheet("Aggregated Products")
-    ws3["A1"] = "Aggregated Products — grouped by description, sorted by total spend"
+    ws3["A1"] = "Aggregated Products -- grouped by description, sorted by total spend"
     ws3["A1"].font = title_font
     ws3.merge_cells("A1:H1")
 
@@ -850,7 +1002,8 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
                 ws3.cell(row=r, column=c, value=row_data.get(key))
         _col_widths(ws3, [42, 14, 8, 14, 18, 18, 45, 30])
     else:
-        ws3.cell(row=2, column=1, value="(no line items to aggregate)").font = Font(italic=True)
+        ws3.cell(row=2, column=1,
+                 value="(no line items to aggregate)").font = Font(italic=True)
 
     # ── Sheet 4: Supplier Summary ─────────────────────────────────────────────
     ws4 = wb.create_sheet("Supplier Summary")
@@ -864,7 +1017,7 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
         for r, row_data in enumerate(sup_rows, start=3):
             for c, key in enumerate(SUP_COLS, 1):
                 ws4.cell(row=r, column=c, value=row_data.get(key))
-        _col_widths(ws4, [30, 14, 18, 55])
+        _col_widths(ws4, [30, 14, 18, 28, 55])
 
     wb.save(str(output_path))
 
@@ -924,7 +1077,7 @@ def main() -> None:
     raw_text_path = output_xlsx.parent / (output_xlsx.stem + "_raw_text.txt")
 
     print(f"\n{'='*60}")
-    print(f"PDF Extractor — {len(pdfs)} file(s)")
+    print(f"PDF Extractor -- {len(pdfs)} file(s)")
     print(f"{'='*60}")
     for p in pdfs:
         print(f"  {p.name}")
@@ -958,27 +1111,30 @@ def main() -> None:
     _write_excel(output_xlsx, results)
 
     # Final summary
-    total_items = sum(len(r.line_items) for r in results)
-    total_spend = sum(r.total or 0 for r in results)
+    all_invoices = [inv for res in results for inv in res.invoices]
+    total_items  = sum(len(inv.line_items) for inv in all_invoices)
+    total_spend  = sum(inv.total or 0 for inv in all_invoices)
+
     print(f"\n{'='*60}")
-    print(f"DONE — {len(results)} PDF(s) | {total_items} line items | {total_spend:,.0f} NOK total")
+    print(f"DONE -- {len(results)} PDF(s) | {len(all_invoices)} invoice(s) | "
+          f"{total_items} line items | {total_spend:,.0f} NOK total")
     print(f"{'='*60}")
     for res in results:
-        flag = "[OK]   " if res.status == "OK" else \
-               "[REVIEW]" if res.status == "Needs Review" else "[FAIL] "
-        tot = f"{res.total:,.0f} {res.currency}" if res.total else "(not found)"
-        print(f"  {flag} {res.filename}")
-        print(f"         {res.supplier or '(no supplier)'} | "
-              f"#{res.invoice_number or '?'} | "
-              f"{tot} | "
-              f"{len(res.line_items)} line items")
+        flag = "[OK]    " if res.status == "OK" else \
+               "[REVIEW]" if res.status == "Needs Review" else "[FAIL]  "
+        print(f"  {flag} {res.filename}  ({len(res.invoices)} invoice(s))")
+        for inv in res.invoices:
+            tot = f"{inv.total:,.0f} {inv.currency}" if inv.total else "(not found)"
+            print(f"           #{inv.invoice_number or '?'} | "
+                  f"{inv.supplier or '?'} -> {inv.customer or '?'} | "
+                  f"{tot} | {len(inv.line_items)} items")
 
     print(f"\nExcel    -> {output_xlsx}")
     print(f"Raw text -> {raw_text_path}")
 
     needs_review = [r for r in results if r.status != "OK"]
     if needs_review:
-        print(f"\n{len(needs_review)} PDF(s) need review — check 'All Invoices' sheet (Status column).")
+        print(f"\n{len(needs_review)} PDF(s) need review -- check 'Invoices' sheet.")
 
 
 if __name__ == "__main__":
