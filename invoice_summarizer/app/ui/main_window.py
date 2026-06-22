@@ -22,8 +22,12 @@ from app.database.repositories import (
     InvoiceRepository,
     LineItemRepository,
     ProductRepository,
+    ReviewQueueRepository,
     SupplierRepository,
 )
+from app.processing.invoice_parser import InvoiceParser
+from app.processing.pdf_extractor import PDFExtractor
+from app.processing.pipeline import ProcessingPipeline
 from app.seed import SeedDataGenerator
 from app.ui.style import DARK
 from app.ui.tabs.categories_tab import CategoriesTab
@@ -34,6 +38,7 @@ from app.ui.tabs.review_queue_tab import ReviewQueueTab
 from app.ui.tabs.summary_tab import SummaryTab
 from app.ui.tabs.suppliers_tab import SuppliersTab
 from app.ui.widgets.sidebar import Sidebar
+from app.utils.file_manager import FileManager
 
 
 class MainWindow(QMainWindow):
@@ -41,6 +46,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self._db = db
         self._init_repos()
+        self._init_pipeline()
         self._seeder = SeedDataGenerator(db)
 
         self.setWindowTitle(config.WINDOW_TITLE)
@@ -53,12 +59,28 @@ class MainWindow(QMainWindow):
     # ── Repositories ──────────────────────────────────────────────────
 
     def _init_repos(self) -> None:
-        self._cat_repo  = CategoryRepository(self._db)
-        self._sup_repo  = SupplierRepository(self._db)
-        self._inv_repo  = InvoiceRepository(self._db)
-        self._li_repo   = LineItemRepository(self._db)
-        self._prod_repo = ProductRepository(self._db)
-        self._agg_repo  = AggregationRepository(self._db)
+        self._cat_repo    = CategoryRepository(self._db)
+        self._sup_repo    = SupplierRepository(self._db)
+        self._inv_repo    = InvoiceRepository(self._db)
+        self._li_repo     = LineItemRepository(self._db)
+        self._prod_repo   = ProductRepository(self._db)
+        self._agg_repo    = AggregationRepository(self._db)
+        self._review_repo = ReviewQueueRepository(self._db)
+
+    # ── Processing pipeline ───────────────────────────────────────────
+
+    def _init_pipeline(self) -> None:
+        self._file_manager = FileManager()
+        self._extractor    = PDFExtractor()
+        self._parser       = InvoiceParser()
+        self._pipeline     = ProcessingPipeline(
+            file_manager  = self._file_manager,
+            extractor     = self._extractor,
+            parser        = self._parser,
+            invoice_repo  = self._inv_repo,
+            supplier_repo = self._sup_repo,
+            review_repo   = self._review_repo,
+        )
 
     # ── Layout ────────────────────────────────────────────────────────
 
@@ -84,16 +106,18 @@ class MainWindow(QMainWindow):
         self._categories   = CategoriesTab(self._cat_repo, self._sup_repo)
         self._products     = ProductsTab()
         self._summary      = SummaryTab()
-        self._review_queue = ReviewQueueTab()
+        self._documents    = DocumentsTab(self._pipeline, self._inv_repo)
+        self._review_queue = ReviewQueueTab(self._review_repo, self._inv_repo)
 
         for page in (
             self._dashboard, self._suppliers, self._categories,
-            self._products, self._summary, self._review_queue,
+            self._products, self._summary, self._documents, self._review_queue,
         ):
             self._stack.addWidget(page)
 
-        # Wire dashboard seed button
+        # Wire signals
         self._dashboard.seed_requested.connect(self._on_seed_requested)
+        self._documents.import_completed.connect(self._refresh_all)
 
         self._stack.setCurrentIndex(0)
 
@@ -107,7 +131,6 @@ class MainWindow(QMainWindow):
     def _navigate_to(self, index: int) -> None:
         self._stack.setCurrentIndex(index)
         self._sidebar.set_active(index)
-        # Refresh the newly shown screen
         page = self._stack.currentWidget()
         if hasattr(page, "refresh"):
             page.refresh()
@@ -115,8 +138,10 @@ class MainWindow(QMainWindow):
 
     @staticmethod
     def _page_name(index: int) -> str:
-        names = ["Dashboard", "Suppliers", "Categories",
-                 "Products", "Summary", "Review Queue"]
+        names = [
+            "Dashboard", "Suppliers", "Categories",
+            "Products", "Summary", "Documents", "Review Queue",
+        ]
         return names[index] if index < len(names) else ""
 
     # ── Seed ──────────────────────────────────────────────────────────

@@ -19,6 +19,7 @@ _NAV = [
     ("◆", "Categories"),
     ("◇", "Products"),
     ("≡", "Summary"),
+    ("⊞", "Documents"),
     ("⚑", "Review Queue"),
 ]
 

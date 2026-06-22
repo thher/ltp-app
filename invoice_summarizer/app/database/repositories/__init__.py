@@ -4,6 +4,7 @@ from app.database.repositories.invoice_repo import InvoiceRepository
 from app.database.repositories.line_item_repo import LineItemRepository
 from app.database.repositories.product_repo import ProductRepository
 from app.database.repositories.aggregation_repo import AggregationRepository
+from app.database.repositories.review_queue_repo import ReviewQueueRepository
 
 __all__ = [
     "CategoryRepository",
@@ -12,4 +13,5 @@ __all__ = [
     "LineItemRepository",
     "ProductRepository",
     "AggregationRepository",
+    "ReviewQueueRepository",
 ]

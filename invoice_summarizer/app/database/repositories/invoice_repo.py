@@ -111,6 +111,26 @@ class InvoiceRepository:
                 ),
             )
 
+    def find_all_with_details(self) -> list[dict]:
+        """Return invoices joined with supplier name for the Documents screen."""
+        return self.db.fetchall(
+            """
+            SELECT
+                i.id,
+                i.original_path,
+                i.invoice_number,
+                i.invoice_date,
+                i.grand_total,
+                i.currency,
+                i.status,
+                i.imported_at,
+                COALESCE(s.canonical_name, '—') AS supplier_name
+            FROM invoices i
+            LEFT JOIN suppliers s ON s.id = i.supplier_id
+            ORDER BY i.imported_at DESC
+            """
+        )
+
     def count(self) -> int:
         return self.db.fetchscalar("SELECT COUNT(*) FROM invoices") or 0
 
