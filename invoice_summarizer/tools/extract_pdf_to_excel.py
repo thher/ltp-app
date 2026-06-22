@@ -1,32 +1,35 @@
 """
-Standalone PDF-to-Excel extractor — no GUI, no Poppler required.
+Standalone PDF-to-Excel extractor -- no GUI, no Poppler required.
 
-Renders PDF pages with PyMuPDF (fitz), OCRs with Tesseract, extracts
-line items using spatial bounding boxes, then aggregates across all PDFs.
-Splits multi-invoice PDFs at Fakturanummer: boundaries — one row per invoice.
+Works with invoices from any Norwegian supplier. Renders PDF pages with
+PyMuPDF (fitz), OCRs with Tesseract, extracts line items, then aggregates
+across all PDFs. Splits multi-invoice PDFs at Fakturanummer: boundaries.
+
+Optional supplier profiles (Nydal, Byggmakker, Monter, XL-Bygg, Obs Bygg)
+improve name normalisation but the generic parser works without them.
 
 USAGE
 -----
 Multiple PDFs (last arg = output):
 
     cd invoice_summarizer
-    python tools\\extract_pdf_to_excel.py "a.pdf" "b.pdf" "c.pdf" "d.pdf" "output.xlsx"
+    python tools\\extract_pdf_to_excel.py "a.pdf" "b.pdf" out.xlsx
 
 Folder of PDFs:
 
-    python tools\\extract_pdf_to_excel.py --input-folder "C:\\PDFs" --output "output.xlsx"
+    python tools\\extract_pdf_to_excel.py --input-folder "C:\\PDFs" --output out.xlsx
 
 Override Tesseract path:
 
-    python tools\\extract_pdf_to_excel.py "invoice.pdf" "output.xlsx" ^
+    python tools\\extract_pdf_to_excel.py invoice.pdf out.xlsx ^
         --tesseract "C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
 
 SHEETS IN OUTPUT EXCEL
 ----------------------
-  Invoices            -- one row per invoice (supplier, customer, number, date, total)
-  Line Items          -- every extracted line item across all invoices
-  Aggregated Products -- grouped by product (total qty, total spend, total metres)
-  Supplier Summary    -- grouped by supplier (invoice count, total spend)
+  Invoices            -- one row per invoice
+  Line Items          -- every extracted line item
+  Aggregated Products -- grouped by normalised product + unit
+  Supplier Summary    -- grouped by supplier
 """
 from __future__ import annotations
 
@@ -249,7 +252,7 @@ def _extract_line_items_spatial(ocr_results: list) -> list[dict]:
         return []
 
 
-# ── Text-based line item fallback parser (Norwegian building invoices) ────────
+# ── Text-based line item parser (generic Norwegian building invoices) ─────────
 
 _TABLE_HDR_RE  = re.compile(r'\b(tekst|antall|pris|bel[øo]p|beloep)\b', re.I)
 _SECTION_RE    = re.compile(r'^\s*(HUS|ETG|BYGNING|AVDELING|SEKSJON|BLOKK)\b', re.I)
@@ -261,7 +264,7 @@ _BUNDLE_RE     = re.compile(
     r'^(\d+(?:[.,]\d+)?)\s+stk\s+a\s+(\d+(?:[.,]\d+)?)\s*(?:m(?:eter)?\s+)?(.+)',
     re.I
 )
-_UNITS         = frozenset('stk m lm pk rll l kg bx m2 m3 meter pall stk.'.split())
+_UNITS         = frozenset('stk m lm lpm pk rll l kg bx m2 m3 meter pall stk.'.split())
 _VAT_RATES     = frozenset(('25', '15', '12', '0'))
 
 
@@ -271,7 +274,7 @@ def _parse_no_num(s: str) -> float | None:
     if not s:
         return None
     if re.search(r'[,.]\d{1,2}$', s):
-        s = re.sub(r'\.(?=\d{3})', '', s)  # remove dot-thousands
+        s = re.sub(r'\.(?=\d{3})', '', s)
         s = s.replace(',', '.')
     else:
         s = s.replace(',', '').replace('.', '')
@@ -288,7 +291,7 @@ def _try_parse_item(line: str, section: str) -> dict | None:
     if n < 3:
         return None
 
-    idx = n  # points past last consumed token (we work backwards)
+    idx = n
 
     def tok(i: int) -> str | None:
         return tokens[n - i] if 1 <= i <= n else None
@@ -302,15 +305,12 @@ def _try_parse_item(line: str, section: str) -> dict | None:
     def is_num(t: str | None) -> bool:
         return bool(t and re.match(r'^\d+(?:[.,]\d+)?$', t))
 
-    # ── Step 1: line total (last token, or two tokens for NOK thousands) ──
+    # Step 1: line total
     t1 = tok(1)
     if not is_amount(t1):
         return None
-
     total_str = t1
     consumed = 1
-
-    # Thousands part: "46" before "780,00" -> 46 780,00 = 46,780 NOK
     t2 = tok(2)
     if is_int(t2) and t2 not in _VAT_RATES:
         comb = _parse_no_num(t2 + " " + t1)
@@ -318,20 +318,19 @@ def _try_parse_item(line: str, section: str) -> dict | None:
         if comb and simp and comb >= simp + 1000:
             total_str = t2 + " " + t1
             consumed = 2
-
     line_total = _parse_no_num(total_str)
     if not line_total:
         return None
     idx -= consumed
 
-    # ── Step 2: VAT% ─────────────────────────────────────────────────────
+    # Step 2: VAT%
     vat_pct = None
     nxt = tokens[idx - 1] if idx >= 1 else None
     if nxt in _VAT_RATES:
         vat_pct = float(nxt)
         idx -= 1
 
-    # ── Step 3: Discount% (optional, integer 1-60) ────────────────────────
+    # Step 3: Discount% (1-60)
     discount_pct = None
     nxt = tokens[idx - 1] if idx >= 1 else None
     if is_int(nxt):
@@ -340,20 +339,19 @@ def _try_parse_item(line: str, section: str) -> dict | None:
             discount_pct = v
             idx -= 1
 
-    # ── Step 4: Unit (optional) ───────────────────────────────────────────
+    # Step 4: Unit
     unit = None
     nxt = tokens[idx - 1] if idx >= 1 else None
     if nxt and nxt.lower().rstrip('.') in _UNITS:
         unit = nxt
         idx -= 1
 
-    # ── Step 5: Unit price ────────────────────────────────────────────────
+    # Step 5: Unit price
     unit_price = None
     nxt = tokens[idx - 1] if idx >= 1 else None
     if is_amount(nxt):
         up_str = nxt
         idx -= 1
-        # Thousands check for price too
         nxt2 = tokens[idx - 1] if idx >= 1 else None
         if is_int(nxt2) and nxt2 not in _VAT_RATES:
             comb = _parse_no_num(nxt2 + " " + nxt)
@@ -366,19 +364,19 @@ def _try_parse_item(line: str, section: str) -> dict | None:
         unit_price = _parse_no_num(nxt)
         idx -= 1
 
-    # ── Step 6: Quantity ──────────────────────────────────────────────────
+    # Step 6: Quantity
     qty = None
     nxt = tokens[idx - 1] if idx >= 1 else None
     if is_num(nxt):
         qty = _parse_no_num(nxt)
         idx -= 1
 
-    # ── Step 7: Description = everything remaining ────────────────────────
+    # Step 7: Description
     desc = " ".join(tokens[:idx])
     if not desc.strip() or len(desc) < 2:
         return None
 
-    # Bundle: "22 stk a 4,8 28X120 PRODUCT NAME"
+    # Bundle: "22 stk a 4,8 28X120 PRODUCT"
     length_per_unit = None
     total_length = None
     bm = _BUNDLE_RE.match(desc)
@@ -419,7 +417,7 @@ def _try_parse_item(line: str, section: str) -> dict | None:
 
 
 def _extract_line_items_text(text: str) -> list[dict]:
-    """Text-based fallback for Norwegian building invoice line items."""
+    """Text-based line item extraction for Norwegian building invoices."""
     lines = text.splitlines()
     items: list[dict] = []
     in_table = False
@@ -446,6 +444,97 @@ def _extract_line_items_text(text: str) -> list[dict]:
     return items
 
 
+# ── Product / unit normalisation ──────────────────────────────────────────────
+
+# Canonical unit map: all known synonyms -> one canonical string
+_UNIT_CANON: dict[str, str] = {
+    # Running metres
+    "lm": "lm", "lpm": "lm", "m": "lm", "meter": "lm", "metre": "lm",
+    # Pieces
+    "stk": "stk", "stk.": "stk", "pcs": "stk",
+    # Square metres
+    "m2": "m2", "m²": "m2", "kvm": "m2",
+    # Cubic metres
+    "m3": "m3", "m³": "m3",
+    # Other
+    "kg": "kg", "l": "l", "liter": "l",
+    "pk": "pk", "pall": "pall", "rll": "rll", "bx": "bx",
+}
+
+# Dimension pattern: 48X198, 48 x 198, 48×198 -> 48x198
+_DIM_RE = re.compile(r'(\d+)\s*[xX×]\s*(\d+)')
+
+
+def _normalize_unit(unit: str) -> str:
+    """Return canonical unit string, or the input lowercased if unknown."""
+    return _UNIT_CANON.get(unit.strip().lower().rstrip('.'), unit.strip().lower())
+
+
+def _normalize_product(description: str) -> str:
+    """Return a normalised product key for aggregation.
+
+    Normalises dimension notation (48X198 -> 48x198), collapses
+    whitespace and lowercases so the same product from any supplier
+    maps to the same aggregation bucket.
+    """
+    s = _DIM_RE.sub(lambda m: f"{m.group(1)}x{m.group(2)}", description)
+    return ' '.join(s.split()).lower()
+
+
+# ── Supplier profiles (optional helpers for known suppliers) ──────────────────
+#
+# Each profile provides:
+#   canonical  -- display name when the supplier is detected
+#   patterns   -- regex patterns to recognise this supplier in invoice text
+#
+# Add new suppliers here without changing any other code.
+# The generic parser works fine without a matching profile.
+
+_SUPPLIER_PROFILES: dict[str, dict] = {
+    "nydal": {
+        "canonical": "Nydal Byggevarer AS",
+        "patterns": [r"NYDAL\s+BYGGEVARER", r"NYDAL\s+BYGG"],
+    },
+    "byggmakker": {
+        "canonical": "Byggmakker",
+        "patterns": [r"BYGGMAKKER"],
+    },
+    "monter": {
+        "canonical": "Monter",
+        "patterns": [r"MONT[EÉ]R"],
+    },
+    "xl-bygg": {
+        "canonical": "XL-Bygg",
+        "patterns": [r"XL[\s\-]BYGG"],
+    },
+    "obs": {
+        "canonical": "Obs Bygg",
+        "patterns": [r"OBS\s+BYGG"],
+    },
+}
+
+# Filename keyword -> profile key (for filename-based detection only)
+_FILENAME_HINTS: dict[str, str] = {
+    "nydal":       "nydal",
+    "byggmakker":  "byggmakker",
+    "monter":      "monter",
+    "montér":      "monter",
+    "xl-bygg":     "xl-bygg",
+    "xl_bygg":     "xl-bygg",
+    "obs":         "obs",
+}
+
+
+def _normalise_supplier_name(raw: str) -> str:
+    """If raw matches a known profile, return the canonical display name."""
+    raw_up = raw.upper()
+    for profile in _SUPPLIER_PROFILES.values():
+        for pat in profile["patterns"]:
+            if re.search(pat, raw_up):
+                return profile["canonical"]
+    return raw
+
+
 # ── Supplier / customer detection ─────────────────────────────────────────────
 
 _CUSTOMER_BLOCK_RE = re.compile(
@@ -453,95 +542,64 @@ _CUSTOMER_BLOCK_RE = re.compile(
     re.I,
 )
 _COMPANY_SUFFIX_RE = re.compile(
-    r'\b(?:AS|ASA|ANS|DA|NUF|AB|GmbH|Ltd|LLC|SA|Inc|Corp|Byggevarer|Bygg|Eiendom)\b',
+    r'\b(?:AS|ASA|ANS|DA|NUF|AB|GmbH|Ltd|LLC|SA|Inc|Corp|'
+    r'Byggevarer|Bygg|Eiendom|Gruppen|Handel)\b',
+    re.I,
 )
-_KNOWN_SUPPLIERS = {
-    'nydal':    'NYDAL BYGGEVARER AS',
-    'maxbo':    'Maxbo AS',
-    'monter':   'Monter',
-    'monter':   'Monter',
-    'byggmax':  'Byggmax AS',
-    'optimera': 'Optimera AS',
-}
 
 
-def _find_supplier(text: str, filename: str = "") -> str:
-    """Return supplier name, skipping the customer address block."""
-    m = _CUSTOMER_BLOCK_RE.search(text)
-    limit = m.start() if m else min(len(text), 1500)
-    header = text[:limit]
-
-    for line in header.splitlines()[:25]:
+def _scan_for_company(lines: list[str], max_lines: int = 20) -> str:
+    """Return the first line that looks like a company name."""
+    for line in lines[:max_lines]:
         line = line.strip()
-        if not line or len(line) < 4 or len(line) > 70:
+        if not line or len(line) < 4 or len(line) > 80:
             continue
-        if not _COMPANY_SUFFIX_RE.search(line):
+        # Accept lines with a company-suffix word OR all-caps / title-case names
+        has_suffix   = bool(_COMPANY_SUFFIX_RE.search(line))
+        is_caps      = bool(re.match(r'^[A-ZÆØÅ][A-ZÆØÅ\s\-\.]+$', line))
+        is_titlecase = bool(re.match(r'^[A-ZÆØÅ][a-z]', line) and len(line.split()) >= 2)
+        if not (has_suffix or is_caps or is_titlecase):
             continue
-        if re.match(r'^\d+\s', line):
+        if re.match(r'^\d+\s', line):          # address line starting with number
             continue
-        if re.search(r'\b\d{4}\b', line):
+        if re.search(r'\b\d{4}\b', line):      # postal code
+            continue
+        if re.search(r'\b\d{2}[./]\d{2}[./]\d{4}\b', line):  # date
             continue
         return line
-
-    stem = Path(filename).stem.lower() if filename else ""
-    for key, name in _KNOWN_SUPPLIERS.items():
-        if key in stem:
-            return name
-
     return ""
 
 
 def _find_supplier_and_customer(text: str, filename: str = "") -> tuple[str, str]:
     """Return (supplier, customer) detected from invoice text.
 
-    Supplier is found before 'Faktureres til:'; customer is found after.
+    Supplier:  text before 'Faktureres til:' marker.
+    Customer:  text after  'Faktureres til:' marker.
+    Falls back to filename-based profile detection for supplier.
+    Returns ("", "") when nothing is found -- invoices are never discarded.
     """
     m = _CUSTOMER_BLOCK_RE.search(text)
 
     if m:
-        supplier_text = text[:m.start()]
-        customer_text = text[m.end():]
-
-        supplier = ""
-        for line in supplier_text.splitlines()[:25]:
-            line = line.strip()
-            if not line or len(line) < 4 or len(line) > 70:
-                continue
-            if not _COMPANY_SUFFIX_RE.search(line):
-                continue
-            if re.match(r'^\d+\s', line):
-                continue
-            if re.search(r'\b\d{4}\b', line):
-                continue
-            supplier = line
-            break
-
-        customer = ""
-        for line in customer_text.splitlines()[:10]:
-            line = line.strip()
-            if not line or len(line) < 4 or len(line) > 70:
-                continue
-            if not (_COMPANY_SUFFIX_RE.search(line) or re.match(r'^[A-Z][A-Z\s]+$', line)):
-                continue
-            if re.match(r'^\d+\s', line):
-                continue
-            if re.search(r'\b\d{4}\b', line):
-                continue
-            customer = line
-            break
+        supplier_raw = _scan_for_company(text[:m.start()].splitlines())
+        customer_raw = _scan_for_company(text[m.end():].splitlines(), max_lines=10)
     else:
-        supplier = _find_supplier(text, filename)
-        customer = ""
+        # No customer marker -- scan the first section for the supplier
+        supplier_raw = _scan_for_company(text.splitlines()[:30])
+        customer_raw = ""
 
-    # Filename fallback for supplier
-    if not supplier:
-        stem = Path(filename).stem.lower() if filename else ""
-        for key, name in _KNOWN_SUPPLIERS.items():
-            if key in stem:
-                supplier = name
+    # Normalise supplier name via profiles
+    supplier = _normalise_supplier_name(supplier_raw) if supplier_raw else ""
+
+    # Filename hint when text detection fails
+    if not supplier and filename:
+        stem = Path(filename).stem.lower()
+        for keyword, profile_key in _FILENAME_HINTS.items():
+            if keyword in stem:
+                supplier = _SUPPLIER_PROFILES[profile_key]["canonical"]
                 break
 
-    return supplier, customer
+    return supplier, customer_raw
 
 
 # ── Invoice splitting ─────────────────────────────────────────────────────────
@@ -551,13 +609,7 @@ _PAGE_BREAK_RE = re.compile(r'\n{3,}|(?:\n[ \t]*){3,}|\f')
 
 
 def _split_invoices(text: str) -> list[str]:
-    """Split OCR text into per-invoice blocks at 'Fakturanummer:' boundaries.
-
-    When a PDF has multiple invoices, the text contains multiple
-    'Fakturanummer:' markers. The split point is the last significant
-    whitespace gap between consecutive markers, so each block keeps
-    its own supplier header.
-    """
+    """Split OCR text into per-invoice blocks at 'Fakturanummer:' boundaries."""
     matches = list(_FAKTURA_NR_RE.finditer(text))
     if len(matches) <= 1:
         return [text.strip()] if text.strip() else []
@@ -573,10 +625,7 @@ def _split_invoices(text: str) -> list[str]:
             split_pos = prev_end + breaks[-1].end()
         else:
             double_nl = list(re.finditer(r'\n[ \t]*\n', region))
-            if double_nl:
-                split_pos = prev_end + double_nl[-1].end()
-            else:
-                split_pos = curr_start
+            split_pos = (prev_end + double_nl[-1].end()) if double_nl else curr_start
 
         block_starts.append(split_pos)
 
@@ -586,14 +635,13 @@ def _split_invoices(text: str) -> list[str]:
         block = text[start:end].strip()
         if block:
             blocks.append(block)
-
     return blocks
 
 
 # ── Invoice header parsing ────────────────────────────────────────────────────
 
 def _parse_invoice_block(block_text: str, filename: str = "") -> dict:
-    """Parse invoice number, dates, total, supplier and customer from one block."""
+    """Extract header fields from one invoice block (generic, any supplier)."""
     supplier, customer = _find_supplier_and_customer(block_text, filename)
 
     def _find(patterns: list[str]) -> str:
@@ -630,7 +678,7 @@ def _parse_invoice_block(block_text: str, filename: str = "") -> dict:
     ])
     total = _find_amount([
         r"Totalt\s+bel[øo]p\s*[:\s]+([\d\s,.\xa0]+)",
-        r"Total\s+[:\s]+([\d\s,.\xa0]+)",
+        r"Total\s*[:\s]+([\d\s,.\xa0]+)",
         r"Netto\s+bel[øo]p\s*[:\s]+([\d\s,.\xa0]+)",
     ])
     cur_m = re.search(r"\b(NOK|SEK|EUR|USD|GBP)\b", block_text, re.I)
@@ -741,8 +789,8 @@ def _process_pdf(
         print(f"\n  --- Invoice {block_num}/{n_blocks} ---")
 
         header     = _parse_invoice_block(block_text, filename=pdf_path.name)
-        supplier   = header.get("supplier") or "NYDAL BYGGEVARER AS"
-        customer   = header.get("customer") or "Teka Eiendom AS"
+        supplier   = header.get("supplier") or ""
+        customer   = header.get("customer") or ""
         inv_num    = header.get("invoice_number") or ""
         inv_date   = header.get("invoice_date") or ""
         due_date   = header.get("due_date") or ""
@@ -750,8 +798,8 @@ def _process_pdf(
         currency   = header.get("currency") or "NOK"
         confidence = header.get("confidence") or 0.0
 
-        print(f"  Supplier : {supplier}")
-        print(f"  Customer : {customer}")
+        print(f"  Supplier : {supplier or '(not detected)'}")
+        print(f"  Customer : {customer or '(not detected)'}")
         print(f"  Invoice# : {inv_num or '(not found)'}")
         print(f"  Date     : {inv_date or '(not found)'}")
         print(f"  Due      : {due_date or '(not found)'}")
@@ -760,7 +808,7 @@ def _process_pdf(
         # E: Line items
         print("  Extracting line items ...")
         if n_blocks == 1 and ocr_results:
-            # Single invoice: spatial extraction is most accurate (uses word boxes)
+            # Single invoice: spatial extraction has word bounding boxes
             items = _extract_line_items_spatial(ocr_results)
             if items:
                 print(f"  -> Spatial: {len(items)} items")
@@ -769,7 +817,6 @@ def _process_pdf(
                 items = _extract_line_items_text(block_text)
                 print(f"  -> Text: {len(items)} items")
         else:
-            # Multiple invoices: text-based extraction per block
             items = _extract_line_items_text(block_text)
             print(f"  -> Text: {len(items)} items")
 
@@ -780,6 +827,7 @@ def _process_pdf(
             item["Customer"]   = customer
             item["Invoice #"]  = inv_num
 
+        # Always create the invoice entry — never discard
         inv_status = "OK" if (inv_num or total) else "Needs Review"
         res.invoices.append(InvoiceData(
             source_pdf=pdf_path.name,
@@ -815,25 +863,36 @@ def _process_pdf(
 # ── Aggregation ───────────────────────────────────────────────────────────────
 
 def _aggregate_products(results: list[PDFResult]) -> list[dict]:
-    groups: dict[str, dict] = defaultdict(lambda: {
-        "description": "", "qty": 0.0, "unit": "",
-        "total_length_m": 0.0, "total_spend": 0.0,
-        "appearances": 0, "pdfs": set(), "invoices": set(),
+    """Group line items by (normalised product name, normalised unit).
+
+    Dimension notation is normalised (48X198 -> 48x198) so the same
+    product is merged regardless of supplier formatting differences.
+    """
+    groups: dict[tuple[str, str], dict] = defaultdict(lambda: {
+        "description": "", "unit": "", "norm_unit": "",
+        "qty": 0.0, "total_length_m": 0.0, "total_spend": 0.0,
+        "appearances": 0, "suppliers": set(), "pdfs": set(), "invoices": set(),
     })
 
     for res in results:
         for inv in res.invoices:
             for item in inv.line_items:
-                desc_key = item.get("Description", "").strip().upper()
-                if not desc_key or len(desc_key) < 3:
+                desc = item.get("Description", "").strip()
+                if not desc or len(desc) < 2:
                     continue
-                g = groups[desc_key]
-                g["description"] = item.get("Description", "")
+                unit      = item.get("Unit", "") or ""
+                norm_key  = (_normalize_product(desc), _normalize_unit(unit))
+
+                g = groups[norm_key]
+                if not g["description"]:
+                    g["description"] = desc
+                if not g["unit"] and unit:
+                    g["unit"] = unit
+                g["norm_unit"] = norm_key[1]
+
                 qty = item.get("Quantity")
                 if qty:
                     g["qty"] += qty
-                if not g["unit"] and item.get("Unit"):
-                    g["unit"] = item["Unit"]
                 tl = item.get("Total length m")
                 if tl:
                     g["total_length_m"] += tl
@@ -841,19 +900,25 @@ def _aggregate_products(results: list[PDFResult]) -> list[dict]:
                 if lt:
                     g["total_spend"] += lt
                 g["appearances"] += 1
+                if inv.supplier:
+                    g["suppliers"].add(inv.supplier)
                 g["pdfs"].add(res.filename)
                 if inv.invoice_number:
                     g["invoices"].add(inv.invoice_number)
 
     rows = []
-    for g in sorted(groups.values(), key=lambda x: -(x["total_spend"] or 0)):
+    for (norm_desc, norm_unit), g in sorted(
+        groups.items(), key=lambda x: -(x[1]["total_spend"] or 0)
+    ):
         rows.append({
             "Product":           g["description"],
+            "Norm. Product Key": norm_desc,
+            "Unit":              g["unit"] or norm_unit,
             "Total Quantity":    round(g["qty"], 2) if g["qty"] else None,
-            "Unit":              g["unit"],
             "Total Length m":    round(g["total_length_m"], 2) if g["total_length_m"] else None,
             "Total Spend (NOK)": round(g["total_spend"], 2) if g["total_spend"] else None,
             "Appears in # rows": g["appearances"],
+            "Suppliers":         ", ".join(sorted(g["suppliers"])),
             "Source PDFs":       ", ".join(sorted(g["pdfs"])),
             "Invoice #(s)":      ", ".join(sorted(g["invoices"])),
         })
@@ -920,10 +985,9 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
         for c, w in enumerate(widths, 1):
             ws.column_dimensions[get_column_letter(c)].width = w
 
-    # Collect all invoices across all PDFs
     all_invoices: list[InvoiceData] = [inv for res in results for inv in res.invoices]
 
-    # ── Sheet 1: Invoices (one row per invoice) ───────────────────────────────
+    # ── Sheet 1: Invoices ─────────────────────────────────────────────────────
     ws1 = wb.active
     ws1.title = "Invoices"
     ws1["A1"] = (
@@ -940,10 +1004,11 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
     _hdr_row(ws1, 2, INV_COLS)
 
     for r, inv in enumerate(all_invoices, start=3):
+        sup_display = inv.supplier or "(unknown)"
         row_vals = [
             inv.source_pdf,
-            inv.supplier or "(not found)",
-            inv.customer or "(not found)",
+            sup_display,
+            inv.customer or "(unknown)",
             inv.invoice_number or "(not found)",
             inv.invoice_date or "(not found)",
             inv.due_date or "",
@@ -959,7 +1024,7 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
             if c == len(INV_COLS):
                 cell.fill = fill
 
-    _col_widths(ws1, [35, 24, 20, 16, 13, 13, 14, 10, 11, 11, 14])
+    _col_widths(ws1, [35, 24, 22, 16, 13, 13, 14, 10, 11, 11, 14])
 
     # ── Sheet 2: Line Items ───────────────────────────────────────────────────
     ws2 = wb.create_sheet("Line Items")
@@ -985,13 +1050,15 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
         ws2.cell(row=2, column=1,
                  value="(no line items extracted -- check raw text file)").font = Font(italic=True)
 
-    _col_widths(ws2, [30, 22, 18, 14, 40, 14, 10, 8, 12, 11, 8, 14, 13, 14, 14, 11])
+    _col_widths(ws2, [30, 22, 20, 14, 40, 14, 10, 8, 12, 11, 8, 14, 13, 14, 14, 11])
 
     # ── Sheet 3: Aggregated Products ──────────────────────────────────────────
     ws3 = wb.create_sheet("Aggregated Products")
-    ws3["A1"] = "Aggregated Products -- grouped by description, sorted by total spend"
+    ws3["A1"] = (
+        "Aggregated Products -- normalised by product name + unit, sorted by total spend"
+    )
     ws3["A1"].font = title_font
-    ws3.merge_cells("A1:H1")
+    ws3.merge_cells("A1:J1")
 
     agg = _aggregate_products(results)
     if agg:
@@ -1000,7 +1067,7 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
         for r, row_data in enumerate(agg, start=3):
             for c, key in enumerate(AGG_COLS, 1):
                 ws3.cell(row=r, column=c, value=row_data.get(key))
-        _col_widths(ws3, [42, 14, 8, 14, 18, 18, 45, 30])
+        _col_widths(ws3, [38, 38, 8, 14, 14, 18, 18, 28, 40, 28])
     else:
         ws3.cell(row=2, column=1,
                  value="(no line items to aggregate)").font = Font(italic=True)
@@ -1125,8 +1192,10 @@ def main() -> None:
         print(f"  {flag} {res.filename}  ({len(res.invoices)} invoice(s))")
         for inv in res.invoices:
             tot = f"{inv.total:,.0f} {inv.currency}" if inv.total else "(not found)"
+            sup = inv.supplier or "(unknown supplier)"
+            cus = inv.customer or "(unknown customer)"
             print(f"           #{inv.invoice_number or '?'} | "
-                  f"{inv.supplier or '?'} -> {inv.customer or '?'} | "
+                  f"{sup} -> {cus} | "
                   f"{tot} | {len(inv.line_items)} items")
 
     print(f"\nExcel    -> {output_xlsx}")
