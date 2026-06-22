@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+
 from app.database.repositories import AggregationRepository
 from app.ui.widgets.metric_card import MetricCard
 
@@ -73,7 +74,8 @@ class _DataTable(QTableWidget):
 class DashboardTab(QWidget):
     """Supplier Dashboard — application default landing page."""
 
-    seed_requested = Signal()
+    seed_requested   = Signal()
+    export_requested = Signal()
 
     def __init__(self, aggregation_repo: Optional[AggregationRepository] = None) -> None:
         super().__init__()
@@ -94,6 +96,7 @@ class DashboardTab(QWidget):
         header.setStyleSheet("background: #181825; border-bottom: 1px solid #313244;")
         h_layout = QHBoxLayout(header)
         h_layout.setContentsMargins(28, 0, 28, 0)
+        h_layout.setSpacing(12)
         title = QLabel("Supplier Dashboard")
         font = QFont()
         font.setPointSize(14)
@@ -102,6 +105,14 @@ class DashboardTab(QWidget):
         title.setStyleSheet("color: #cdd6f4; background: transparent;")
         h_layout.addWidget(title)
         h_layout.addStretch()
+
+        export_btn = QPushButton("↓ Export")
+        export_btn.setObjectName("secondary")
+        export_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        export_btn.setToolTip("Export data to Excel and/or PDF")
+        export_btn.clicked.connect(self.export_requested.emit)
+        h_layout.addWidget(export_btn)
+
         root.addWidget(header)
 
         # Stacked: empty state vs full dashboard
