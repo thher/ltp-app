@@ -13,6 +13,7 @@ _MIGRATION_NAMES = [
     "v002_ocr_fields",
     "v003_line_item_lengths",
     "v004_material_intelligence",
+    "v005_extraction_diagnostics",
 ]
 
 

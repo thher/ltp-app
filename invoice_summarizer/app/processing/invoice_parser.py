@@ -256,7 +256,7 @@ class InvoiceParser:
                 cur = self._normalize_currency(cur_str)
                 return (
                     FieldResult(value=amount, confidence=0.85, raw=raw_num),
-                    FieldResult(value=cur, confidence=0.8 if cur != "SEK" else 0.6, raw=cur_str),
+                    FieldResult(value=cur, confidence=0.8 if cur_str else 0.6, raw=cur_str),
                 )
 
         # 3. General "Totalt" label — group 1 = amount, group 2 = currency
@@ -269,7 +269,7 @@ class InvoiceParser:
                 cur = self._normalize_currency(cur_str)
                 return (
                     FieldResult(value=amount, confidence=0.85, raw=raw_num),
-                    FieldResult(value=cur, confidence=0.8 if cur != "SEK" else 0.6, raw=cur_str),
+                    FieldResult(value=cur, confidence=0.8 if cur_str else 0.6, raw=cur_str),
                 )
 
         # 4. "amount NOK" on the same line (no cross-line matching)
@@ -282,7 +282,7 @@ class InvoiceParser:
                 cur = self._normalize_currency(cur_str)
                 return (
                     FieldResult(value=amount, confidence=0.85, raw=raw_num),
-                    FieldResult(value=cur, confidence=0.8 if cur != "SEK" else 0.6, raw=cur_str),
+                    FieldResult(value=cur, confidence=0.8 if cur_str else 0.6, raw=cur_str),
                 )
 
         # 5. Standalone currency-prefix line: "^NOK 54 936,83$"
@@ -310,17 +310,17 @@ class InvoiceParser:
 
         return (
             FieldResult(confidence=0.0),
-            FieldResult(value="SEK", confidence=0.3, raw=""),
+            FieldResult(value="NOK", confidence=0.3, raw=""),
         )
 
     @staticmethod
     def _normalize_currency(raw: str) -> str:
         upper = raw.upper()
-        if upper in ("SEK", "EUR", "USD", "GBP", "NOK"):
+        if upper in ("NOK", "SEK", "EUR", "USD", "GBP"):
             return upper
         if upper in ("KR", ""):
-            return "SEK"
-        return "SEK"
+            return "NOK"
+        return "NOK"
 
     @staticmethod
     def _parse_number(s: str) -> Optional[float]:

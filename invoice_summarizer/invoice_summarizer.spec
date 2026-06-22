@@ -70,6 +70,7 @@ a = Analysis(
         "app.database.migrations.v002_ocr_fields",
         "app.database.migrations.v003_line_item_lengths",
         "app.database.migrations.v004_material_intelligence",
+        "app.database.migrations.v005_extraction_diagnostics",
         # ── App: all modules ───────────────────────────────────────────
         "app.config",
         "app.database.db_manager",
@@ -102,6 +103,7 @@ a = Analysis(
         "app.ui.dialogs.assign_suppliers_dialog",
         "app.ui.dialogs.category_dialog",
         "app.ui.dialogs.export_dialog",
+        "app.ui.dialogs.ocr_text_dialog",
         "app.ui.dialogs.supplier_dialog",
         "app.ui.main_window",
         "app.ui.style",

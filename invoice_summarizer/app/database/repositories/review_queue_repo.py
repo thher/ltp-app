@@ -51,6 +51,12 @@ class ReviewQueueRepository:
         )
         return [self._row_to_model(r) for r in rows]
 
+    def delete_by_invoice(self, invoice_id: int) -> None:
+        with self.db.transaction():
+            self.db.execute(
+                "DELETE FROM review_queue WHERE invoice_id = ?", (invoice_id,)
+            )
+
     def resolve(self, item_id: int, resolution: str) -> None:
         with self.db.transaction():
             self.db.execute(

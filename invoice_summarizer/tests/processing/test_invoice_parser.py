@@ -79,18 +79,18 @@ class TestAmountCurrency:
         assert r.total_amount.value == pytest.approx(45000.0)
         assert r.currency.value == "SEK"
 
-    def test_kr_currency_normalises_to_sek(self, parser):
+    def test_kr_currency_normalises_to_nok(self, parser):
         text = "Summa: 9 500,00 kr"
         r = parser.parse(text)
-        assert r.currency.value == "SEK"
+        assert r.currency.value == "NOK"
 
     def test_amount_not_found(self, parser):
         r = parser.parse("No financial data here")
         assert r.total_amount.confidence == 0.0
 
-    def test_default_currency_sek_when_missing(self, parser):
+    def test_default_currency_nok_when_missing(self, parser):
         r = parser.parse("Total: 500")
-        assert r.currency.value == "SEK"
+        assert r.currency.value == "NOK"
 
 
 # ── Supplier name ──────────────────────────────────────────────────────────────

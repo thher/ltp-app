@@ -18,8 +18,11 @@ class InvoiceRepository:
                     (supplier_id, invoice_number, invoice_date, due_date,
                      currency, subtotal, vat_total, grand_total,
                      original_path, copy_path, file_hash, source_pdf_hash,
-                     kid_number, status, error_message, raw_text)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     kid_number, status, error_message, raw_text,
+                     extraction_method, ocr_available, ocr_lang,
+                     ocr_text_length, parser_confidence)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                        ?, ?, ?, ?, ?)
                 """,
                 (
                     invoice.supplier_id,
@@ -38,6 +41,11 @@ class InvoiceRepository:
                     invoice.status,
                     invoice.error_message,
                     invoice.raw_text,
+                    invoice.extraction_method,
+                    int(invoice.ocr_available) if invoice.ocr_available is not None else None,
+                    invoice.ocr_lang,
+                    invoice.ocr_text_length,
+                    invoice.parser_confidence,
                 ),
             )
             invoice.id = cursor.lastrowid
@@ -111,7 +119,9 @@ class InvoiceRepository:
                 SET supplier_id = ?, invoice_number = ?, invoice_date = ?,
                     due_date = ?, currency = ?, subtotal = ?, vat_total = ?,
                     grand_total = ?, kid_number = ?, status = ?,
-                    error_message = ?, raw_text = ?
+                    error_message = ?, raw_text = ?,
+                    extraction_method = ?, ocr_available = ?, ocr_lang = ?,
+                    ocr_text_length = ?, parser_confidence = ?
                 WHERE id = ?
                 """,
                 (
@@ -127,6 +137,11 @@ class InvoiceRepository:
                     invoice.status,
                     invoice.error_message,
                     invoice.raw_text,
+                    invoice.extraction_method,
+                    int(invoice.ocr_available) if invoice.ocr_available is not None else None,
+                    invoice.ocr_lang,
+                    invoice.ocr_text_length,
+                    invoice.parser_confidence,
                     invoice.id,
                 ),
             )
@@ -161,6 +176,13 @@ class InvoiceRepository:
 
     @staticmethod
     def _row_to_model(row) -> Invoice:
+        def _col(key, default=None):
+            try:
+                return row[key]
+            except IndexError:
+                return default
+
+        ocr_avail_raw = _col("ocr_available")
         return Invoice(
             id=row["id"],
             supplier_id=row["supplier_id"],
@@ -181,4 +203,9 @@ class InvoiceRepository:
             raw_text=row["raw_text"],
             imported_at=row["imported_at"],
             processed_at=row["processed_at"],
+            extraction_method=_col("extraction_method"),
+            ocr_available=bool(ocr_avail_raw) if ocr_avail_raw is not None else None,
+            ocr_lang=_col("ocr_lang"),
+            ocr_text_length=_col("ocr_text_length"),
+            parser_confidence=_col("parser_confidence"),
         )

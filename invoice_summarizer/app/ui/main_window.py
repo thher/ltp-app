@@ -122,7 +122,7 @@ class MainWindow(QMainWindow):
         self._materials        = MaterialSummaryTab(self._li_repo)
         self._summary          = SummaryTab()
         self._documents        = DocumentsTab(self._pipeline, self._inv_repo)
-        self._review_queue     = ReviewQueueTab(self._review_repo, self._inv_repo)
+        self._review_queue     = ReviewQueueTab(self._review_repo, self._inv_repo, self._pipeline)
 
         for page in (
             self._dashboard, self._suppliers, self._categories,

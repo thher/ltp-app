@@ -23,7 +23,7 @@ class Config:
     PRODUCT_REVIEW_THRESHOLD: int = 65
 
     # ── Currency ───────────────────────────────────────────────────────
-    DEFAULT_CURRENCY: str = "SEK"
+    DEFAULT_CURRENCY: str = "NOK"
 
     # ── UI ─────────────────────────────────────────────────────────────
     WINDOW_TITLE: str = "Smart Invoice Summarizer"

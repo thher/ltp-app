@@ -47,7 +47,7 @@ class Invoice:
     invoice_number: Optional[str] = None
     invoice_date: Optional[date] = None
     due_date: Optional[date] = None
-    currency: str = "SEK"
+    currency: str = "NOK"
     subtotal: Optional[float] = None
     vat_total: Optional[float] = None
     grand_total: Optional[float] = None
@@ -61,6 +61,11 @@ class Invoice:
     raw_text: Optional[str] = None
     imported_at: Optional[datetime] = None
     processed_at: Optional[datetime] = None
+    extraction_method: Optional[str] = None    # "pdf_text"|"ocr"|"fallback"|"failed"
+    ocr_available: Optional[bool] = None
+    ocr_lang: Optional[str] = None
+    ocr_text_length: Optional[int] = None
+    parser_confidence: Optional[float] = None
 
 
 @dataclass
