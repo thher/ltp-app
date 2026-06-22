@@ -27,43 +27,105 @@ if str(_ROOT) not in sys.path:
 
 # ── Tesseract Windows auto-detection ─────────────────────────────────────────
 
-def _setup_tesseract() -> tuple[bool, str]:
-    """Locate Tesseract and return (available, lang)."""
+_WINDOWS_TESSERACT_PATHS = [
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+    r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+]
+
+
+def _find_tesseract_exe(override: str | None = None) -> str | None:
+    """Return the path to tesseract.exe, or None if not found."""
+    import subprocess
+
+    # 1. Explicit override from --tesseract flag
+    if override:
+        p = Path(override)
+        if p.is_file():
+            return str(p)
+        print(f"  WARNING: --tesseract path not found: {override}")
+
+    # 2. Already on PATH
+    try:
+        r = subprocess.run(
+            ["tesseract", "--version"], capture_output=True, timeout=5
+        )
+        if r.returncode == 0:
+            import shutil
+            found = shutil.which("tesseract")
+            return found or "tesseract"
+    except Exception:
+        pass
+
+    # 3. Windows well-known install directories
+    if sys.platform == "win32":
+        for candidate in _WINDOWS_TESSERACT_PATHS:
+            if Path(candidate).is_file():
+                return candidate
+
+        local = os.environ.get("LOCALAPPDATA", "")
+        if local:
+            user_path = Path(local) / "Programs" / "Tesseract-OCR" / "tesseract.exe"
+            if user_path.is_file():
+                return str(user_path)
+
+    return None
+
+
+def _setup_tesseract(override: str | None = None) -> tuple[bool, str]:
+    """Locate Tesseract, configure pytesseract, return (available, lang).
+
+    On Windows, Tesseract must be on PATH *or* in a known install directory.
+    Its DLLs are loaded from its own folder, so we add that directory to PATH
+    before calling any pytesseract function.
+    """
     try:
         import pytesseract
     except ImportError:
+        print("  pytesseract not installed. Run: pip install pytesseract")
         return False, ""
 
-    _PATHS = [
-        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
-    ]
+    import subprocess
 
-    if sys.platform == "win32":
-        import subprocess
-        try:
-            subprocess.run(["tesseract", "--version"], capture_output=True,
-                           check=True, timeout=5)
-        except Exception:
-            # Not on PATH — search known install locations
-            found = False
-            for candidate in _PATHS:
-                if Path(candidate).is_file():
-                    pytesseract.pytesseract.tesseract_cmd = candidate
-                    found = True
-                    break
-            if not found:
-                local = os.environ.get("LOCALAPPDATA", "")
-                if local:
-                    user_path = Path(local) / "Programs" / "Tesseract-OCR" / "tesseract.exe"
-                    if user_path.is_file():
-                        pytesseract.pytesseract.tesseract_cmd = str(user_path)
+    tess_exe = _find_tesseract_exe(override)
 
+    if tess_exe is None:
+        print("  Tesseract executable not found.")
+        if sys.platform == "win32":
+            print("  Checked PATH and:")
+            for p in _WINDOWS_TESSERACT_PATHS:
+                print(f"    {p}")
+            print("  Install from: https://github.com/UB-Mannheim/tesseract/wiki")
+            print("  Or pass: --tesseract \"C:\\path\\to\\tesseract.exe\"")
+        return False, ""
+
+    # Point pytesseract at the executable
+    pytesseract.pytesseract.tesseract_cmd = tess_exe
+    print(f"  Using Tesseract: {tess_exe}")
+
+    # Add the Tesseract directory to PATH so its DLLs are loadable on Windows
+    if sys.platform == "win32" and tess_exe != "tesseract":
+        tess_dir = str(Path(tess_exe).parent)
+        current_path = os.environ.get("PATH", "")
+        if tess_dir.lower() not in current_path.lower():
+            os.environ["PATH"] = tess_dir + os.pathsep + current_path
+
+    # Validate by running the exe directly (avoids pytesseract's own PATH reliance)
     try:
-        pytesseract.get_tesseract_version()
-    except Exception:
+        r = subprocess.run(
+            [tess_exe, "--version"], capture_output=True, timeout=10
+        )
+        if r.returncode != 0:
+            err = r.stderr.decode(errors="replace").strip()
+            print(f"  Tesseract returned error: {err}")
+            return False, ""
+        ver_line = (r.stdout or r.stderr).decode(errors="replace").splitlines()
+        if ver_line:
+            print(f"  Version: {ver_line[0].strip()}")
+    except Exception as e:
+        print(f"  Tesseract failed to run: {e}")
         return False, ""
 
+    # Detect available languages
     try:
         langs = pytesseract.get_languages(config="")
         lang = "nor+eng" if "nor" in langs else "eng"
@@ -368,15 +430,33 @@ def _write_excel(
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-def main() -> None:
-    if len(sys.argv) < 3:
+def _parse_args() -> tuple[Path, Path, str | None]:
+    """Parse argv: PDF OUTPUT [--tesseract PATH]"""
+    args = sys.argv[1:]
+
+    # Extract --tesseract value
+    tess_override: str | None = None
+    clean: list[str] = []
+    i = 0
+    while i < len(args):
+        if args[i] == "--tesseract" and i + 1 < len(args):
+            tess_override = args[i + 1]
+            i += 2
+        else:
+            clean.append(args[i])
+            i += 1
+
+    if len(clean) < 2:
         print(__doc__)
         print("ERROR: Missing arguments.")
-        print("Usage: python tools/extract_pdf_to_excel.py <PDF> <output.xlsx>")
+        print("Usage: python tools/extract_pdf_to_excel.py <PDF> <output.xlsx> [--tesseract PATH]")
         sys.exit(1)
 
-    pdf_path   = Path(sys.argv[1]).resolve()
-    output_xlsx = Path(sys.argv[2]).resolve()
+    return Path(clean[0]).resolve(), Path(clean[1]).resolve(), tess_override
+
+
+def main() -> None:
+    pdf_path, output_xlsx, tess_override = _parse_args()
 
     if not pdf_path.exists():
         print(f"ERROR: PDF not found: {pdf_path}")
@@ -392,13 +472,13 @@ def main() -> None:
 
     # 1. Tesseract setup
     print("[1/5] Setting up Tesseract ...")
-    ocr_available, ocr_lang = _setup_tesseract()
+    ocr_available, ocr_lang = _setup_tesseract(tess_override)
     if ocr_available:
-        print(f"  Tesseract found, language: {ocr_lang}")
+        print(f"  Language: {ocr_lang}")
     else:
         print("  Tesseract NOT available — will use PDF text layer only")
 
-    # 2. Try PDF text layer first
+    # 2. Try PDF text layer
     print("[2/5] Extracting PDF text layer ...")
     full_text, text_pages, text_method = _extract_pdf_text(pdf_path)
     page_char_counts: list[int] = []
@@ -411,20 +491,23 @@ def main() -> None:
     else:
         print("  No text in PDF layer")
 
-    # 3. OCR if text layer was empty or thin (<200 chars)
-    if len(full_text.strip()) < 200 and ocr_available:
-        print("[3/5] Running Tesseract OCR ...")
-        ocr_text, ocr_pages, page_char_counts = _ocr_pdf(pdf_path, ocr_lang)
-        if ocr_text.strip():
-            full_text = ocr_text
-            extraction_method = "tesseract_ocr"
-            print(f"  OCR complete: {len(full_text)} chars total")
-        else:
-            print("  OCR produced no text")
-            if not full_text.strip():
+    # 3. OCR when text layer is empty/thin (< 200 chars)
+    if len(full_text.strip()) < 200:
+        if ocr_available:
+            print("[3/5] Running Tesseract OCR (PDF text layer empty) ...")
+            ocr_text, _ocr_pages, page_char_counts = _ocr_pdf(pdf_path, ocr_lang)
+            if ocr_text.strip():
+                full_text = ocr_text
+                extraction_method = "tesseract_ocr"
+                print(f"  OCR complete: {len(full_text)} chars total")
+            else:
+                print("  OCR produced no text")
                 extraction_method = "failed"
+        else:
+            print("[3/5] PDF text layer empty and Tesseract not available — no text to parse")
+            extraction_method = "failed"
     else:
-        print("[3/5] Skipping OCR (PDF text layer sufficient)")
+        print("[3/5] Skipping OCR (PDF text layer has sufficient text)")
         page_char_counts = [len(p) for p in text_pages]
 
     # 4. Parse header + line items
@@ -434,7 +517,8 @@ def main() -> None:
     print(f"  Invoice Number: {header['invoice_number'] or '(not found)'}")
     print(f"  Invoice Date  : {header['invoice_date'] or '(not found)'}")
     print(f"  Total         : {header['total']} {header['currency']}")
-    print(f"  Confidence    : {header['confidence']:.0%}" if header.get("confidence") else "  Confidence    : n/a")
+    if header.get("confidence"):
+        print(f"  Confidence    : {header['confidence']:.0%}")
 
     print("  Extracting line items ...")
     line_items = _extract_line_items_ocr(pdf_path, ocr_lang)
