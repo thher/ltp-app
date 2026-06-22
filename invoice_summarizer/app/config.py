@@ -5,7 +5,7 @@ BASE_DIR = Path(__file__).parent.parent
 
 class Config:
     APP_NAME = "Smart Invoice Summarizer"
-    APP_VERSION = "0.1.0"
+    APP_VERSION = "0.4.0"
 
     # ── Paths ──────────────────────────────────────────────────────────
     DATA_DIR = BASE_DIR / "data"
