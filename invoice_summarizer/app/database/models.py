@@ -54,6 +54,8 @@ class Invoice:
     original_path: str = ""
     copy_path: str = ""
     file_hash: str = ""
+    source_pdf_hash: Optional[str] = None   # SHA256 of the source PDF (multi-invoice)
+    kid_number: Optional[str] = None         # Norwegian KID payment reference
     status: str = "pending"              # pending|processed|review|error
     error_message: Optional[str] = None
     raw_text: Optional[str] = None

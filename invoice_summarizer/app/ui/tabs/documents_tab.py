@@ -170,12 +170,21 @@ class DocumentsTab(QWidget):
             self._run_import([Path(p) for p in paths])
 
     def _run_import(self, pdf_paths: list[Path]) -> None:
-        results = self._pipeline.run_batch(pdf_paths)
+        file_results = self._pipeline.run_batch(pdf_paths)
 
-        ok = sum(1 for r in results if r.ok)
-        duplicates = sum(1 for r in results if r.is_duplicate)
-        errors = sum(1 for r in results if r.status == "error")
-        review = sum(1 for r in results if r.ok and r.review_items)
+        # Expand multi-invoice PDFs: use per-invoice sub-results when present
+        invoice_results = []
+        for fr in file_results:
+            if fr.all_results:
+                invoice_results.extend(fr.all_results)
+            else:
+                invoice_results.append(fr)
+
+        ok         = sum(1 for r in invoice_results if r.ok)
+        duplicates = sum(1 for r in file_results    if r.is_duplicate)
+        errors     = sum(1 for r in invoice_results if r.status == "error")
+        review     = sum(1 for r in invoice_results if r.ok and r.review_items)
+        results    = invoice_results   # used below for error details
 
         parts = []
         if ok:

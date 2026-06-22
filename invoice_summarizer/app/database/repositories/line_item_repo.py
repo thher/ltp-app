@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Optional
+
 from app.database.db_manager import DatabaseManager
 from app.database.models import LineItem
 
@@ -51,6 +53,44 @@ class LineItemRepository:
             "SELECT * FROM line_items WHERE needs_review = 1"
         )
         return [self._row_to_model(r) for r in rows]
+
+    def find_aggregated(
+        self, supplier_id: Optional[int] = None
+    ) -> list[dict]:
+        """Return line items aggregated by supplier + normalized description.
+
+        Each dict has: supplier_name, raw_description, total_quantity,
+        total_spend, occurrences, needs_review, unit.
+        """
+        base = """
+            SELECT
+                COALESCE(s.canonical_name, '—') AS supplier_name,
+                li.raw_description,
+                li.unit,
+                SUM(COALESCE(li.quantity, 0))    AS total_quantity,
+                SUM(COALESCE(li.line_total, 0))  AS total_spend,
+                COUNT(*)                          AS occurrences,
+                MAX(li.needs_review)              AS needs_review
+            FROM line_items li
+            JOIN invoices i ON li.invoice_id = i.id
+            LEFT JOIN suppliers s ON i.supplier_id = s.id
+        """
+        if supplier_id is not None:
+            sql = (
+                base
+                + " WHERE i.supplier_id = ?"
+                + " GROUP BY i.supplier_id, LOWER(TRIM(li.raw_description))"
+                + " ORDER BY total_spend DESC"
+            )
+            rows = self.db.fetchall(sql, (supplier_id,))
+        else:
+            sql = (
+                base
+                + " GROUP BY COALESCE(i.supplier_id, -1), LOWER(TRIM(li.raw_description))"
+                + " ORDER BY supplier_name, total_spend DESC"
+            )
+            rows = self.db.fetchall(sql)
+        return [dict(r) for r in rows]
 
     def count(self) -> int:
         return self.db.fetchscalar("SELECT COUNT(*) FROM line_items") or 0

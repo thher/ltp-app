@@ -12,6 +12,17 @@ requires_pdfplumber = pytest.mark.skipif(
     not PDFPLUMBER_OK, reason="pdfplumber not available or broken"
 )
 
+try:
+    import pytesseract as _pytesseract  # noqa: F401
+    _pytesseract.get_tesseract_version()
+    PYTESSERACT_OK = True
+except Exception:
+    PYTESSERACT_OK = False
+
+requires_pytesseract = pytest.mark.skipif(
+    not PYTESSERACT_OK, reason="pytesseract / tesseract not available"
+)
+
 # ── PDF generators ─────────────────────────────────────────────────────────────
 
 def _make_pdf_bytes(text: str) -> bytes:

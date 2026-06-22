@@ -17,9 +17,9 @@ class InvoiceRepository:
                 INSERT INTO invoices
                     (supplier_id, invoice_number, invoice_date, due_date,
                      currency, subtotal, vat_total, grand_total,
-                     original_path, copy_path, file_hash, status,
-                     error_message, raw_text)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     original_path, copy_path, file_hash, source_pdf_hash,
+                     kid_number, status, error_message, raw_text)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     invoice.supplier_id,
@@ -33,6 +33,8 @@ class InvoiceRepository:
                     invoice.original_path,
                     invoice.copy_path,
                     invoice.file_hash,
+                    invoice.source_pdf_hash,
+                    invoice.kid_number,
                     invoice.status,
                     invoice.error_message,
                     invoice.raw_text,
@@ -50,6 +52,22 @@ class InvoiceRepository:
     def find_by_hash(self, file_hash: str) -> Optional[Invoice]:
         row = self.db.fetchone(
             "SELECT * FROM invoices WHERE file_hash = ?", (file_hash,)
+        )
+        return self._row_to_model(row) if row else None
+
+    def find_by_source_hash(self, source_pdf_hash: str) -> Optional[Invoice]:
+        """Find any invoice imported from a PDF with the given SHA256 hash.
+
+        Works for both single-invoice PDFs (where source_pdf_hash == file_hash)
+        and multi-invoice PDFs (where multiple invoices share source_pdf_hash).
+        """
+        row = self.db.fetchone(
+            """
+            SELECT * FROM invoices
+            WHERE source_pdf_hash = ? OR file_hash = ?
+            LIMIT 1
+            """,
+            (source_pdf_hash, source_pdf_hash),
         )
         return self._row_to_model(row) if row else None
 
@@ -92,7 +110,8 @@ class InvoiceRepository:
                 UPDATE invoices
                 SET supplier_id = ?, invoice_number = ?, invoice_date = ?,
                     due_date = ?, currency = ?, subtotal = ?, vat_total = ?,
-                    grand_total = ?, status = ?, error_message = ?, raw_text = ?
+                    grand_total = ?, kid_number = ?, status = ?,
+                    error_message = ?, raw_text = ?
                 WHERE id = ?
                 """,
                 (
@@ -104,6 +123,7 @@ class InvoiceRepository:
                     invoice.subtotal,
                     invoice.vat_total,
                     invoice.grand_total,
+                    invoice.kid_number,
                     invoice.status,
                     invoice.error_message,
                     invoice.raw_text,
@@ -154,6 +174,8 @@ class InvoiceRepository:
             original_path=row["original_path"],
             copy_path=row["copy_path"],
             file_hash=row["file_hash"],
+            source_pdf_hash=row["source_pdf_hash"],
+            kid_number=row["kid_number"],
             status=row["status"],
             error_message=row["error_message"],
             raw_text=row["raw_text"],

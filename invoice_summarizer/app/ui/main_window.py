@@ -26,6 +26,9 @@ from app.database.repositories import (
     SupplierRepository,
 )
 from app.processing.invoice_parser import InvoiceParser
+from app.processing.invoice_splitter import InvoiceSplitter
+from app.processing.line_item_extractor import LineItemExtractor
+from app.processing.ocr_engine import OcrEngine
 from app.processing.pdf_extractor import PDFExtractor
 from app.processing.pipeline import ProcessingPipeline
 from app.seed import SeedDataGenerator
@@ -70,16 +73,23 @@ class MainWindow(QMainWindow):
     # ── Processing pipeline ───────────────────────────────────────────
 
     def _init_pipeline(self) -> None:
-        self._file_manager = FileManager()
-        self._extractor    = PDFExtractor()
-        self._parser       = InvoiceParser()
-        self._pipeline     = ProcessingPipeline(
-            file_manager  = self._file_manager,
-            extractor     = self._extractor,
-            parser        = self._parser,
-            invoice_repo  = self._inv_repo,
-            supplier_repo = self._sup_repo,
-            review_repo   = self._review_repo,
+        self._file_manager  = FileManager()
+        self._extractor     = PDFExtractor()
+        self._parser        = InvoiceParser()
+        self._ocr_engine    = OcrEngine()
+        self._splitter      = InvoiceSplitter()
+        self._li_extractor  = LineItemExtractor()
+        self._pipeline      = ProcessingPipeline(
+            file_manager       = self._file_manager,
+            extractor          = self._extractor,
+            parser             = self._parser,
+            invoice_repo       = self._inv_repo,
+            supplier_repo      = self._sup_repo,
+            review_repo        = self._review_repo,
+            line_item_repo     = self._li_repo,
+            ocr_engine         = self._ocr_engine,
+            splitter           = self._splitter,
+            line_item_extractor= self._li_extractor,
         )
 
     # ── Layout ────────────────────────────────────────────────────────
@@ -104,7 +114,7 @@ class MainWindow(QMainWindow):
         self._dashboard    = DashboardTab(self._agg_repo)
         self._suppliers    = SuppliersTab(self._sup_repo, self._cat_repo, self._agg_repo)
         self._categories   = CategoriesTab(self._cat_repo, self._sup_repo)
-        self._products     = ProductsTab()
+        self._products     = ProductsTab(self._li_repo)
         self._summary      = SummaryTab()
         self._documents    = DocumentsTab(self._pipeline, self._inv_repo)
         self._review_queue = ReviewQueueTab(self._review_repo, self._inv_repo)

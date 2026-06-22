@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 # Add new entries here when creating a new migration module.
 _MIGRATION_NAMES = [
     "v001_initial_schema",
+    "v002_ocr_fields",
 ]
 
 
