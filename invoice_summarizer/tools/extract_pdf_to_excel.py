@@ -1,11 +1,12 @@
 """
 Standalone PDF-to-Excel extractor — no GUI, no Poppler required.
 
-Renders PDF pages with PyMuPDF (fitz) and runs Tesseract OCR directly.
+Renders PDF pages with PyMuPDF (fitz), OCRs with Tesseract, extracts
+line items using spatial bounding boxes, then aggregates across all PDFs.
 
 USAGE
 -----
-Multiple PDFs -> one Excel file (last argument is the output):
+Multiple PDFs (last arg = output):
 
     cd invoice_summarizer
     python tools\\extract_pdf_to_excel.py "a.pdf" "b.pdf" "c.pdf" "d.pdf" "output.xlsx"
@@ -19,19 +20,19 @@ Override Tesseract path:
     python tools\\extract_pdf_to_excel.py "invoice.pdf" "output.xlsx" ^
         --tesseract "C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
 
-OUTPUTS
--------
-  output.xlsx             4-sheet workbook:
-                            Summary       — one row per PDF
-                            All Invoices  — detailed fields per PDF
-                            All Line Items — all extracted line items
-                            Raw Text       — full OCR text per PDF
-  output_raw_text.txt     raw OCR text for all PDFs concatenated (UTF-8)
+SHEETS IN OUTPUT EXCEL
+----------------------
+  All Invoices        — one row per PDF (supplier, number, date, total, status)
+  All Line Items      — every extracted line item across all PDFs
+  Aggregated Products — grouped by product (total qty, total spend, total metres)
+  Supplier Summary    — grouped by supplier (invoice count, total spend)
 """
 from __future__ import annotations
 
 import os
+import re
 import sys
+from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -52,13 +53,10 @@ _WINDOWS_TESSERACT_PATHS = [
 
 def _find_tesseract_exe(override: str | None = None) -> str | None:
     import subprocess
-
     if override:
         if Path(override).is_file():
             return override
         print(f"  WARNING: --tesseract path not found: {override}")
-
-    # Already on PATH?
     try:
         r = subprocess.run(["tesseract", "--version"], capture_output=True, timeout=5)
         if r.returncode == 0:
@@ -66,18 +64,15 @@ def _find_tesseract_exe(override: str | None = None) -> str | None:
             return shutil.which("tesseract") or "tesseract"
     except Exception:
         pass
-
-    # Windows known install paths
     if sys.platform == "win32":
-        for candidate in _WINDOWS_TESSERACT_PATHS:
-            if Path(candidate).is_file():
-                return candidate
+        for p in _WINDOWS_TESSERACT_PATHS:
+            if Path(p).is_file():
+                return p
         local = os.environ.get("LOCALAPPDATA", "")
         if local:
             p = Path(local) / "Programs" / "Tesseract-OCR" / "tesseract.exe"
             if p.is_file():
                 return str(p)
-
     return None
 
 
@@ -93,35 +88,32 @@ def _setup_tesseract(override: str | None = None) -> tuple[bool, str]:
 
     tess_exe = _find_tesseract_exe(override)
     if tess_exe is None:
-        print("  Tesseract executable not found.")
+        print("  Tesseract not found.")
         if sys.platform == "win32":
             for p in _WINDOWS_TESSERACT_PATHS:
                 print(f"    checked: {p}")
-            print("  Install: https://github.com/UB-Mannheim/tesseract/wiki")
             print("  Or pass: --tesseract \"C:\\Program Files\\Tesseract-OCR\\tesseract.exe\"")
         return False, ""
 
     pytesseract.pytesseract.tesseract_cmd = tess_exe
     print(f"  Using Tesseract: {tess_exe}")
 
-    # Add Tesseract directory to PATH so its DLLs load on Windows
     if sys.platform == "win32" and tess_exe != "tesseract":
         tess_dir = str(Path(tess_exe).parent)
         cur = os.environ.get("PATH", "")
         if tess_dir.lower() not in cur.lower():
             os.environ["PATH"] = tess_dir + os.pathsep + cur
 
-    # Validate by running the exe directly
     try:
         r = subprocess.run([tess_exe, "--version"], capture_output=True, timeout=10)
         if r.returncode != 0:
-            print(f"  Tesseract error: {r.stderr.decode(errors='replace').strip()}")
+            print(f"  Error: {r.stderr.decode(errors='replace').strip()}")
             return False, ""
         ver = (r.stdout or r.stderr).decode(errors="replace").splitlines()
         if ver:
-            print(f"  Version: {ver[0].strip()}")
+            print(f"  {ver[0].strip()}")
     except Exception as e:
-        print(f"  Tesseract failed to run: {e}")
+        print(f"  Tesseract failed: {e}")
         return False, ""
 
     try:
@@ -136,7 +128,7 @@ def _setup_tesseract(override: str | None = None) -> tuple[bool, str]:
 # ── PDF text layer extraction ─────────────────────────────────────────────────
 
 def _extract_pdf_text(pdf_path: Path) -> tuple[str, list[str], str]:
-    """Return (full_text, pages, method). pdfplumber → PyMuPDF."""
+    """Return (full_text, per_page_texts, method). No OCR."""
     try:
         import pdfplumber
         pages: list[str] = []
@@ -148,7 +140,6 @@ def _extract_pdf_text(pdf_path: Path) -> tuple[str, list[str], str]:
             return full, pages, "pdfplumber"
     except Exception:
         pass
-
     try:
         import fitz
         pages = []
@@ -161,42 +152,39 @@ def _extract_pdf_text(pdf_path: Path) -> tuple[str, list[str], str]:
             return full, pages, "pymupdf_text"
     except Exception:
         pass
-
     return "", [], "none"
 
 
-# ── OCR via PyMuPDF render + Tesseract (no Poppler needed) ───────────────────
+# ── OCR via PyMuPDF render (no Poppler) ──────────────────────────────────────
 
-def _ocr_pdf(pdf_path: Path, lang: str) -> tuple[str, list[str], list[int]]:
-    """Render each PDF page with PyMuPDF at 300 DPI, OCR with Tesseract.
+def _ocr_pdf(pdf_path: Path, lang: str) -> tuple[str, list, list[int]]:
+    """Render each page with fitz at 200 DPI, OCR with OcrEngine._ocr_image.
 
+    Returns (full_text, list[OcrResult], char_counts_per_page).
+    Uses OcrEngine's preprocessing and image_to_data word-box extraction
+    so that LineItemExtractor can do spatial column parsing afterward.
     No Poppler / pdf2image required.
     """
     try:
         import fitz
-    except ImportError:
-        print("  [OCR] PyMuPDF (fitz) not installed. Run: pip install PyMuPDF")
-        return "", [], []
-
-    try:
-        import pytesseract
         from PIL import Image
-    except ImportError:
-        print("  [OCR] pytesseract or Pillow not installed.")
+        from app.processing.ocr_engine import OcrEngine, OcrResult
+    except ImportError as exc:
+        print(f"  [OCR] Missing: {exc}")
         return "", [], []
 
     try:
         doc = fitz.open(str(pdf_path))
-    except Exception as e:
-        print(f"  [OCR] Cannot open PDF: {e}")
+    except Exception as exc:
+        print(f"  [OCR] Cannot open PDF: {exc}")
         return "", [], []
 
-    pages: list[str] = []
+    engine = OcrEngine()
+    # Match OcrEngine.DPI=200 so spatial column fractions calibrated at 200 DPI work
+    mat = fitz.Matrix(200 / 72, 200 / 72)
+    ocr_results: list[OcrResult] = []
     char_counts: list[int] = []
     total = len(doc)
-
-    # 300 DPI: fitz default is 72 DPI, so scale = 300/72
-    mat = fitz.Matrix(300 / 72, 300 / 72)
 
     for page_num in range(total):
         print(f"  OCR page {page_num + 1}/{total} ...", end="", flush=True)
@@ -204,16 +192,304 @@ def _ocr_pdf(pdf_path: Path, lang: str) -> tuple[str, list[str], list[int]]:
             page = doc[page_num]
             pix = page.get_pixmap(matrix=mat, colorspace=fitz.csRGB)
             img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-            text = pytesseract.image_to_string(img, lang=lang)
-        except Exception as e:
-            text = ""
-            print(f" ERROR: {e}", end="")
-        pages.append(text)
-        char_counts.append(len(text))
-        print(f" {len(text)} chars")
+            result = engine._ocr_image(img, lang)
+            result.page_width = pix.width
+            result.page_height = pix.height
+        except Exception as exc:
+            from app.processing.ocr_engine import OcrResult
+            result = OcrResult()
+            print(f" ERROR: {exc}", end="")
+        ocr_results.append(result)
+        char_counts.append(len(result.text))
+        print(f" {len(result.text)} chars, {len(result.words)} words")
 
     doc.close()
-    return "\n\n".join(pages), pages, char_counts
+    full_text = "\n\n".join(r.text for r in ocr_results)
+    return full_text, ocr_results, char_counts
+
+
+# ── Line item extraction ──────────────────────────────────────────────────────
+
+def _li_to_dict(item, source_pdf: str = "", supplier: str = "",
+                invoice_number: str = "") -> dict:
+    mat = ""
+    try:
+        mat = item.material_category.name if item.material_category else ""
+    except Exception:
+        pass
+    return {
+        "Source PDF":      source_pdf,
+        "Supplier":        supplier,
+        "Invoice #":       invoice_number,
+        "Description":     item.description,
+        "Section":         item.section,
+        "Quantity":        item.quantity,
+        "Unit":            item.unit or "",
+        "Unit Price":      item.unit_price,
+        "Discount %":      item.discount_pct,
+        "VAT %":           item.vat_pct,
+        "Line Total":      item.line_total,
+        "Length/unit m":   item.length_per_unit,
+        "Total length m":  item.total_length,
+        "Material":        mat,
+        "Confidence":      round(item.confidence, 2),
+    }
+
+
+def _extract_line_items_spatial(ocr_results: list) -> list[dict]:
+    """Use spatial LineItemExtractor (requires word bounding boxes)."""
+    try:
+        from app.processing.line_item_extractor import LineItemExtractor
+        items = LineItemExtractor().extract_from_ocr(ocr_results)
+        return [_li_to_dict(i) for i in items]
+    except Exception as exc:
+        print(f"  [Spatial] {exc}")
+        return []
+
+
+# ── Text-based line item fallback parser (Norwegian building invoices) ────────
+
+_TABLE_HDR_RE  = re.compile(r'\b(tekst|antall|pris|bel[øo]p|beloep)\b', re.I)
+_SECTION_RE    = re.compile(r'^\s*(HUS|ETG|BYGNING|AVDELING|SEKSJON|BLOKK)\b', re.I)
+_STOP_RE       = re.compile(
+    r'F[oø]lgende\s+bel[øo]p|Totalt\s+bel[øo]p|^\s*MVA\s*\(|Betalingsbetingelser',
+    re.I
+)
+_BUNDLE_RE     = re.compile(
+    r'^(\d+(?:[.,]\d+)?)\s+stk\s+a\s+(\d+(?:[.,]\d+)?)\s*(?:m(?:eter)?\s+)?(.+)',
+    re.I
+)
+_UNITS         = frozenset('stk m lm pk rll l kg bx m2 m3 meter pall stk.'.split())
+_VAT_RATES     = frozenset(('25', '15', '12', '0'))
+
+
+def _parse_no_num(s: str) -> float | None:
+    """Parse Norwegian number: '1 234,56' → 1234.56, '495,00' → 495.0"""
+    s = s.strip().replace('\xa0', '').replace(' ', '')
+    if not s:
+        return None
+    if re.search(r'[,.]\d{1,2}$', s):
+        s = re.sub(r'\.(?=\d{3})', '', s)  # remove dot-thousands
+        s = s.replace(',', '.')
+    else:
+        s = s.replace(',', '').replace('.', '')
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def _try_parse_item(line: str, section: str) -> dict | None:
+    """Try to parse one text line as a Norwegian invoice line item."""
+    tokens = line.split()
+    n = len(tokens)
+    if n < 3:
+        return None
+
+    idx = n  # points past last consumed token (we work backwards)
+
+    def tok(i: int) -> str | None:
+        return tokens[n - i] if 1 <= i <= n else None
+
+    def is_amount(t: str | None) -> bool:
+        return bool(t and re.match(r'^\d{1,3}[,.]\d{2}$', t))
+
+    def is_int(t: str | None) -> bool:
+        return bool(t and re.match(r'^\d+$', t))
+
+    def is_num(t: str | None) -> bool:
+        return bool(t and re.match(r'^\d+(?:[.,]\d+)?$', t))
+
+    # ── Step 1: line total (last token, or two tokens for NOK thousands) ──
+    t1 = tok(1)
+    if not is_amount(t1):
+        return None
+
+    total_str = t1
+    consumed = 1
+
+    # Thousands part: "46" before "780,00" → 46 780,00 = 46,780 NOK
+    t2 = tok(2)
+    if is_int(t2) and not t2 in _VAT_RATES:
+        comb = _parse_no_num(t2 + " " + t1)
+        simp = _parse_no_num(t1)
+        if comb and simp and comb >= simp + 1000:
+            total_str = t2 + " " + t1
+            consumed = 2
+
+    line_total = _parse_no_num(total_str)
+    if not line_total:
+        return None
+    idx -= consumed
+
+    # ── Step 2: VAT% ─────────────────────────────────────────────────────
+    vat_pct = None
+    nxt = tokens[idx - 1] if idx >= 1 else None
+    if nxt in _VAT_RATES:
+        vat_pct = float(nxt)
+        idx -= 1
+
+    # ── Step 3: Discount% (optional, integer 1-60) ────────────────────────
+    discount_pct = None
+    nxt = tokens[idx - 1] if idx >= 1 else None
+    if is_int(nxt):
+        v = float(nxt)
+        if 1 <= v <= 60:
+            discount_pct = v
+            idx -= 1
+
+    # ── Step 4: Unit (optional) ───────────────────────────────────────────
+    unit = None
+    nxt = tokens[idx - 1] if idx >= 1 else None
+    if nxt and nxt.lower().rstrip('.') in _UNITS:
+        unit = nxt
+        idx -= 1
+
+    # ── Step 5: Unit price ────────────────────────────────────────────────
+    unit_price = None
+    nxt = tokens[idx - 1] if idx >= 1 else None
+    if is_amount(nxt):
+        up_str = nxt
+        idx -= 1
+        # Thousands check for price too
+        nxt2 = tokens[idx - 1] if idx >= 1 else None
+        if is_int(nxt2) and nxt2 not in _VAT_RATES:
+            comb = _parse_no_num(nxt2 + " " + nxt)
+            simp = _parse_no_num(nxt)
+            if comb and simp and comb >= simp + 1000:
+                up_str = nxt2 + " " + nxt
+                idx -= 1
+        unit_price = _parse_no_num(up_str)
+    elif is_num(nxt):
+        unit_price = _parse_no_num(nxt)
+        idx -= 1
+
+    # ── Step 6: Quantity ──────────────────────────────────────────────────
+    qty = None
+    nxt = tokens[idx - 1] if idx >= 1 else None
+    if is_num(nxt):
+        qty = _parse_no_num(nxt)
+        idx -= 1
+
+    # ── Step 7: Description = everything remaining ────────────────────────
+    desc = " ".join(tokens[:idx])
+    if not desc.strip() or len(desc) < 2:
+        return None
+
+    # Bundle: "22 stk a 4,8 28X120 PRODUCT NAME"
+    length_per_unit = None
+    total_length = None
+    bm = _BUNDLE_RE.match(desc)
+    if bm:
+        pieces = _parse_no_num(bm.group(1))
+        metres = _parse_no_num(bm.group(2))
+        if pieces and metres and metres < 30:
+            desc = bm.group(3).strip()
+            length_per_unit = metres
+            total_length = pieces * metres
+            if qty is None:
+                qty = pieces
+
+    confidence = 1.0
+    if qty is None:
+        confidence -= 0.3
+    if unit_price is None:
+        confidence -= 0.2
+
+    return {
+        "Source PDF":      "",
+        "Supplier":        "",
+        "Invoice #":       "",
+        "Description":     desc,
+        "Section":         section,
+        "Quantity":        qty,
+        "Unit":            unit or "",
+        "Unit Price":      unit_price,
+        "Discount %":      discount_pct,
+        "VAT %":           vat_pct,
+        "Line Total":      line_total,
+        "Length/unit m":   length_per_unit,
+        "Total length m":  total_length,
+        "Material":        "",
+        "Confidence":      round(max(0.0, confidence), 2),
+    }
+
+
+def _extract_line_items_text(text: str) -> list[dict]:
+    """Text-based fallback for Norwegian building invoice line items."""
+    lines = text.splitlines()
+    items: list[dict] = []
+    in_table = False
+    section = ""
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if _STOP_RE.search(stripped):
+            in_table = False
+            continue
+        if not in_table:
+            if len(_TABLE_HDR_RE.findall(stripped)) >= 2:
+                in_table = True
+            continue
+        if _SECTION_RE.match(stripped):
+            section = stripped
+            continue
+        item = _try_parse_item(stripped, section)
+        if item:
+            items.append(item)
+
+    return items
+
+
+# ── Supplier detection ────────────────────────────────────────────────────────
+
+_CUSTOMER_BLOCK_RE = re.compile(
+    r'(?:Faktureres?\s+til|Send\s+til|Til\s*:|Kunde\s*:|Ship\s+to|Bill\s+to)[:\s]',
+    re.I,
+)
+_COMPANY_SUFFIX_RE = re.compile(
+    r'\b(?:AS|ASA|ANS|DA|NUF|AB|GmbH|Ltd|LLC|SA|Inc|Corp|Byggevarer|Bygg|Eiendom)\b',
+)
+_KNOWN_SUPPLIERS = {
+    'nydal':   'Nydal Byggevarer AS',
+    'maxbo':   'Maxbo AS',
+    'montér':  'Montér',
+    'monter':  'Montér',
+    'byggmax': 'Byggmax AS',
+    'optimera':'Optimera AS',
+}
+
+
+def _find_supplier(text: str, filename: str = "") -> str:
+    """Return supplier name, skipping the customer address block."""
+    # Text before the customer-address marker is the supplier's header
+    m = _CUSTOMER_BLOCK_RE.search(text)
+    limit = m.start() if m else min(len(text), 1500)
+    header = text[:limit]
+
+    for line in header.splitlines()[:25]:
+        line = line.strip()
+        if not line or len(line) < 4 or len(line) > 70:
+            continue
+        if not _COMPANY_SUFFIX_RE.search(line):
+            continue
+        # Skip lines that are clearly addresses (start with a digit)
+        if re.match(r'^\d+\s', line):
+            continue
+        # Skip 4-digit postal codes
+        if re.search(r'\b\d{4}\b', line):
+            continue
+        return line
+
+    # Filename fallback
+    stem = Path(filename).stem.lower() if filename else ""
+    for key, name in _KNOWN_SUPPLIERS.items():
+        if key in stem:
+            return name
+
+    return ""
 
 
 # ── Invoice header parsing ────────────────────────────────────────────────────
@@ -222,8 +498,10 @@ def _parse_header(text: str, filename: str = "") -> dict:
     try:
         from app.processing.invoice_parser import InvoiceParser
         result = InvoiceParser().parse(text, filename=filename)
+        # Override supplier with our smarter detector
+        supplier = _find_supplier(text, filename) or result.supplier_name.value or ""
         return {
-            "supplier":       result.supplier_name.value or "",
+            "supplier":       supplier,
             "invoice_number": result.invoice_number.value or "",
             "invoice_date":   str(result.invoice_date.value) if result.invoice_date.value else "",
             "due_date":       str(result.due_date.value) if result.due_date.value else "",
@@ -232,11 +510,10 @@ def _parse_header(text: str, filename: str = "") -> dict:
             "confidence":     result.overall_confidence,
         }
     except Exception:
-        return _parse_header_regex(text)
+        pass
 
-
-def _parse_header_regex(text: str) -> dict:
-    import re
+    # Regex fallback
+    supplier = _find_supplier(text, filename)
 
     def _find(patterns: list[str]) -> str:
         for pat in patterns:
@@ -256,81 +533,48 @@ def _parse_header_regex(text: str) -> dict:
                     pass
         return None
 
-    supplier = _find([r"^From[:\s]+(.+)$", r"(?:Leverand[oø]r|Supplier)[:\s]+(.+)$"])
-    inv_num  = _find([r"(?:Invoice\s*No|Fakturanummer|Invoice\s*Number)[:\s#]+(\S+)"])
-    date     = _find([
-        r"(?:Invoice\s*Date|Fakturadato|Fakturadatum)[:\s]+(\d{4}-\d{2}-\d{2})",
-        r"(?:Date|Dato)[:\s]+(\d{4}-\d{2}-\d{2})",
-        r"(\d{2}[./]\d{2}[./]\d{4})",
+    inv_num = _find([r"(?:Invoice\s*No|Fakturanummer|Invoice\s*Number)[:\s#]+(\S+)"])
+    date    = _find([
+        r"(?:Fakturadato|Invoice\s*Date)[:\s]+(\d{2}[./]\d{2}[./]\d{4})",
+        r"(?:Fakturadato|Invoice\s*Date)[:\s]+(\d{4}-\d{2}-\d{2})",
     ])
-    total    = _find_amount([
-        r"(?:Grand\s*Total|Totalt|Total\s*Amount|Bel[øo]p)[:\s]+([\d\s,.]+)",
-        r"(?:Total)[:\s]+([\d\s,.]+)",
+    due     = _find([r"(?:Forfallsdato|Due\s*Date)[:\s]+(\d{2}[./]\d{2}[./]\d{4})"])
+    total   = _find_amount([
+        r"(?:Totalt|Grand\s*Total|Total\s*Amount)[:\s]+([\d\s,.]+)",
     ])
-    cur_m    = re.search(r"\b(NOK|SEK|EUR|USD|GBP)\b", text, re.I)
-    currency = cur_m.group(1).upper() if cur_m else "NOK"
+    cur_m   = re.search(r"\b(NOK|SEK|EUR|USD|GBP)\b", text, re.I)
 
     return {
-        "supplier": supplier, "invoice_number": inv_num,
-        "invoice_date": date, "due_date": "",
-        "total": total, "currency": currency, "confidence": 0.0,
+        "supplier":       supplier,
+        "invoice_number": inv_num,
+        "invoice_date":   date,
+        "due_date":       due,
+        "total":          total,
+        "currency":       cur_m.group(1).upper() if cur_m else "NOK",
+        "confidence":     0.0,
     }
-
-
-# ── Spatial line item extraction ──────────────────────────────────────────────
-
-def _extract_line_items(pdf_path: Path) -> list[dict]:
-    try:
-        from app.processing.ocr_engine import OcrEngine
-        from app.processing.line_item_extractor import LineItemExtractor
-        engine = OcrEngine()
-        if not engine.is_available():
-            return []
-        ocr_pages = engine.extract_from_pdf(pdf_path)
-        items = LineItemExtractor().extract_from_ocr(ocr_pages)
-        return [
-            {
-                "Description":    item.description,
-                "Section":        item.section,
-                "Quantity":       item.quantity,
-                "Unit":           item.unit or "",
-                "Unit Price":     item.unit_price,
-                "Discount %":     item.discount_pct,
-                "VAT %":          item.vat_pct,
-                "Line Total":     item.line_total,
-                "Length/unit m":  item.length_per_unit,
-                "Total length m": item.total_length,
-                "Material":       item.material_category.name if item.material_category else "",
-                "Confidence":     round(item.confidence, 2),
-                "Needs Review":   "yes" if item.needs_review else "",
-            }
-            for item in items
-        ]
-    except Exception as e:
-        print(f"  [LineItems] {e}")
-        return []
 
 
 # ── Per-PDF result ────────────────────────────────────────────────────────────
 
 @dataclass
 class PDFResult:
-    filename: str
-    path: Path
-    status: str = "OK"          # "OK" | "Needs Review" | "Failed"
+    filename:          str
+    path:              Path
+    status:            str = "OK"
     extraction_method: str = ""
-    ocr_lang: str = ""
-    page_char_counts: list[int] = field(default_factory=list)
-    raw_text: str = ""
-    supplier: str = ""
-    invoice_number: str = ""
-    invoice_date: str = ""
-    due_date: str = ""
-    total: float | None = None
-    currency: str = "NOK"
-    confidence: float = 0.0
-    line_items: list[dict] = field(default_factory=list)
-    error: str = ""
+    ocr_lang:          str = ""
+    page_char_counts:  list[int] = field(default_factory=list)
+    raw_text:          str = ""
+    supplier:          str = ""
+    invoice_number:    str = ""
+    invoice_date:      str = ""
+    due_date:          str = ""
+    total:             float | None = None
+    currency:          str = "NOK"
+    confidence:        float = 0.0
+    line_items:        list[dict] = field(default_factory=list)
+    error:             str = ""
 
 
 # ── Process one PDF ───────────────────────────────────────────────────────────
@@ -340,70 +584,160 @@ def _process_pdf(
     ocr_available: bool,
     ocr_lang: str,
     index: int,
-    total: int,
+    total_pdfs: int,
 ) -> PDFResult:
-    result = PDFResult(filename=pdf_path.name, path=pdf_path)
+    res = PDFResult(filename=pdf_path.name, path=pdf_path)
 
-    print(f"\n[{index}/{total}] {pdf_path.name}")
+    print(f"\n{'─'*60}")
+    print(f"[{index}/{total_pdfs}] {pdf_path.name}")
 
-    # Step A: PDF text layer
-    print("  Extracting PDF text layer ...")
+    # A: PDF text layer
+    print("  Text layer ...")
     text, text_pages, method = _extract_pdf_text(pdf_path)
-    result.extraction_method = method
-    result.page_char_counts = [len(p) for p in text_pages]
+    res.extraction_method = method
+    res.page_char_counts = [len(p) for p in text_pages]
 
     if text.strip():
-        print(f"  Text layer: {method}, {len(text)} chars")
+        print(f"  -> {method}: {len(text)} chars")
     else:
-        print("  Text layer: empty")
+        print("  -> empty")
 
-    # Step B: OCR when text layer thin (< 200 chars)
+    # B: OCR when text layer < 200 chars
+    ocr_results: list = []
     if len(text.strip()) < 200:
         if ocr_available:
-            print("  Running Tesseract OCR (PyMuPDF render, no Poppler) ...")
-            ocr_text, _, page_char_counts = _ocr_pdf(pdf_path, ocr_lang)
+            print("  Running OCR (fitz render, no Poppler) ...")
+            ocr_text, ocr_results, page_char_counts = _ocr_pdf(pdf_path, ocr_lang)
             if ocr_text.strip():
                 text = ocr_text
-                result.extraction_method = "tesseract_ocr"
-                result.page_char_counts = page_char_counts
-                print(f"  OCR total: {len(text)} chars")
+                res.extraction_method = "tesseract_ocr"
+                res.page_char_counts = page_char_counts
+                print(f"  -> OCR: {len(text)} chars total")
             else:
-                print("  OCR produced no text")
-                result.extraction_method = "failed"
-                result.status = "Needs Review"
+                print("  -> OCR produced no text")
+                res.extraction_method = "failed"
+                res.status = "Needs Review"
         else:
-            print("  No text layer and Tesseract not available")
-            result.extraction_method = "failed"
-            result.status = "Needs Review"
+            print("  -> No text layer and Tesseract not available")
+            res.extraction_method = "failed"
+            res.status = "Needs Review"
 
-    result.raw_text = text
+    res.raw_text = text
 
-    # Step C: Parse header
-    print("  Parsing invoice fields ...")
-    header = _parse_header(text, filename=pdf_path.stem)
-    result.supplier       = header.get("supplier") or ""
-    result.invoice_number = header.get("invoice_number") or ""
-    result.invoice_date   = header.get("invoice_date") or ""
-    result.due_date       = header.get("due_date") or ""
-    result.total          = header.get("total")
-    result.currency       = header.get("currency") or "NOK"
-    result.confidence     = header.get("confidence") or 0.0
+    # C: Parse header
+    print("  Parsing header ...")
+    header = _parse_header(text, filename=pdf_path.name)
+    res.supplier       = header.get("supplier") or ""
+    res.invoice_number = header.get("invoice_number") or ""
+    res.invoice_date   = header.get("invoice_date") or ""
+    res.due_date       = header.get("due_date") or ""
+    res.total          = header.get("total")
+    res.currency       = header.get("currency") or "NOK"
+    res.confidence     = header.get("confidence") or 0.0
 
-    print(f"  Supplier : {result.supplier or '(not found)'}")
-    print(f"  Invoice# : {result.invoice_number or '(not found)'}")
-    print(f"  Date     : {result.invoice_date or '(not found)'}")
-    print(f"  Total    : {result.total} {result.currency}")
-    print(f"  Conf     : {result.confidence:.0%}")
+    print(f"  Supplier : {res.supplier or '(not found)'}")
+    print(f"  Invoice# : {res.invoice_number or '(not found)'}")
+    print(f"  Date     : {res.invoice_date or '(not found)'}")
+    print(f"  Due      : {res.due_date or '(not found)'}")
+    print(f"  Total    : {res.total} {res.currency}")
+    print(f"  Conf     : {res.confidence:.0%}")
 
-    if not result.supplier and not result.invoice_number and not result.total:
-        result.status = "Needs Review"
-
-    # Step D: Line items
+    # D: Line items — spatial first, text fallback
     print("  Extracting line items ...")
-    result.line_items = _extract_line_items(pdf_path)
-    print(f"  Line items: {len(result.line_items)}")
+    if ocr_results:
+        items = _extract_line_items_spatial(ocr_results)
+        if items:
+            print(f"  -> Spatial extraction: {len(items)} items")
+        else:
+            print("  -> Spatial: 0 items, trying text fallback ...")
+            items = _extract_line_items_text(text)
+            print(f"  -> Text fallback: {len(items)} items")
+    else:
+        items = _extract_line_items_text(text)
+        print(f"  -> Text fallback: {len(items)} items")
 
-    return result
+    # Tag each item with source info
+    for item in items:
+        item["Source PDF"] = res.filename
+        item["Supplier"]   = res.supplier
+        item["Invoice #"]  = res.invoice_number
+
+    res.line_items = items
+
+    if res.status == "OK" and not res.supplier and not res.invoice_number and not res.total:
+        res.status = "Needs Review"
+
+    return res
+
+
+# ── Aggregation ───────────────────────────────────────────────────────────────
+
+def _aggregate_products(results: list[PDFResult]) -> list[dict]:
+    groups: dict[str, dict] = defaultdict(lambda: {
+        "description": "", "qty": 0.0, "unit": "",
+        "total_length_m": 0.0, "total_spend": 0.0,
+        "appearances": 0, "pdfs": set(), "invoices": set(),
+    })
+
+    for res in results:
+        for item in res.line_items:
+            desc_key = item.get("Description", "").strip().upper()
+            if not desc_key or len(desc_key) < 3:
+                continue
+            g = groups[desc_key]
+            g["description"] = item.get("Description", "")
+            qty = item.get("Quantity")
+            if qty:
+                g["qty"] += qty
+            if not g["unit"] and item.get("Unit"):
+                g["unit"] = item["Unit"]
+            tl = item.get("Total length m")
+            if tl:
+                g["total_length_m"] += tl
+            lt = item.get("Line Total")
+            if lt:
+                g["total_spend"] += lt
+            g["appearances"] += 1
+            g["pdfs"].add(res.filename)
+            if res.invoice_number:
+                g["invoices"].add(res.invoice_number)
+
+    rows = []
+    for g in sorted(groups.values(), key=lambda x: -(x["total_spend"] or 0)):
+        rows.append({
+            "Product":              g["description"],
+            "Total Quantity":       round(g["qty"], 2) if g["qty"] else None,
+            "Unit":                 g["unit"],
+            "Total Length m":       round(g["total_length_m"], 2) if g["total_length_m"] else None,
+            "Total Spend (NOK)":    round(g["total_spend"], 2) if g["total_spend"] else None,
+            "Appears in # rows":    g["appearances"],
+            "Source PDFs":          ", ".join(sorted(g["pdfs"])),
+            "Invoice #(s)":         ", ".join(sorted(g["invoices"])),
+        })
+    return rows
+
+
+def _supplier_summary(results: list[PDFResult]) -> list[dict]:
+    groups: dict[str, dict] = defaultdict(lambda: {
+        "count": 0, "total": 0.0, "pdfs": set(),
+    })
+
+    for res in results:
+        sup = res.supplier or "(unknown)"
+        groups[sup]["count"] += 1
+        if res.total:
+            groups[sup]["total"] += res.total
+        groups[sup]["pdfs"].add(res.filename)
+
+    rows = []
+    for sup, g in sorted(groups.items(), key=lambda x: -(x[1]["total"] or 0)):
+        rows.append({
+            "Supplier":          sup,
+            "Invoice Count":     g["count"],
+            "Total Spend (NOK)": round(g["total"], 2) if g["total"] else None,
+            "Source PDFs":       ", ".join(sorted(g["pdfs"])),
+        })
+    return rows
 
 
 # ── Excel writer ──────────────────────────────────────────────────────────────
@@ -411,56 +745,52 @@ def _process_pdf(
 def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
     try:
         import openpyxl
-        from openpyxl.styles import Font, PatternFill, Alignment
+        from openpyxl.styles import Font, PatternFill
         from openpyxl.utils import get_column_letter
     except ImportError:
         print("ERROR: openpyxl not installed. Run: pip install openpyxl")
         sys.exit(1)
 
     wb = openpyxl.Workbook()
-    title_font  = Font(bold=True, size=13)
-    hdr_font    = Font(bold=True)
-    hdr_fill    = PatternFill("solid", fgColor="D9E1F2")
-    warn_fill   = PatternFill("solid", fgColor="FFE0B2")
-    fail_fill   = PatternFill("solid", fgColor="FFCDD2")
-    ok_fill     = PatternFill("solid", fgColor="C8E6C9")
-    mono_font   = Font(name="Courier New", size=9)
 
-    def _set_col_widths(ws, widths: dict[str, int]) -> None:
-        for col, w in widths.items():
-            ws.column_dimensions[col].width = w
+    title_font = Font(bold=True, size=13)
+    hdr_font   = Font(bold=True)
+    hdr_fill   = PatternFill("solid", fgColor="D9E1F2")
+    ok_fill    = PatternFill("solid", fgColor="C8E6C9")
+    warn_fill  = PatternFill("solid", fgColor="FFE0B2")
+    fail_fill  = PatternFill("solid", fgColor="FFCDD2")
+    mono_font  = Font(name="Courier New", size=9)
 
-    def _header_row(ws, row: int, cols: list[str]) -> None:
+    def _status_fill(s: str) -> PatternFill:
+        return ok_fill if s == "OK" else warn_fill if s == "Needs Review" else fail_fill
+
+    def _hdr_row(ws, row: int, cols: list[str]) -> None:
         for c, label in enumerate(cols, 1):
             cell = ws.cell(row=row, column=c, value=label)
             cell.font = hdr_font
             cell.fill = hdr_fill
 
-    def _status_fill(status: str) -> PatternFill:
-        if status == "OK":
-            return ok_fill
-        if status == "Needs Review":
-            return warn_fill
-        return fail_fill
+    def _col_widths(ws, widths: list[int]) -> None:
+        for c, w in enumerate(widths, 1):
+            ws.column_dimensions[get_column_letter(c)].width = w
 
-    # ── Sheet 1: Summary ──────────────────────────────────────────────────────
+    # ── Sheet 1: All Invoices ─────────────────────────────────────────────────
     ws1 = wb.active
-    ws1.title = "Summary"
-    ws1["A1"] = f"PDF Extraction Report — {len(results)} file(s)"
+    ws1.title = "All Invoices"
+    ws1["A1"] = f"All Invoices — {len(results)} PDF(s) processed"
     ws1["A1"].font = title_font
-    ws1.merge_cells("A1:K1")
-    ws1.row_dimensions[1].height = 22
+    ws1.merge_cells(f"A1:{get_column_letter(10)}1")
+    ws1.row_dimensions[1].height = 20
 
-    SUMMARY_COLS = [
-        "File", "Status", "Supplier", "Invoice #", "Date", "Due Date",
-        "Total", "Currency", "Method", "Text Chars", "Confidence", "Line Items",
+    INV_COLS = [
+        "Source PDF", "Supplier", "Invoice #", "Date", "Due Date",
+        "Total (NOK)", "Currency", "Method", "Text Chars", "Confidence", "Status",
     ]
-    _header_row(ws1, 2, SUMMARY_COLS)
+    _hdr_row(ws1, 2, INV_COLS)
 
     for r, res in enumerate(results, start=3):
-        vals = [
+        row_vals = [
             res.filename,
-            res.status,
             res.supplier or "(not found)",
             res.invoice_number or "(not found)",
             res.invoice_date or "(not found)",
@@ -470,114 +800,71 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
             res.extraction_method,
             len(res.raw_text),
             f"{res.confidence:.0%}" if res.confidence else "0%",
-            len(res.line_items),
+            res.status,
         ]
         fill = _status_fill(res.status)
-        for c, val in enumerate(vals, 1):
+        for c, val in enumerate(row_vals, 1):
             cell = ws1.cell(row=r, column=c, value=val)
-            if c == 2:  # Status column gets colour
+            if c == len(INV_COLS):  # Status column
                 cell.fill = fill
 
-    _set_col_widths(ws1, {
-        "A": 35, "B": 14, "C": 28, "D": 16, "E": 14, "F": 14,
-        "G": 14, "H": 10, "I": 16, "J": 12, "K": 12, "L": 12,
-    })
+    _col_widths(ws1, [35, 28, 16, 13, 13, 14, 10, 16, 11, 11, 14])
 
-    # ── Sheet 2: All Invoices (one block per PDF) ─────────────────────────────
-    ws2 = wb.create_sheet("All Invoices")
-    ws2["A1"] = "All Invoices — Detailed"
-    ws2["A1"].font = title_font
-    ws2.merge_cells("A1:B1")
-    cur_row = 3
-
-    for res in results:
-        fill = _status_fill(res.status)
-        # File header
-        cell = ws2.cell(row=cur_row, column=1, value=res.filename)
-        cell.font = Font(bold=True, size=11)
-        cell.fill = fill
-        ws2.merge_cells(start_row=cur_row, start_column=1, end_row=cur_row, end_column=2)
-        cur_row += 1
-
-        detail_rows = [
-            ("Status",             res.status),
-            ("Supplier",           res.supplier or "(not found)"),
-            ("Invoice Number",     res.invoice_number or "(not found)"),
-            ("Invoice Date",       res.invoice_date or "(not found)"),
-            ("Due Date",           res.due_date or "(not found)"),
-            ("Total Amount",       res.total),
-            ("Currency",           res.currency),
-            ("Extraction Method",  res.extraction_method),
-            ("Total Text Chars",   len(res.raw_text)),
-            ("Parser Confidence",  f"{res.confidence:.0%}" if res.confidence else "0%"),
-            ("Line Items Found",   len(res.line_items)),
-            ("OCR chars per page", ", ".join(str(n) for n in res.page_char_counts) or "n/a"),
-        ]
-        if res.error:
-            detail_rows.append(("Error", res.error))
-
-        for label, value in detail_rows:
-            ws2.cell(row=cur_row, column=1, value=label).font = hdr_font
-            ws2.cell(row=cur_row, column=1).fill = hdr_fill
-            ws2.cell(row=cur_row, column=2, value=value)
-            cur_row += 1
-
-        cur_row += 1  # blank separator
-
-    _set_col_widths(ws2, {"A": 24, "B": 60})
-
-    # ── Sheet 3: All Line Items ────────────────────────────────────────────────
-    ws3 = wb.create_sheet("All Line Items")
-    LINE_ITEM_COLS = [
-        "Source File", "Invoice #",
-        "Description", "Section", "Quantity", "Unit", "Unit Price",
-        "Discount %", "VAT %", "Line Total",
-        "Length/unit m", "Total length m", "Material", "Confidence", "Needs Review",
+    # ── Sheet 2: All Line Items ───────────────────────────────────────────────
+    ws2 = wb.create_sheet("All Line Items")
+    LI_COLS = [
+        "Source PDF", "Supplier", "Invoice #",
+        "Description", "Section",
+        "Quantity", "Unit", "Unit Price", "Discount %", "VAT %", "Line Total",
+        "Length/unit m", "Total length m", "Material", "Confidence",
     ]
-    _header_row(ws3, 1, LINE_ITEM_COLS)
+    _hdr_row(ws2, 1, LI_COLS)
 
     row = 2
     any_items = False
     for res in results:
         for item in res.line_items:
             any_items = True
-            ws3.cell(row=row, column=1, value=res.filename)
-            ws3.cell(row=row, column=2, value=res.invoice_number or "")
-            for c, key in enumerate(LINE_ITEM_COLS[2:], start=3):
-                ws3.cell(row=row, column=c, value=item.get(key))
+            for c, key in enumerate(LI_COLS, 1):
+                ws2.cell(row=row, column=c, value=item.get(key))
             row += 1
 
     if not any_items:
-        ws3.cell(row=2, column=1, value="(no line items extracted from any PDF)")
-        ws3.cell(row=2, column=1).font = Font(italic=True)
+        ws2.cell(row=2, column=1,
+                 value="(no line items extracted — check Raw Text sheet)").font = Font(italic=True)
 
-    _set_col_widths(ws3, {
-        "A": 30, "B": 16, "C": 40, "D": 14,
-        "E": 10, "F": 8, "G": 12, "H": 12, "I": 8,
-        "J": 14, "K": 14, "L": 14, "M": 16, "N": 12, "O": 12,
-    })
+    _col_widths(ws2, [30, 22, 14, 40, 14, 10, 8, 12, 11, 8, 14, 13, 14, 14, 11])
 
-    # ── Sheet 4: Raw Text ──────────────────────────────────────────────────────
-    ws4 = wb.create_sheet("Raw Text")
-    ws4["A1"] = "Raw OCR / extracted text — one section per PDF"
+    # ── Sheet 3: Aggregated Products ──────────────────────────────────────────
+    ws3 = wb.create_sheet("Aggregated Products")
+    ws3["A1"] = "Aggregated Products — grouped by description, sorted by total spend"
+    ws3["A1"].font = title_font
+    ws3.merge_cells("A1:H1")
+
+    agg = _aggregate_products(results)
+    if agg:
+        AGG_COLS = list(agg[0].keys())
+        _hdr_row(ws3, 2, AGG_COLS)
+        for r, row_data in enumerate(agg, start=3):
+            for c, key in enumerate(AGG_COLS, 1):
+                ws3.cell(row=r, column=c, value=row_data.get(key))
+        _col_widths(ws3, [42, 14, 8, 14, 18, 18, 45, 30])
+    else:
+        ws3.cell(row=2, column=1, value="(no line items to aggregate)").font = Font(italic=True)
+
+    # ── Sheet 4: Supplier Summary ─────────────────────────────────────────────
+    ws4 = wb.create_sheet("Supplier Summary")
+    ws4["A1"] = "Supplier Summary"
     ws4["A1"].font = title_font
-    ws4.column_dimensions["A"].width = 130
-    row = 3
 
-    for res in results:
-        # Section header
-        sep = "=" * 70
-        for line in [sep, f"FILE: {res.filename}", f"STATUS: {res.status}", sep]:
-            cell = ws4.cell(row=row, column=1, value=line)
-            cell.font = Font(bold=True, name="Courier New", size=9)
-            row += 1
-
-        text = res.raw_text or "(no text extracted)"
-        for line in text.splitlines():
-            ws4.cell(row=row, column=1, value=line).font = mono_font
-            row += 1
-
-        row += 2  # blank gap between PDFs
+    sup_rows = _supplier_summary(results)
+    if sup_rows:
+        SUP_COLS = list(sup_rows[0].keys())
+        _hdr_row(ws4, 2, SUP_COLS)
+        for r, row_data in enumerate(sup_rows, start=3):
+            for c, key in enumerate(SUP_COLS, 1):
+                ws4.cell(row=r, column=c, value=row_data.get(key))
+        _col_widths(ws4, [30, 14, 18, 55])
 
     wb.save(str(output_path))
 
@@ -588,8 +875,8 @@ def _parse_args() -> tuple[list[Path], Path, str | None]:
     args = sys.argv[1:]
     tess_override: str | None = None
     input_folder: Path | None = None
-    output_path: Path | None = None
-    positional: list[str] = []
+    output_path:  Path | None = None
+    positional:   list[str]   = []
 
     i = 0
     while i < len(args):
@@ -603,33 +890,27 @@ def _parse_args() -> tuple[list[Path], Path, str | None]:
         else:
             positional.append(a); i += 1
 
-    # Collect PDF list
     if input_folder:
         if not input_folder.is_dir():
-            print(f"ERROR: --input-folder not found: {input_folder}")
-            sys.exit(1)
+            print(f"ERROR: Folder not found: {input_folder}"); sys.exit(1)
         pdfs = sorted(input_folder.glob("*.pdf")) + sorted(input_folder.glob("*.PDF"))
         if not pdfs:
-            print(f"ERROR: No PDF files found in {input_folder}")
-            sys.exit(1)
+            print(f"ERROR: No PDFs in {input_folder}"); sys.exit(1)
     elif positional:
-        # Last positional arg is the output xlsx (if not already set via --output)
         if output_path is None:
             output_path = Path(positional.pop())
         pdfs = [Path(p) for p in positional]
     else:
         print(__doc__)
-        print("ERROR: Provide PDF files or --input-folder.")
-        sys.exit(1)
+        print("ERROR: Provide PDF files or --input-folder."); sys.exit(1)
 
     if output_path is None:
-        print("ERROR: Specify output file (last positional arg or --output <file>).")
-        sys.exit(1)
+        print("ERROR: Specify output (last arg or --output <file>)."); sys.exit(1)
 
     missing = [p for p in pdfs if not p.exists()]
     if missing:
         for m in missing:
-            print(f"ERROR: PDF not found: {m}")
+            print(f"ERROR: Not found: {m}")
         sys.exit(1)
 
     return pdfs, output_path.resolve(), tess_override
@@ -639,27 +920,20 @@ def _parse_args() -> tuple[list[Path], Path, str | None]:
 
 def main() -> None:
     pdfs, output_xlsx, tess_override = _parse_args()
-
     output_xlsx.parent.mkdir(parents=True, exist_ok=True)
     raw_text_path = output_xlsx.parent / (output_xlsx.stem + "_raw_text.txt")
 
-    print(f"\n=== PDF Extractor ===")
-    print(f"PDFs   : {len(pdfs)}")
+    print(f"\n{'='*60}")
+    print(f"PDF Extractor — {len(pdfs)} file(s)")
+    print(f"{'='*60}")
     for p in pdfs:
-        print(f"  {p}")
-    print(f"Output : {output_xlsx}")
-    print()
+        print(f"  {p.name}")
+    print(f"Output: {output_xlsx}\n")
 
-    # Tesseract setup (once for all PDFs)
     print("[Setup] Tesseract ...")
     ocr_available, ocr_lang = _setup_tesseract(tess_override)
-    if ocr_available:
-        print(f"  Language: {ocr_lang}")
-    else:
-        print("  Tesseract NOT available — PDF text layer only")
-    print()
+    print(f"  OCR language: {ocr_lang}" if ocr_available else "  PDF text layer only")
 
-    # Process each PDF
     results: list[PDFResult] = []
     for idx, pdf_path in enumerate(pdfs, start=1):
         try:
@@ -667,46 +941,44 @@ def main() -> None:
         except Exception as exc:
             print(f"  FAILED: {exc}")
             res = PDFResult(
-                filename=pdf_path.name,
-                path=pdf_path,
-                status="Failed",
-                error=str(exc),
+                filename=pdf_path.name, path=pdf_path,
+                status="Failed", error=str(exc),
             )
         results.append(res)
 
-    # Save raw text file
-    all_text_parts = []
+    # Save concatenated raw text
+    parts = []
     for res in results:
         sep = "=" * 70
-        all_text_parts.append(f"{sep}\nFILE: {res.filename}\n{sep}\n{res.raw_text}\n")
-    raw_text_path.write_text("\n".join(all_text_parts), encoding="utf-8")
+        parts.append(f"{sep}\nFILE: {res.filename}\n{sep}\n{res.raw_text}\n")
+    raw_text_path.write_text("\n".join(parts), encoding="utf-8")
 
     # Write Excel
-    print(f"\n[Writing] {output_xlsx} ...")
+    print(f"\n[Writing] {output_xlsx.name} ...")
     _write_excel(output_xlsx, results)
 
-    # Summary
-    print(f"\n{'='*50}")
-    print(f"Complete. {len(results)} PDF(s) processed.")
-    print(f"{'='*50}")
+    # Final summary
+    total_items = sum(len(r.line_items) for r in results)
+    total_spend = sum(r.total or 0 for r in results)
+    print(f"\n{'='*60}")
+    print(f"DONE — {len(results)} PDF(s) | {total_items} line items | {total_spend:,.0f} NOK total")
+    print(f"{'='*60}")
     for res in results:
-        flag = "[OK]          " if res.status == "OK" else \
-               "[NEEDS REVIEW]" if res.status == "Needs Review" else "[FAILED]      "
-        total_str = f"{res.total} {res.currency}" if res.total else "(not found)"
+        flag = "[OK]   " if res.status == "OK" else \
+               "[REVIEW]" if res.status == "Needs Review" else "[FAIL] "
+        tot = f"{res.total:,.0f} {res.currency}" if res.total else "(not found)"
         print(f"  {flag} {res.filename}")
-        print(f"             Supplier: {res.supplier or '(not found)'} | "
-              f"Invoice#: {res.invoice_number or '(not found)'} | "
-              f"Total: {total_str} | "
-              f"Items: {len(res.line_items)}")
+        print(f"         {res.supplier or '(no supplier)'} | "
+              f"#{res.invoice_number or '?'} | "
+              f"{tot} | "
+              f"{len(res.line_items)} line items")
 
-    print(f"\nExcel     -> {output_xlsx}")
-    print(f"Raw text  -> {raw_text_path}")
+    print(f"\nExcel    -> {output_xlsx}")
+    print(f"Raw text -> {raw_text_path}")
 
     needs_review = [r for r in results if r.status != "OK"]
     if needs_review:
-        print(f"\nWARNING: {len(needs_review)} PDF(s) need review.")
-        print("  Open the Excel file -> 'Summary' sheet -> check Status column.")
-        print("  Open 'Raw Text' sheet to see what text was actually read.")
+        print(f"\n{len(needs_review)} PDF(s) need review — check 'All Invoices' sheet (Status column).")
 
 
 if __name__ == "__main__":
