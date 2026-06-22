@@ -71,9 +71,10 @@ class ProductsTab(QWidget):
         subtitle.setWordWrap(True)
         b_layout.addWidget(subtitle)
 
-        self._table = QTableWidget(0, 7)
+        self._table = QTableWidget(0, 8)
         self._table.setHorizontalHeaderLabels(
-            ["Supplier", "Description", "Unit", "Total Qty", "Length (m)", "Total Spend", "Count"]
+            ["Supplier", "Description", "Category", "Unit",
+             "Total Qty", "Length (m)", "Total Spend", "Count"]
         )
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -88,6 +89,7 @@ class ProductsTab(QWidget):
         hdr.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
         hdr.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
         hdr.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
+        hdr.setSectionResizeMode(7, QHeaderView.ResizeMode.ResizeToContents)
         b_layout.addWidget(self._table)
 
         self._count_lbl = QLabel()
@@ -121,29 +123,30 @@ class ProductsTab(QWidget):
                 desc_item.setToolTip("OCR confidence is low — description may be incomplete")
             self._table.setItem(r, 1, desc_item)
 
-            self._table.setItem(r, 2, QTableWidgetItem(row.get("unit") or "—"))
+            self._table.setItem(r, 2, QTableWidgetItem(row.get("material_category") or "—"))
+            self._table.setItem(r, 3, QTableWidgetItem(row.get("unit") or "—"))
 
             qty = row.get("total_quantity")
             qty_str = f"{qty:,.2f}".rstrip("0").rstrip(".") if qty else "—"
             qty_item = QTableWidgetItem(qty_str)
             qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            self._table.setItem(r, 3, qty_item)
+            self._table.setItem(r, 4, qty_item)
 
             length_m = row.get("total_length_m")
             length_str = f"{length_m:,.1f}" if length_m else "—"
             length_item = QTableWidgetItem(length_str)
             length_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            self._table.setItem(r, 4, length_item)
+            self._table.setItem(r, 5, length_item)
 
             spend = row.get("total_spend")
             spend_str = f"{spend:,.2f}" if spend else "—"
             spend_item = QTableWidgetItem(spend_str)
             spend_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            self._table.setItem(r, 5, spend_item)
+            self._table.setItem(r, 6, spend_item)
 
             cnt_item = QTableWidgetItem(str(row.get("occurrences", 0)))
             cnt_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self._table.setItem(r, 6, cnt_item)
+            self._table.setItem(r, 7, cnt_item)
 
         n = len(rows)
         self._count_lbl.setText(

@@ -15,8 +15,15 @@ Column layout (calibrated at 200 DPI, 1655-px wide A4):
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, TYPE_CHECKING
+
+from app.processing.unit_classifier import (
+    UnitType,
+    classify_unit,
+    compute_normalized_quantity,
+)
+from app.processing.material_classifier import MaterialCategory, classify_material
 
 if TYPE_CHECKING:
     from app.processing.ocr_engine import OcrResult, OcrWord
@@ -64,6 +71,9 @@ class ExtractedLineItem:
     line_total: Optional[float] = None
     length_per_unit: Optional[float] = None  # metres per piece (e.g. 4.8)
     total_length: Optional[float] = None     # quantity × length_per_unit
+    unit_type: UnitType = field(default=UnitType.UNKNOWN)
+    normalized_quantity: Optional[float] = None
+    material_category: MaterialCategory = field(default=MaterialCategory.OTHER)
     section: str = ""
     confidence: float = 1.0
     needs_review: bool = False
@@ -255,6 +265,10 @@ class LineItemExtractor:
         missing = sum(1 for v in (qty, unit_price, amount) if v is None)
         confidence = max(0.0, 1.0 - missing * 0.25)
 
+        unit_type    = classify_unit(unit_str)
+        norm_qty     = compute_normalized_quantity(qty, unit_type, total_length)
+        mat_category = classify_material(description)
+
         return ExtractedLineItem(
             description=description,
             quantity=qty,
@@ -265,6 +279,9 @@ class LineItemExtractor:
             line_total=amount,
             length_per_unit=length_per_unit,
             total_length=total_length,
+            unit_type=unit_type,
+            normalized_quantity=norm_qty,
+            material_category=mat_category,
             section=section,
             confidence=confidence,
             needs_review=confidence < 0.6,

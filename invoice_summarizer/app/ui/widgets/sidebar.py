@@ -18,6 +18,7 @@ _NAV = [
     ("◎", "Suppliers"),
     ("◆", "Categories"),
     ("◇", "Products"),
+    ("⬡", "Materials"),
     ("≡", "Summary"),
     ("⊞", "Documents"),
     ("⚑", "Review Queue"),

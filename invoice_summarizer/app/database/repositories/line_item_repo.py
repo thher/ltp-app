@@ -18,8 +18,9 @@ class LineItemRepository:
                     (invoice_id, product_id, raw_description, quantity, unit,
                      unit_price, line_total, vat_rate, vat_amount,
                      length_per_unit, total_length,
+                     unit_type, normalized_quantity, material_category,
                      confidence, needs_review)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     item.invoice_id,
@@ -33,6 +34,9 @@ class LineItemRepository:
                     item.vat_amount,
                     item.length_per_unit,
                     item.total_length,
+                    item.unit_type,
+                    item.normalized_quantity,
+                    item.material_category,
                     item.confidence,
                     int(item.needs_review),
                 ),
@@ -74,6 +78,7 @@ class LineItemRepository:
                 COALESCE(s.canonical_name, '—') AS supplier_name,
                 li.raw_description,
                 li.unit,
+                MAX(li.material_category)                  AS material_category,
                 SUM(COALESCE(li.quantity, 0))             AS total_quantity,
                 SUM(li.total_length)                       AS total_length_m,
                 SUM(COALESCE(li.line_total, 0))           AS total_spend,
@@ -100,6 +105,78 @@ class LineItemRepository:
             rows = self.db.fetchall(sql)
         return [dict(r) for r in rows]
 
+    def find_material_summary(self) -> list[dict]:
+        """Quantity + spend grouped by (material_category, unit_type).
+
+        Never mixes incompatible units — each row covers one category/unit pair.
+        Rows with null category/unit_type are excluded.
+        """
+        sql = """
+            SELECT
+                material_category,
+                unit_type,
+                SUM(COALESCE(normalized_quantity, 0)) AS total_quantity,
+                SUM(COALESCE(line_total, 0))          AS total_spend,
+                COUNT(*)                               AS item_count
+            FROM line_items
+            WHERE material_category IS NOT NULL
+              AND unit_type IS NOT NULL
+            GROUP BY material_category, unit_type
+            ORDER BY total_spend DESC
+        """
+        return [dict(r) for r in self.db.fetchall(sql)]
+
+    def find_spend_by_material(self) -> list[dict]:
+        """Total spend per material category, ordered by spend."""
+        sql = """
+            SELECT
+                material_category,
+                SUM(COALESCE(line_total, 0)) AS total_spend,
+                COUNT(*)                      AS item_count
+            FROM line_items
+            WHERE material_category IS NOT NULL
+            GROUP BY material_category
+            ORDER BY total_spend DESC
+        """
+        return [dict(r) for r in self.db.fetchall(sql)]
+
+    def find_top_by_quantity(self, limit: int = 50) -> list[dict]:
+        """Top products ranked by normalized_quantity, grouped by description + unit."""
+        sql = """
+            SELECT
+                raw_description,
+                material_category,
+                unit_type,
+                SUM(COALESCE(normalized_quantity, 0)) AS total_quantity,
+                SUM(COALESCE(line_total, 0))          AS total_spend,
+                COUNT(*)                               AS occurrences
+            FROM line_items
+            WHERE normalized_quantity IS NOT NULL AND normalized_quantity > 0
+              AND unit_type IS NOT NULL
+            GROUP BY LOWER(TRIM(raw_description)), unit_type
+            ORDER BY total_quantity DESC
+            LIMIT ?
+        """
+        return [dict(r) for r in self.db.fetchall(sql, (limit,))]
+
+    def find_top_by_spend(self, limit: int = 50) -> list[dict]:
+        """Top products ranked by spend, grouped by description."""
+        sql = """
+            SELECT
+                raw_description,
+                material_category,
+                unit_type,
+                SUM(COALESCE(normalized_quantity, 0)) AS total_quantity,
+                SUM(COALESCE(line_total, 0))          AS total_spend,
+                COUNT(*)                               AS occurrences
+            FROM line_items
+            WHERE line_total IS NOT NULL
+            GROUP BY LOWER(TRIM(raw_description))
+            ORDER BY total_spend DESC
+            LIMIT ?
+        """
+        return [dict(r) for r in self.db.fetchall(sql, (limit,))]
+
     def count(self) -> int:
         return self.db.fetchscalar("SELECT COUNT(*) FROM line_items") or 0
 
@@ -118,6 +195,9 @@ class LineItemRepository:
             vat_amount=row["vat_amount"],
             length_per_unit=row["length_per_unit"],
             total_length=row["total_length"],
+            unit_type=row["unit_type"],
+            normalized_quantity=row["normalized_quantity"],
+            material_category=row["material_category"],
             confidence=row["confidence"],
             needs_review=bool(row["needs_review"]),
         )

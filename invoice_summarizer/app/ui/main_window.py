@@ -36,6 +36,7 @@ from app.ui.style import DARK
 from app.ui.tabs.categories_tab import CategoriesTab
 from app.ui.tabs.dashboard_tab import DashboardTab
 from app.ui.tabs.documents_tab import DocumentsTab
+from app.ui.tabs.material_summary_tab import MaterialSummaryTab
 from app.ui.tabs.products_tab import ProductsTab
 from app.ui.tabs.review_queue_tab import ReviewQueueTab
 from app.ui.tabs.summary_tab import SummaryTab
@@ -111,23 +112,26 @@ class MainWindow(QMainWindow):
         layout.addWidget(self._stack)
 
         # Pages (must match sidebar order)
-        self._dashboard    = DashboardTab(self._agg_repo)
-        self._suppliers    = SuppliersTab(self._sup_repo, self._cat_repo, self._agg_repo)
-        self._categories   = CategoriesTab(self._cat_repo, self._sup_repo)
-        self._products     = ProductsTab(self._li_repo)
-        self._summary      = SummaryTab()
-        self._documents    = DocumentsTab(self._pipeline, self._inv_repo)
-        self._review_queue = ReviewQueueTab(self._review_repo, self._inv_repo)
+        self._dashboard        = DashboardTab(self._agg_repo)
+        self._suppliers        = SuppliersTab(self._sup_repo, self._cat_repo, self._agg_repo)
+        self._categories       = CategoriesTab(self._cat_repo, self._sup_repo)
+        self._products         = ProductsTab(self._li_repo)
+        self._materials        = MaterialSummaryTab(self._li_repo)
+        self._summary          = SummaryTab()
+        self._documents        = DocumentsTab(self._pipeline, self._inv_repo)
+        self._review_queue     = ReviewQueueTab(self._review_repo, self._inv_repo)
 
         for page in (
             self._dashboard, self._suppliers, self._categories,
-            self._products, self._summary, self._documents, self._review_queue,
+            self._products, self._materials, self._summary,
+            self._documents, self._review_queue,
         ):
             self._stack.addWidget(page)
 
         # Wire signals
         self._dashboard.seed_requested.connect(self._on_seed_requested)
         self._documents.import_completed.connect(self._refresh_all)
+        self._documents.import_completed.connect(self._materials.refresh)
 
         self._stack.setCurrentIndex(0)
 
@@ -150,7 +154,7 @@ class MainWindow(QMainWindow):
     def _page_name(index: int) -> str:
         names = [
             "Dashboard", "Suppliers", "Categories",
-            "Products", "Summary", "Documents", "Review Queue",
+            "Products", "Materials", "Summary", "Documents", "Review Queue",
         ]
         return names[index] if index < len(names) else ""
 

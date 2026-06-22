@@ -316,6 +316,9 @@ class ProcessingPipeline:
                     vat_rate=ei.vat_pct,
                     length_per_unit=ei.length_per_unit,
                     total_length=ei.total_length,
+                    unit_type=ei.unit_type.value,
+                    normalized_quantity=ei.normalized_quantity,
+                    material_category=ei.material_category.value,
                     confidence=ei.confidence,
                     needs_review=ei.needs_review,
                 )
