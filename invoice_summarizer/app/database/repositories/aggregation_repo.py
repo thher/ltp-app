@@ -9,11 +9,123 @@ from app.database.models import AggregatedPurchase, CategoryAggregation
 class AggregationRepository:
     """
     Read/write for aggregated_purchases and category_aggregations.
-    Also provides all dashboard-level queries.
+    Also provides all dashboard-level and list-view queries.
     """
 
     def __init__(self, db: DatabaseManager) -> None:
         self.db = db
+
+    # ── Dashboard KPIs ────────────────────────────────────────────────
+
+    def total_suppliers(self) -> int:
+        return self.db.fetchscalar("SELECT COUNT(*) FROM suppliers") or 0
+
+    def total_invoices(self) -> int:
+        return self.db.fetchscalar("SELECT COUNT(*) FROM invoices") or 0
+
+    def total_spend(self) -> float:
+        return (
+            self.db.fetchscalar(
+                "SELECT COALESCE(SUM(grand_total), 0) FROM invoices "
+                "WHERE status = 'processed'"
+            )
+            or 0.0
+        )
+
+    def total_categories(self) -> int:
+        return self.db.fetchscalar("SELECT COUNT(*) FROM categories") or 0
+
+    # ── Spend by category (live, via invoices → suppliers → categories) ──
+
+    def spend_by_category(self) -> list[dict]:
+        """
+        Returns per-category spend aggregated directly from the invoices table.
+        This query is used by both the Dashboard and Categories screens.
+        """
+        rows = self.db.fetchall(
+            """
+            SELECT
+                c.id,
+                c.name,
+                c.color,
+                COALESCE(SUM(i.grand_total), 0.0)  AS total_gross,
+                COUNT(DISTINCT i.id)               AS invoice_count,
+                COUNT(DISTINCT s.id)               AS supplier_count
+            FROM categories c
+            LEFT JOIN suppliers s ON s.category_id = c.id
+            LEFT JOIN invoices   i ON i.supplier_id = s.id
+                                   AND i.status = 'processed'
+            GROUP BY c.id, c.name, c.color
+            ORDER BY total_gross DESC
+            """
+        )
+        return [dict(r) for r in rows]
+
+    # ── Supplier-level stats (for Suppliers screen table) ─────────────
+
+    def supplier_stats(self) -> list[dict]:
+        """
+        Returns one row per supplier with aggregated invoice data.
+        [{id, canonical_name, category_name, category_color,
+          category_id, country, invoice_count, total_spend}]
+        """
+        rows = self.db.fetchall(
+            """
+            SELECT
+                s.id,
+                s.canonical_name,
+                COALESCE(c.name,  'Uncategorized') AS category_name,
+                COALESCE(c.color, '#6c7086')       AS category_color,
+                s.category_id,
+                COALESCE(s.country, '')            AS country,
+                COUNT(DISTINCT i.id)               AS invoice_count,
+                COALESCE(SUM(i.grand_total), 0.0)  AS total_spend
+            FROM suppliers s
+            LEFT JOIN categories c ON c.id = s.category_id
+            LEFT JOIN invoices   i ON i.supplier_id = s.id
+                                   AND i.status = 'processed'
+            GROUP BY s.id, s.canonical_name, c.name, c.color, s.category_id, s.country
+            ORDER BY s.canonical_name
+            """
+        )
+        return [dict(r) for r in rows]
+
+    # ── Dashboard tables ──────────────────────────────────────────────
+
+    def top_suppliers_by_spend(self, limit: int = 10) -> list[dict]:
+        rows = self.db.fetchall(
+            """
+            SELECT s.id AS supplier_id,
+                   s.canonical_name,
+                   COALESCE(SUM(i.grand_total), 0) AS total_gross,
+                   COUNT(i.id)                     AS invoice_count
+            FROM suppliers s
+            LEFT JOIN invoices i ON i.supplier_id = s.id
+                                 AND i.status = 'processed'
+            GROUP BY s.id, s.canonical_name
+            ORDER BY total_gross DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        return [dict(r) for r in rows]
+
+    def top_suppliers_by_invoice_count(self, limit: int = 10) -> list[dict]:
+        rows = self.db.fetchall(
+            """
+            SELECT s.id AS supplier_id,
+                   s.canonical_name,
+                   COUNT(i.id)                     AS invoice_count,
+                   COALESCE(SUM(i.grand_total), 0) AS total_gross
+            FROM suppliers s
+            LEFT JOIN invoices i ON i.supplier_id = s.id
+            GROUP BY s.id, s.canonical_name
+            ORDER BY invoice_count DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        return [dict(r) for r in rows]
 
     # ── Aggregated Purchases ──────────────────────────────────────────
 
@@ -50,11 +162,8 @@ class AggregationRepository:
 
     def find_by_supplier(self, supplier_id: int) -> list[AggregatedPurchase]:
         rows = self.db.fetchall(
-            """
-            SELECT * FROM aggregated_purchases
-            WHERE supplier_id = ?
-            ORDER BY total_gross DESC
-            """,
+            "SELECT * FROM aggregated_purchases WHERE supplier_id = ? "
+            "ORDER BY total_gross DESC",
             (supplier_id,),
         )
         return [self._row_to_purchase(r) for r in rows]
@@ -88,75 +197,6 @@ class AggregationRepository:
                     agg.supplier_count,
                 ),
             )
-
-    def spend_by_category(self) -> list[dict]:
-        """Returns [{category_name, color, total_gross, invoice_count, supplier_count}]."""
-        rows = self.db.fetchall(
-            """
-            SELECT c.name, c.color,
-                   COALESCE(SUM(ca.total_gross), 0)    AS total_gross,
-                   COALESCE(SUM(ca.invoice_count), 0)  AS invoice_count,
-                   COALESCE(MAX(ca.supplier_count), 0) AS supplier_count
-            FROM categories c
-            LEFT JOIN category_aggregations ca ON ca.category_id = c.id
-            GROUP BY c.id, c.name, c.color
-            ORDER BY total_gross DESC
-            """
-        )
-        return [dict(r) for r in rows]
-
-    # ── Dashboard KPIs ────────────────────────────────────────────────
-
-    def total_suppliers(self) -> int:
-        return self.db.fetchscalar("SELECT COUNT(*) FROM suppliers") or 0
-
-    def total_invoices(self) -> int:
-        return self.db.fetchscalar("SELECT COUNT(*) FROM invoices") or 0
-
-    def total_spend(self) -> float:
-        return (
-            self.db.fetchscalar(
-                "SELECT COALESCE(SUM(grand_total), 0) FROM invoices WHERE status = 'processed'"
-            )
-            or 0.0
-        )
-
-    def top_suppliers_by_spend(self, limit: int = 10) -> list[dict]:
-        """Returns [{supplier_id, canonical_name, total_gross, invoice_count}]."""
-        rows = self.db.fetchall(
-            """
-            SELECT s.id AS supplier_id,
-                   s.canonical_name,
-                   COALESCE(SUM(i.grand_total), 0) AS total_gross,
-                   COUNT(i.id)                     AS invoice_count
-            FROM suppliers s
-            LEFT JOIN invoices i ON i.supplier_id = s.id
-                                 AND i.status = 'processed'
-            GROUP BY s.id, s.canonical_name
-            ORDER BY total_gross DESC
-            LIMIT ?
-            """,
-            (limit,),
-        )
-        return [dict(r) for r in rows]
-
-    def top_suppliers_by_invoice_count(self, limit: int = 10) -> list[dict]:
-        """Returns [{supplier_id, canonical_name, invoice_count, total_gross}]."""
-        rows = self.db.fetchall(
-            """
-            SELECT s.id AS supplier_id,
-                   s.canonical_name,
-                   COUNT(i.id)                     AS invoice_count,
-                   COALESCE(SUM(i.grand_total), 0) AS total_gross
-            FROM suppliers s
-            LEFT JOIN invoices i ON i.supplier_id = s.id
-            GROUP BY s.id, s.canonical_name
-            ORDER BY invoice_count DESC
-            LIMIT ?
-            """,
-            (limit,),
-        )
-        return [dict(r) for r in rows]
 
     # ── Helpers ───────────────────────────────────────────────────────
 
