@@ -71,9 +71,9 @@ class ProductsTab(QWidget):
         subtitle.setWordWrap(True)
         b_layout.addWidget(subtitle)
 
-        self._table = QTableWidget(0, 6)
+        self._table = QTableWidget(0, 7)
         self._table.setHorizontalHeaderLabels(
-            ["Supplier", "Description", "Unit", "Total Qty", "Total Spend", "Count"]
+            ["Supplier", "Description", "Unit", "Total Qty", "Length (m)", "Total Spend", "Count"]
         )
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -87,6 +87,7 @@ class ProductsTab(QWidget):
         hdr.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         hdr.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
         hdr.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        hdr.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
         b_layout.addWidget(self._table)
 
         self._count_lbl = QLabel()
@@ -128,15 +129,21 @@ class ProductsTab(QWidget):
             qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self._table.setItem(r, 3, qty_item)
 
+            length_m = row.get("total_length_m")
+            length_str = f"{length_m:,.1f}" if length_m else "—"
+            length_item = QTableWidgetItem(length_str)
+            length_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            self._table.setItem(r, 4, length_item)
+
             spend = row.get("total_spend")
             spend_str = f"{spend:,.2f}" if spend else "—"
             spend_item = QTableWidgetItem(spend_str)
             spend_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            self._table.setItem(r, 4, spend_item)
+            self._table.setItem(r, 5, spend_item)
 
             cnt_item = QTableWidgetItem(str(row.get("occurrences", 0)))
             cnt_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self._table.setItem(r, 5, cnt_item)
+            self._table.setItem(r, 6, cnt_item)
 
         n = len(rows)
         self._count_lbl.setText(

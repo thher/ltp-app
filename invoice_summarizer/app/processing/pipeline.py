@@ -314,6 +314,8 @@ class ProcessingPipeline:
                     unit_price=ei.unit_price,
                     line_total=ei.line_total,
                     vat_rate=ei.vat_pct,
+                    length_per_unit=ei.length_per_unit,
+                    total_length=ei.total_length,
                     confidence=ei.confidence,
                     needs_review=ei.needs_review,
                 )

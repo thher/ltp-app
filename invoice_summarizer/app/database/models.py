@@ -93,6 +93,8 @@ class LineItem:
     line_total: Optional[float] = None
     vat_rate: Optional[float] = None
     vat_amount: Optional[float] = None
+    length_per_unit: Optional[float] = None
+    total_length: Optional[float] = None
     confidence: float = 1.0
     needs_review: bool = False
 

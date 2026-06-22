@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 _MIGRATION_NAMES = [
     "v001_initial_schema",
     "v002_ocr_fields",
+    "v003_line_item_lengths",
 ]
 
 

@@ -17,8 +17,9 @@ class LineItemRepository:
                 INSERT INTO line_items
                     (invoice_id, product_id, raw_description, quantity, unit,
                      unit_price, line_total, vat_rate, vat_amount,
+                     length_per_unit, total_length,
                      confidence, needs_review)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     item.invoice_id,
@@ -30,6 +31,8 @@ class LineItemRepository:
                     item.line_total,
                     item.vat_rate,
                     item.vat_amount,
+                    item.length_per_unit,
+                    item.total_length,
                     item.confidence,
                     int(item.needs_review),
                 ),
@@ -59,18 +62,23 @@ class LineItemRepository:
     ) -> list[dict]:
         """Return line items aggregated by supplier + normalized description.
 
-        Each dict has: supplier_name, raw_description, total_quantity,
-        total_spend, occurrences, needs_review, unit.
+        Each dict has: supplier_name, raw_description, unit, total_quantity,
+        total_length_m, total_spend, occurrences, needs_review.
+
+        total_length_m is non-NULL only when every row in the group has a
+        total_length value (i.e. the bundle prefix was detected for all rows).
+        When present it should be used for aggregation instead of total_quantity.
         """
         base = """
             SELECT
                 COALESCE(s.canonical_name, '—') AS supplier_name,
                 li.raw_description,
                 li.unit,
-                SUM(COALESCE(li.quantity, 0))    AS total_quantity,
-                SUM(COALESCE(li.line_total, 0))  AS total_spend,
-                COUNT(*)                          AS occurrences,
-                MAX(li.needs_review)              AS needs_review
+                SUM(COALESCE(li.quantity, 0))             AS total_quantity,
+                SUM(li.total_length)                       AS total_length_m,
+                SUM(COALESCE(li.line_total, 0))           AS total_spend,
+                COUNT(*)                                   AS occurrences,
+                MAX(li.needs_review)                       AS needs_review
             FROM line_items li
             JOIN invoices i ON li.invoice_id = i.id
             LEFT JOIN suppliers s ON i.supplier_id = s.id
@@ -108,6 +116,8 @@ class LineItemRepository:
             line_total=row["line_total"],
             vat_rate=row["vat_rate"],
             vat_amount=row["vat_amount"],
+            length_per_unit=row["length_per_unit"],
+            total_length=row["total_length"],
             confidence=row["confidence"],
             needs_review=bool(row["needs_review"]),
         )

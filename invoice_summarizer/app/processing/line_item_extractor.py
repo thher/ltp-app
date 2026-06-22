@@ -32,6 +32,14 @@ _COL_FRACTIONS: list[tuple[str, float, float]] = [
     ("amount",      0.810, 1.000),
 ]
 
+# "22 stk a 4,8 28X120 ROYAL TERRASSEBORD"
+# "70 stk a 3,6 meter 48x148 JUST. IMPREGNERT"
+# group 1 = piece count, group 2 = length per piece, group 3 = product description
+_BUNDLE_RE = re.compile(
+    r"^(\d+(?:[.,]\d+)?)\s+stk\s+a\s+(\d+(?:[.,]\d+)?)\s*(?:m(?:eter)?\s+)?(.+)",
+    re.I | re.DOTALL,
+)
+
 _TABLE_HEADER_WORDS = {"tekst", "antall", "pris", "enh", "rabatt", "mva", "beløp"}
 
 _STOP_PATTERNS = [
@@ -48,12 +56,14 @@ _SECTION_RE = re.compile(
 @dataclass
 class ExtractedLineItem:
     description: str = ""
-    quantity: Optional[float] = None
+    quantity: Optional[float] = None        # piece count
     unit: Optional[str] = None
     unit_price: Optional[float] = None
     discount_pct: Optional[float] = None
     vat_pct: Optional[float] = None
     line_total: Optional[float] = None
+    length_per_unit: Optional[float] = None  # metres per piece (e.g. 4.8)
+    total_length: Optional[float] = None     # quantity × length_per_unit
     section: str = ""
     confidence: float = 1.0
     needs_review: bool = False
@@ -192,12 +202,15 @@ class LineItemExtractor:
 
     @staticmethod
     def _parse_number(s: str) -> Optional[float]:
-        """Parse Norwegian-format numbers (space thousands, comma decimal)."""
+        """Parse Norwegian-format numbers (space thousands, comma decimal).
+
+        Handles 1- or 2-decimal comma notation: "4,8" → 4.8, "1 234,56" → 1234.56.
+        """
         s = s.strip().replace("\xa0", "").replace(" ", "")
         if not s:
             return None
-        # Norwegian: 1 234,56  →  strip spaces → 1234,56  →  1234.56
-        if re.search(r"\d,\d{2}$", s):
+        # Comma followed by 1 or 2 digits at end → decimal separator
+        if re.search(r"\d,[0-9]{1,2}$", s):
             s = s.replace(".", "").replace(",", ".")
         else:
             s = s.replace(",", "")
@@ -212,7 +225,6 @@ class LineItemExtractor:
         description: str,
         section: str,
     ) -> Optional[ExtractedLineItem]:
-        qty        = self._parse_number(cols.get("quantity", ""))
         unit_price = self._parse_number(cols.get("unit_price", ""))
         discount   = self._parse_number(cols.get("discount", ""))
         vat        = self._parse_number(cols.get("vat", ""))
@@ -221,6 +233,24 @@ class LineItemExtractor:
 
         if amount is None and unit_price is None:
             return None
+
+        # Detect "22 stk a 4,8 <product name>" bundle prefix
+        length_per_unit: Optional[float] = None
+        total_length: Optional[float] = None
+        bm = _BUNDLE_RE.match(description)
+        if bm:
+            piece_count   = self._parse_number(bm.group(1))
+            length_sample = self._parse_number(bm.group(2))
+            # Sanity: board lengths realistically < 30 m
+            if piece_count and length_sample and length_sample < 30:
+                description     = bm.group(3).strip()
+                length_per_unit = length_sample
+                qty             = piece_count
+                total_length    = piece_count * length_sample
+            else:
+                qty = self._parse_number(cols.get("quantity", ""))
+        else:
+            qty = self._parse_number(cols.get("quantity", ""))
 
         missing = sum(1 for v in (qty, unit_price, amount) if v is None)
         confidence = max(0.0, 1.0 - missing * 0.25)
@@ -233,6 +263,8 @@ class LineItemExtractor:
             discount_pct=discount,
             vat_pct=vat,
             line_total=amount,
+            length_per_unit=length_per_unit,
+            total_length=total_length,
             section=section,
             confidence=confidence,
             needs_review=confidence < 0.6,
