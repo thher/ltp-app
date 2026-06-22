@@ -464,6 +464,17 @@ _UNIT_CANON: dict[str, str] = {
 # Dimension pattern: 48X198, 48 x 198, 48×198 -> 48x198
 _DIM_RE = re.compile(r'(\d+)\s*[xX×]\s*(\d+)')
 
+# Structural grade codes: C24, C14, T3, GL28c, etc.
+_GRADE_RE = re.compile(r'\b(C\d+|T\d+|GL\d+[Ccs]?)\b', re.I)
+
+# Noise words: supplier branding and surface-finish descriptors that do not
+# identify the product (e.g. "UH." = uhøvlet, "JUST." = justert, "MM" =
+# Moelven Maskin, "MOELVEN" = manufacturer name).
+_NOISE_RE = re.compile(
+    r'\b(?:UH|UHØVLET|JUST|JUSTERT|MM|MOELVEN)\b\.?',
+    re.I,
+)
+
 
 def _normalize_unit(unit: str) -> str:
     """Return canonical unit string, or the input lowercased if unknown."""
@@ -471,14 +482,71 @@ def _normalize_unit(unit: str) -> str:
 
 
 def _normalize_product(description: str) -> str:
-    """Return a normalised product key for aggregation.
+    """Lowercase grouping key: dimensions normalised, noise words stripped.
 
-    Normalises dimension notation (48X198 -> 48x198), collapses
-    whitespace and lowercases so the same product from any supplier
-    maps to the same aggregation bucket.
+    48X198 UH. JUST. C24  ->  48x198 c24
+    28X120 MOELVEN ROYAL TERRASSEBORD  ->  28x120 royal terrassebord
     """
     s = _DIM_RE.sub(lambda m: f"{m.group(1)}x{m.group(2)}", description)
+    s = _NOISE_RE.sub(' ', s)
     return ' '.join(s.split()).lower()
+
+
+def _canonical_product(description: str) -> str:
+    """Clean display name: dimension stays lowercase, grades uppercase, rest title-cased.
+
+    48X198 UH. JUST. C24  ->  48x198 C24
+    28X120 MOELVEN ROYAL TERRASSEBORD  ->  28x120 Royal Terrassebord
+    """
+    s = _DIM_RE.sub(lambda m: f"{m.group(1)}x{m.group(2)}", description)
+    s = _NOISE_RE.sub(' ', s)
+    parts = []
+    for tok in s.split():
+        if re.match(r'^\d+x\d+$', tok):    # dimension token
+            parts.append(tok)
+        elif _GRADE_RE.match(tok):           # grade code: C24, T3, GL28c
+            parts.append(tok.upper())
+        else:
+            parts.append(tok.title())
+    return ' '.join(parts)
+
+
+# ── Material category detection ───────────────────────────────────────────────
+#
+# Categories are detected from the normalised (lowercase) product key.
+# Priority order matters: transport is checked first, then doors/windows,
+# insulation, boards, timber (dimension + grade), other.
+
+_IS_TRANSPORT  = re.compile(
+    r'\btransport\b|\bfrakt\b|\bkj[øo]ring\b|\blevering\b', re.I)
+_IS_DOOR_WIN   = re.compile(
+    r'd[øo]r|vindu|dørblad|karm\b|\bspir\b', re.I)
+_IS_INSULATION = re.compile(
+    r'isolasj|glava|isover|rockwool|mineralull|steinull|leca\b', re.I)
+_IS_BOARD      = re.compile(
+    r'terrassebord|kledning|panel|spon\b|\bfjel\b|\bgulv\b|\blekt(?:er)?\b', re.I)
+_HAS_DIM       = re.compile(r'\d+x\d+')
+
+_CATEGORIES = (
+    ("transport",    _IS_TRANSPORT),
+    ("doors_windows", _IS_DOOR_WIN),
+    ("insulation",   _IS_INSULATION),
+    ("boards",       _IS_BOARD),
+)
+
+
+def _detect_category(norm_key: str) -> str:
+    for cat, pat in _CATEGORIES:
+        if pat.search(norm_key):
+            return cat
+    if _HAS_DIM.search(norm_key):
+        return "timber" if _GRADE_RE.search(norm_key) else "boards"
+    return "other"
+
+
+def _extract_dimension(norm_key: str) -> str:
+    m = _HAS_DIM.search(norm_key)
+    return m.group(0) if m else ""
 
 
 # ── Supplier profiles (optional helpers for known suppliers) ──────────────────
@@ -862,17 +930,16 @@ def _process_pdf(
 
 # ── Aggregation ───────────────────────────────────────────────────────────────
 
-def _aggregate_products(results: list[PDFResult]) -> list[dict]:
-    """Group line items by (normalised product name, normalised unit).
+def _collect_product_data(results: list[PDFResult]) -> list[dict]:
+    """Aggregate all line items by (normalised product, normalised unit).
 
-    Dimension notation is normalised (48X198 -> 48x198) so the same
-    product is merged regardless of supplier formatting differences.
+    Noise words (UH., JUST., MM, MOELVEN) are stripped and dimension
+    notation is normalised before grouping, so the same product described
+    differently by different suppliers ends up in the same bucket.
+
+    Returns a flat list of group dicts (one per unique product+unit).
     """
-    groups: dict[tuple[str, str], dict] = defaultdict(lambda: {
-        "description": "", "unit": "", "norm_unit": "",
-        "qty": 0.0, "total_length_m": 0.0, "total_spend": 0.0,
-        "appearances": 0, "suppliers": set(), "pdfs": set(), "invoices": set(),
-    })
+    groups: dict[str, dict] = {}
 
     for res in results:
         for inv in res.invoices:
@@ -880,15 +947,34 @@ def _aggregate_products(results: list[PDFResult]) -> list[dict]:
                 desc = item.get("Description", "").strip()
                 if not desc or len(desc) < 2:
                     continue
-                unit      = item.get("Unit", "") or ""
-                norm_key  = (_normalize_product(desc), _normalize_unit(unit))
 
-                g = groups[norm_key]
-                if not g["description"]:
-                    g["description"] = desc
-                if not g["unit"] and unit:
-                    g["unit"] = unit
-                g["norm_unit"] = norm_key[1]
+                unit      = item.get("Unit", "") or ""
+                norm_prod = _normalize_product(desc)
+                norm_unit = _normalize_unit(unit)
+                agg_key   = f"{norm_prod}|{norm_unit}"
+
+                if agg_key not in groups:
+                    groups[agg_key] = {
+                        "norm_key":       norm_prod,
+                        "display":        _canonical_product(desc),
+                        "unit":           unit,
+                        "norm_unit":      norm_unit,
+                        "category":       _detect_category(norm_prod),
+                        "dimension":      _extract_dimension(norm_prod),
+                        "qty":            0.0,
+                        "total_length_m": 0.0,
+                        "total_spend":    0.0,
+                        "appearances":    0,
+                        "suppliers":      set(),
+                        "pdfs":           set(),
+                        "invoices":       set(),
+                    }
+
+                g = groups[agg_key]
+                # Prefer shorter canonical display (less noise)
+                candidate = _canonical_product(desc)
+                if candidate and (not g["display"] or len(candidate) < len(g["display"])):
+                    g["display"] = candidate
 
                 qty = item.get("Quantity")
                 if qty:
@@ -906,21 +992,72 @@ def _aggregate_products(results: list[PDFResult]) -> list[dict]:
                 if inv.invoice_number:
                     g["invoices"].add(inv.invoice_number)
 
+    return list(groups.values())
+
+
+def _material_master(product_data: list[dict]) -> list[dict]:
+    """All normalised products sorted by total spend."""
     rows = []
-    for (norm_desc, norm_unit), g in sorted(
-        groups.items(), key=lambda x: -(x[1]["total_spend"] or 0)
-    ):
+    for g in sorted(product_data, key=lambda x: -(x["total_spend"] or 0)):
         rows.append({
-            "Product":           g["description"],
-            "Norm. Product Key": norm_desc,
-            "Unit":              g["unit"] or norm_unit,
+            "Product":           g["display"],
+            "Category":          g["category"].replace("_", " ").title(),
+            "Unit":              g["unit"] or g["norm_unit"],
             "Total Quantity":    round(g["qty"], 2) if g["qty"] else None,
             "Total Length m":    round(g["total_length_m"], 2) if g["total_length_m"] else None,
             "Total Spend (NOK)": round(g["total_spend"], 2) if g["total_spend"] else None,
-            "Appears in # rows": g["appearances"],
+            "Invoice Count":     g["appearances"],
             "Suppliers":         ", ".join(sorted(g["suppliers"])),
-            "Source PDFs":       ", ".join(sorted(g["pdfs"])),
-            "Invoice #(s)":      ", ".join(sorted(g["invoices"])),
+        })
+    return rows
+
+
+def _timber_summary(product_data: list[dict]) -> list[dict]:
+    """Timber grouped by dimension (e.g. 48x198), summing lm and spend.
+
+    Items sold as lm contribute their qty; bundle items contribute
+    their total_length_m (pieces x metres/piece).
+    """
+    dims: dict[str, dict] = defaultdict(lambda: {
+        "lm": 0.0, "spend": 0.0, "products": set(),
+    })
+    for g in product_data:
+        if g["category"] != "timber":
+            continue
+        dim = g["dimension"]
+        if not dim:
+            continue
+        lm = g["total_length_m"]
+        if not lm and g["norm_unit"] == "lm":
+            lm = g["qty"] or 0.0
+        dims[dim]["lm"]    += lm
+        dims[dim]["spend"] += g["total_spend"] or 0.0
+        dims[dim]["products"].add(g["display"])
+
+    rows = []
+    for dim, d in sorted(dims.items(), key=lambda x: -(x[1]["spend"] or 0)):
+        rows.append({
+            "Dimension":         dim,
+            "Total lm":          round(d["lm"], 2) if d["lm"] else None,
+            "Total Spend (NOK)": round(d["spend"], 2) if d["spend"] else None,
+            "Products":          ", ".join(sorted(d["products"])),
+        })
+    return rows
+
+
+def _category_summary(product_data: list[dict], category: str) -> list[dict]:
+    """Product, unit, qty, spend for one material category."""
+    rows = []
+    for g in sorted(
+        [g for g in product_data if g["category"] == category],
+        key=lambda x: -(x["total_spend"] or 0),
+    ):
+        rows.append({
+            "Product":           g["display"],
+            "Unit":              g["unit"] or g["norm_unit"],
+            "Total Quantity":    round(g["qty"], 2) if g["qty"] else None,
+            "Total Spend (NOK)": round(g["total_spend"], 2) if g["total_spend"] else None,
+            "Invoice Count":     g["appearances"],
         })
     return rows
 
@@ -986,6 +1123,7 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
             ws.column_dimensions[get_column_letter(c)].width = w
 
     all_invoices: list[InvoiceData] = [inv for res in results for inv in res.invoices]
+    product_data: list[dict]        = _collect_product_data(results)
 
     # ── Sheet 1: Invoices ─────────────────────────────────────────────────────
     ws1 = wb.active
@@ -1052,39 +1190,92 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
 
     _col_widths(ws2, [30, 22, 20, 14, 40, 14, 10, 8, 12, 11, 8, 14, 13, 14, 14, 11])
 
-    # ── Sheet 3: Aggregated Products ──────────────────────────────────────────
-    ws3 = wb.create_sheet("Aggregated Products")
-    ws3["A1"] = (
-        "Aggregated Products -- normalised by product name + unit, sorted by total spend"
+    def _write_report_sheet(
+        ws, title: str, merge_cols: int, rows: list[dict],
+        col_widths: list[int], empty_msg: str = "(no data)",
+    ) -> None:
+        ws["A1"] = title
+        ws["A1"].font = title_font
+        ws.merge_cells(f"A1:{get_column_letter(merge_cols)}1")
+        ws.row_dimensions[1].height = 18
+        if rows:
+            cols = list(rows[0].keys())
+            _hdr_row(ws, 2, cols)
+            for r, row_data in enumerate(rows, start=3):
+                for c, key in enumerate(cols, 1):
+                    ws.cell(row=r, column=c, value=row_data.get(key))
+            _col_widths(ws, col_widths)
+        else:
+            ws.cell(row=2, column=1, value=empty_msg).font = Font(italic=True)
+
+    # ── Sheet 3: Material Master ──────────────────────────────────────────────
+    _write_report_sheet(
+        wb.create_sheet("Material Master"),
+        title="Material Master -- all products normalised, sorted by spend",
+        merge_cols=8,
+        rows=_material_master(product_data),
+        col_widths=[42, 16, 10, 14, 14, 18, 14, 30],
+        empty_msg="(no line items extracted)",
     )
-    ws3["A1"].font = title_font
-    ws3.merge_cells("A1:J1")
 
-    agg = _aggregate_products(results)
-    if agg:
-        AGG_COLS = list(agg[0].keys())
-        _hdr_row(ws3, 2, AGG_COLS)
-        for r, row_data in enumerate(agg, start=3):
-            for c, key in enumerate(AGG_COLS, 1):
-                ws3.cell(row=r, column=c, value=row_data.get(key))
-        _col_widths(ws3, [38, 38, 8, 14, 14, 18, 18, 28, 40, 28])
-    else:
-        ws3.cell(row=2, column=1,
-                 value="(no line items to aggregate)").font = Font(italic=True)
+    # ── Sheet 4: Timber Summary ───────────────────────────────────────────────
+    _write_report_sheet(
+        wb.create_sheet("Timber Summary"),
+        title="Timber -- structural dimension lumber, grouped by cross-section",
+        merge_cols=4,
+        rows=_timber_summary(product_data),
+        col_widths=[14, 12, 18, 60],
+        empty_msg="(no timber line items found)",
+    )
 
-    # ── Sheet 4: Supplier Summary ─────────────────────────────────────────────
-    ws4 = wb.create_sheet("Supplier Summary")
-    ws4["A1"] = "Supplier Summary"
-    ws4["A1"].font = title_font
+    # ── Sheet 5: Insulation Summary ───────────────────────────────────────────
+    _write_report_sheet(
+        wb.create_sheet("Insulation Summary"),
+        title="Insulation -- mineral wool, EPS, etc.",
+        merge_cols=5,
+        rows=_category_summary(product_data, "insulation"),
+        col_widths=[42, 10, 14, 18, 14],
+        empty_msg="(no insulation line items found)",
+    )
 
-    sup_rows = _supplier_summary(results)
-    if sup_rows:
-        SUP_COLS = list(sup_rows[0].keys())
-        _hdr_row(ws4, 2, SUP_COLS)
-        for r, row_data in enumerate(sup_rows, start=3):
-            for c, key in enumerate(SUP_COLS, 1):
-                ws4.cell(row=r, column=c, value=row_data.get(key))
-        _col_widths(ws4, [30, 14, 18, 28, 55])
+    # ── Sheet 6: Boards Summary ───────────────────────────────────────────────
+    _write_report_sheet(
+        wb.create_sheet("Boards Summary"),
+        title="Boards -- decking, cladding, panels, laths",
+        merge_cols=5,
+        rows=_category_summary(product_data, "boards"),
+        col_widths=[42, 10, 14, 18, 14],
+        empty_msg="(no boards line items found)",
+    )
+
+    # ── Sheet 7: Doors & Windows ──────────────────────────────────────────────
+    _write_report_sheet(
+        wb.create_sheet("Doors & Windows"),
+        title="Doors & Windows",
+        merge_cols=5,
+        rows=_category_summary(product_data, "doors_windows"),
+        col_widths=[42, 10, 14, 18, 14],
+        empty_msg="(no doors/windows line items found)",
+    )
+
+    # ── Sheet 8: Transport Summary ────────────────────────────────────────────
+    _write_report_sheet(
+        wb.create_sheet("Transport Summary"),
+        title="Transport & Delivery",
+        merge_cols=5,
+        rows=_category_summary(product_data, "transport"),
+        col_widths=[42, 10, 14, 18, 14],
+        empty_msg="(no transport line items found)",
+    )
+
+    # ── Sheet 9: Supplier Summary ─────────────────────────────────────────────
+    _write_report_sheet(
+        wb.create_sheet("Supplier Summary"),
+        title="Supplier Summary",
+        merge_cols=5,
+        rows=_supplier_summary(results),
+        col_widths=[30, 14, 18, 28, 55],
+    )
 
     wb.save(str(output_path))
 
