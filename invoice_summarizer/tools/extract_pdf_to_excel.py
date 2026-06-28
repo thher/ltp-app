@@ -316,6 +316,11 @@ def _try_parse_item(line: str, section: str) -> dict | None:
     def is_num(t: str | None) -> bool:
         return bool(t and re.match(r'^\d+(?:[.,]\d+)?$', t))
 
+    def _base_digits(s: str) -> int:
+        """Number of digits before the decimal in a Norwegian amount like '665,60'."""
+        m = re.match(r'^(\d+)', s)
+        return len(m.group(1)) if m else 0
+
     # Step 1: line total
     t1 = tok(1)
     if not is_amount(t1):
@@ -323,14 +328,15 @@ def _try_parse_item(line: str, section: str) -> dict | None:
     total_str = t1
     consumed = 1
     t2 = tok(2)
-    if is_int(t2) and t2 not in _VAT_RATES:
+    # Only join as thousands when base has exactly 3 pre-decimal digits (e.g. 665 in 32 665,60)
+    if is_int(t2) and t2 not in _VAT_RATES and _base_digits(t1) == 3:
         comb = _parse_no_num(t2 + " " + t1)
         simp = _parse_no_num(t1)
         if comb and simp and comb >= simp + 1000:
             total_str = t2 + " " + t1
             consumed = 2
     line_total = _parse_no_num(total_str)
-    if not line_total:
+    if line_total is None:
         return None
     idx -= consumed
 
@@ -364,7 +370,7 @@ def _try_parse_item(line: str, section: str) -> dict | None:
         up_str = nxt
         idx -= 1
         nxt2 = tokens[idx - 1] if idx >= 1 else None
-        if is_int(nxt2) and nxt2 not in _VAT_RATES:
+        if is_int(nxt2) and nxt2 not in _VAT_RATES and _base_digits(nxt) == 3:
             comb = _parse_no_num(nxt2 + " " + nxt)
             simp = _parse_no_num(nxt)
             if comb and simp and comb >= simp + 1000:
@@ -475,6 +481,90 @@ def _extract_line_items_text(text: str) -> list[dict]:
                 if item2:
                     items.append(item2)
                 pending_desc = ""
+
+    return items
+
+
+# ── Nydal Byggevarer dedicated parser ─────────────────────────────────────────
+#
+# Invoice column order (left → right):
+#   Beskrivelse | Antall | Enhetspris | Enhet | Rabatt% | Mva | Beløp
+#
+# Strategy:
+#   • Enter table mode when a header line containing "Beskrivelse" is found.
+#   • A line is a DATA ROW (closes the current item) when it ends with a
+#     2-decimal number – the Beløp column.  The number may have a space-
+#     separated thousands digit: "32 665,60".
+#   • Any line that does NOT end with a 2-decimal number is a description
+#     continuation; accumulate it and prepend to the next data row.
+#   • Stop at the MVA-summary / totals section.
+#
+# Column parsing is delegated to _try_parse_item (right-to-left):
+#   tok[-1]=Beløp, tok[-2]=Mva%, tok[-3]=Rabatt%, tok[-4]=Enhet,
+#   tok[-5]=Enhetspris, tok[-6]=Antall, tok[0..−7]=Beskrivelse.
+
+_NYDAL_DETECT_RE = re.compile(r'NYDAL\s+BYGGEVARER|NYDAL\s+BYGG', re.I)
+_NYDAL_HDR_RE    = re.compile(
+    r'Beskrivelse.{0,80}(?:Antall|Enhetspris|Bel[øo]p)', re.I
+)
+_NYDAL_STOP_RE   = re.compile(
+    r'MVA\s*\(\s*\d+\s*%'
+    r'|F[øo]lgende\s+bel[øo]p'
+    r'|Totalt\s+bel[øo]p'
+    r'|Betalingsbetingelser',
+    re.I,
+)
+# A data line ends with an optional thousands prefix then X,XX or X.XX
+_NYDAL_ROW_CLOSE_RE = re.compile(r'(?:^|\s)\d{1,3}(?: \d{3})*[,.]\d{2}\s*$')
+
+
+def _is_nydal(text: str, filename: str) -> bool:
+    """Return True when the invoice is from Nydal Byggevarer."""
+    return (bool(_NYDAL_DETECT_RE.search(text[:3000]))
+            or 'nydal' in filename.lower())
+
+
+def _parse_nydal_items(text: str) -> list[dict]:
+    """Extract every visible invoice row from a Nydal Byggevarer invoice.
+
+    Reads the table between the "Beskrivelse" header and the MVA/totals section.
+    Multi-line descriptions are supported: description-only lines (no trailing
+    amount) accumulate and are prepended to the next data line before parsing.
+    """
+    items:    list[dict] = []
+    pending:  list[str]  = []   # description-only lines waiting for a data line
+    section:  str        = ""
+    in_table: bool       = False
+
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+
+        if not in_table:
+            if _NYDAL_HDR_RE.search(line):
+                in_table = True
+            continue
+
+        if _NYDAL_STOP_RE.search(line):
+            pending.clear()
+            break
+
+        if _SECTION_RE.match(line):
+            pending.clear()
+            section = line
+            continue
+
+        if _NYDAL_ROW_CLOSE_RE.search(line):
+            # Data line — prepend any accumulated description and parse
+            full = (' '.join(pending) + ' ' + line).strip() if pending else line
+            item = _try_parse_item(full, section)
+            if item is not None:
+                items.append(item)
+            pending.clear()
+        else:
+            # Description continuation (or section note) — accumulate
+            pending.append(line)
 
     return items
 
@@ -862,9 +952,16 @@ def _process_pdf(
         print(f"  Total    : {total} {currency}  Netto: {netto}")
 
         # E: Line items
-        print("  Extracting line items ...")
-        if n_blocks == 1 and ocr_results:
-            # Single invoice: spatial extraction has word bounding boxes
+        nydal = _is_nydal(block_text, pdf_path.name)
+        print(f"  Extracting line items (nydal={'yes' if nydal else 'no'}) ...")
+        if nydal:
+            items = _parse_nydal_items(block_text)
+            print(f"  -> Nydal: {len(items)} items")
+            if not items and n_blocks == 1 and ocr_results:
+                # Fallback: try spatial on OCR results
+                items = _extract_line_items_spatial(ocr_results)
+                print(f"  -> Nydal→Spatial fallback: {len(items)} items")
+        elif n_blocks == 1 and ocr_results:
             items = _extract_line_items_spatial(ocr_results)
             if items:
                 print(f"  -> Spatial: {len(items)} items")
