@@ -2,13 +2,18 @@
 
 Handles full-page OCR and top-crop fallback for payment-slip-only pages.
 Automatically detects Tesseract on Windows and selects the best available language.
+
+PDF rendering uses PyMuPDF (fitz) directly — no Poppler / pdf2image required.
 """
 from __future__ import annotations
 
+import logging
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -147,22 +152,47 @@ class OcrEngine:
     def extract_from_pdf(self, pdf_path: Path) -> list[OcrResult]:
         """Convert each PDF page to an image at DPI=200 and OCR it.
 
-        Returns one OcrResult per page, or empty list if pdf2image or
-        pytesseract is unavailable/broken.
+        Uses PyMuPDF (fitz) for rendering — no Poppler / pdf2image required.
+        Returns one OcrResult per page, or empty list on failure.
         """
         _configure_tesseract()
         try:
-            from pdf2image import convert_from_path
-        except ImportError:
+            import fitz
+            from PIL import Image
+        except ImportError as exc:
+            log.error("[OCR] Missing dependency: %s", exc)
             return []
 
         try:
-            images = convert_from_path(str(pdf_path), dpi=self.DPI)
-        except Exception:
+            doc = fitz.open(str(pdf_path))
+        except Exception as exc:
+            log.error("[OCR] Cannot open PDF %s: %s", pdf_path.name, exc)
             return []
 
-        lang = _get_ocr_lang()
-        return [self._ocr_image(img, lang) for img in images]
+        lang  = _get_ocr_lang()
+        mat   = fitz.Matrix(self.DPI / 72, self.DPI / 72)
+        total = len(doc)
+        log.info("[OCR] Starting: %s  (%d page(s), lang=%s)", pdf_path.name, total, lang)
+
+        results: list[OcrResult] = []
+        for page_num in range(total):
+            log.info("[OCR] Page %d/%d ...", page_num + 1, total)
+            try:
+                page = doc[page_num]
+                pix  = page.get_pixmap(matrix=mat, colorspace=fitz.csRGB)
+                img  = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                r    = self._ocr_image(img, lang)
+                log.info("[OCR] Page %d/%d done — %d chars, %d words",
+                         page_num + 1, total, len(r.text), len(r.words))
+            except Exception as exc:
+                log.warning("[OCR] Page %d/%d failed: %s", page_num + 1, total, exc)
+                r = OcrResult()
+            results.append(r)
+
+        doc.close()
+        total_chars = sum(len(r.text) for r in results)
+        log.info("[OCR] Complete: %d pages, %d chars total", len(results), total_chars)
+        return results
 
     # ── Image-level OCR ───────────────────────────────────────────────
 

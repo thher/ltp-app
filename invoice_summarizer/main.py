@@ -2,6 +2,7 @@
 Smart Invoice Summarizer — entry point.
 Run: python main.py
 """
+import logging
 import sys
 
 from PySide6.QtWidgets import QApplication
@@ -12,7 +13,22 @@ from app.database.migrations import MigrationRunner
 from app.ui.main_window import MainWindow
 
 
+def _configure_logging() -> None:
+    """Send INFO+ to stdout so import progress is visible in the console."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+        stream=sys.stdout,
+        force=True,
+    )
+    # Suppress verbose third-party noise
+    for noisy in ("pdfminer", "PIL", "fitz"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
+
+
 def main() -> int:
+    _configure_logging()
     config.ensure_dirs()
 
     db = DatabaseManager()

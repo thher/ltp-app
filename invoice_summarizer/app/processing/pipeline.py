@@ -1,9 +1,12 @@
 """Processing pipeline — orchestrates PDF -> DB for one or more invoices per file."""
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, TYPE_CHECKING
+
+log = logging.getLogger(__name__)
 
 from app.database.models import Invoice, LineItem, ReviewQueueItem
 from app.database.repositories.invoice_repo import InvoiceRepository
@@ -86,15 +89,20 @@ class ProcessingPipeline:
     # ── Public API ─────────────────────────────────────────────────────
 
     def run(self, pdf_path: Path) -> PipelineResult:
+        log.info("[Pipeline] import_pdf: %s", pdf_path.name)
         result = PipelineResult(original_path=pdf_path)
         try:
             result = self._process(pdf_path)
+            log.info("[Pipeline] import_pdf done: %s  status=%s  invoice_id=%s",
+                     pdf_path.name, result.status, result.invoice_id)
         except BaseException as exc:
+            log.exception("[Pipeline] import_pdf FAILED: %s  error=%s", pdf_path.name, exc)
             result.status = "error"
             result.error = str(exc)
         return result
 
     def run_batch(self, pdf_paths: list[Path]) -> list[PipelineResult]:
+        log.info("[Pipeline] run_batch: %d file(s)", len(pdf_paths))
         return [self.run(p) for p in pdf_paths]
 
     def reprocess_invoice(self, invoice: Invoice) -> PipelineResult:
@@ -222,10 +230,13 @@ class ProcessingPipeline:
 
         # 1. Hash on original (read-only)
         file_hash = self._fm.compute_hash(pdf_path)
+        log.info("[Pipeline] file_hash=%s  file=%s", file_hash[:12], pdf_path.name)
 
         # 2. File-level duplicate check
         existing = self._inv_repo.find_by_source_hash(file_hash)
         if existing:
+            log.info("[Pipeline] duplicate skipped: %s (invoice_id=%s)",
+                     pdf_path.name, existing.id)
             result.status = "duplicate"
             result.invoice_id = existing.id
             return result
@@ -233,13 +244,19 @@ class ProcessingPipeline:
         # 3. Copy to managed storage — never writes to original
         copy_path = self._fm.copy_for_import(pdf_path)
         result.copy_path = copy_path
+        log.info("[Pipeline] copied to: %s", copy_path)
 
         # 4. Digital text extraction
+        log.info("[Pipeline] text extraction start: %s", pdf_path.name)
         extraction = self._extractor.extract(copy_path)
         result.extraction = extraction
+        log.info("[Pipeline] text extraction done: method=%s  chars=%d  pages=%d  error=%s",
+                 extraction.method, len(extraction.text), extraction.page_count,
+                 extraction.error or "(none)")
 
         # 5. OCR status
         ocr_available, ocr_lang = self._get_ocr_status()
+        log.info("[Pipeline] OCR available=%s  lang=%s", ocr_available, ocr_lang or "n/a")
 
         # 6. Decide path
         chars_per_page = (
@@ -248,8 +265,10 @@ class ProcessingPipeline:
             else len(extraction.text)
         )
         is_scanned = chars_per_page < _SCANNED_THRESHOLD_CHARS_PER_PAGE
+        log.info("[Pipeline] chars_per_page=%.0f  is_scanned=%s", chars_per_page, is_scanned)
 
         if is_scanned and self._ocr is not None and self._splitter is not None:
+            log.info("[Pipeline] routing to OCR multi-invoice path")
             return self._process_ocr_multi(
                 pdf_path, copy_path, file_hash, extraction, result,
                 ocr_available, ocr_lang,
@@ -262,6 +281,7 @@ class ProcessingPipeline:
         else:
             extraction_method = "pdf_text"
 
+        log.info("[Pipeline] routing to single-invoice path  method=%s", extraction_method)
         return self._process_single(
             pdf_path, copy_path, file_hash, extraction, result,
             extraction_method=extraction_method,
@@ -282,8 +302,16 @@ class ProcessingPipeline:
         ocr_available: bool = False,
         ocr_lang: str = "",
     ) -> PipelineResult:
+        log.info("[Pipeline] parser start: %s", pdf_path.name)
         parse_result = self._parser.parse(extraction.text, filename=pdf_path.name)
         result.parse_result = parse_result
+        log.info("[Pipeline] parser done: supplier=%r  invoice_num=%r  date=%r  "
+                 "total=%s  confidence=%.0f%%",
+                 parse_result.supplier_name.value,
+                 parse_result.invoice_number.value,
+                 parse_result.invoice_date.value,
+                 parse_result.total_amount.value,
+                 parse_result.overall_confidence * 100)
 
         supplier_id = self._resolve_supplier(parse_result)
 
@@ -313,9 +341,11 @@ class ProcessingPipeline:
             ocr_text_length=len(extraction.text) if extraction.text else 0,
             parser_confidence=parse_result.overall_confidence,
         )
+        log.info("[Pipeline] DB save: invoice  file=%s  status=%s", pdf_path.name, invoice_status)
         invoice = self._inv_repo.save(invoice)
         result.invoice_id = invoice.id
         result.status = "ok"
+        log.info("[Pipeline] DB save done: invoice_id=%s", invoice.id)
 
         self._write_debug_file(
             copy_path,
@@ -359,7 +389,9 @@ class ProcessingPipeline:
         assert self._ocr is not None
         assert self._splitter is not None
 
+        log.info("[Pipeline] OCR start: %s", pdf_path.name)
         ocr_pages: list[OcrResult] = self._ocr.extract_from_pdf(copy_path)
+        log.info("[Pipeline] OCR complete: %d page(s) returned", len(ocr_pages))
 
         if not ocr_pages:
             self._write_debug_file(
@@ -380,7 +412,10 @@ class ProcessingPipeline:
 
         page_texts = [p.text for p in ocr_pages]
         combined_ocr_text = "\n\n".join(page_texts)
+        log.info("[Pipeline] splitter start: %d pages -> splitting into invoice groups",
+                 len(page_texts))
         groups: list[InvoicePageGroup] = self._splitter.split(page_texts)
+        log.info("[Pipeline] splitter done: %d group(s)", len(groups))
 
         if not groups:
             fake_extraction = ExtractionResult(
@@ -422,6 +457,8 @@ class ProcessingPipeline:
 
         sub_results: list[PipelineResult] = []
         for i, group in enumerate(groups):
+            log.info("[Pipeline] processing invoice group %d/%d  inv_num=%r  pages=%s",
+                     i + 1, len(groups), group.invoice_number, group.page_indices)
             sub = self._process_ocr_group(
                 group=group,
                 group_index=i,
@@ -434,6 +471,8 @@ class ProcessingPipeline:
                 ocr_available=ocr_available,
                 ocr_lang=ocr_lang,
             )
+            log.info("[Pipeline] group %d done: status=%s  invoice_id=%s",
+                     i + 1, sub.status, sub.invoice_id)
             sub_results.append(sub)
 
         ok_count = sum(1 for s in sub_results if s.ok)
@@ -457,10 +496,17 @@ class ProcessingPipeline:
     ) -> PipelineResult:
         sub = PipelineResult(original_path=pdf_path, copy_path=copy_path)
 
+        log.info("[Pipeline] parser start (group %d): %s", group_index, pdf_path.name)
         parse_result = self._parser.parse(
             group.combined_text, filename=pdf_path.name
         )
         sub.parse_result = parse_result
+        log.info("[Pipeline] parser done (group %d): supplier=%r  inv_num=%r  "
+                 "total=%s  confidence=%.0f%%",
+                 group_index, parse_result.supplier_name.value,
+                 parse_result.invoice_number.value,
+                 parse_result.total_amount.value,
+                 parse_result.overall_confidence * 100)
 
         derived_hash = (
             file_hash
@@ -499,9 +545,11 @@ class ProcessingPipeline:
             ocr_text_length=len(group.combined_text),
             parser_confidence=parse_result.overall_confidence,
         )
+        log.info("[Pipeline] DB save: invoice (group %d)  status=%s", group_index, invoice_status)
         invoice = self._inv_repo.save(invoice)
         sub.invoice_id = invoice.id
         sub.status = "ok"
+        log.info("[Pipeline] DB save done: invoice_id=%s", invoice.id)
 
         unmatched_count = 0
         if self._li_extractor is not None and self._li_repo is not None:
