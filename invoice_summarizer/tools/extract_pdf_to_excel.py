@@ -32,6 +32,11 @@ SHEETS IN OUTPUT EXCEL
                        Sorted by category then descending spend.
   2024 / 2025 / …  -- one sheet per year found in the data (dynamic);
                        same columns filtered to that year only.
+  Varelinjer        -- one row per raw invoice line item; columns:
+                       Faktura nr, Dato, Leverandør, Beskrivelse, Antall,
+                       Enhet, Stk, Lengde pr stk (m), Total lm,
+                       Enhetspris, Rabatt %, Mva %, Beløp.
+                       stk / lm / bundle lines kept strictly separate.
   Fakturaoversikt   -- one row per invoice
   Kontroll          -- uncertain / low-confidence extractions for manual review
 """
@@ -1188,6 +1193,69 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
             flagged_keys=flagged_keys,
             year=yr,
         )
+
+    # ── Sheet: Varelinjer (raw line items) ───────────────────────────────────
+    def _write_varelinjer_sheet(ws) -> None:
+        """One row per invoice line — all 13 columns; stk/lm/bundle kept distinct."""
+        COLS_V = [
+            "Faktura nr", "Dato", "Leverandør", "Beskrivelse",
+            "Antall", "Enhet", "Stk", "Lengde pr stk (m)", "Total lm",
+            "Enhetspris", "Rabatt %", "Mva %", "Beløp",
+        ]
+        _title(ws, "Varelinjer — alle fakturalinjer", len(COLS_V))
+        _hdr(ws, 2, COLS_V)
+
+        row_idx = 3
+        for inv in all_invoices:
+            for item in inv.line_items:
+                desc      = item.get("Description") or ""
+                unit      = (item.get("Unit") or "").strip()
+                qty       = item.get("Quantity")
+                lpu       = item.get("Length/unit m")
+                total_len = item.get("Total length m")
+
+                norm_unit = _normalize_unit(unit)
+
+                if total_len or lpu:
+                    # Bundle: "22 stk a 4,8 m …"
+                    stk_val = qty
+                    lpu_val = lpu
+                    lm_val  = total_len if total_len else (
+                        round(qty * lpu, 2) if qty and lpu else None
+                    )
+                elif norm_unit == "lm":
+                    stk_val = None
+                    lpu_val = None
+                    lm_val  = qty
+                else:
+                    # stk or unknown unit
+                    stk_val = qty
+                    lpu_val = None
+                    lm_val  = None
+
+                row_vals = [
+                    inv.invoice_number or "",
+                    inv.invoice_date   or "",
+                    inv.supplier       or "",
+                    desc,
+                    qty,
+                    unit,
+                    stk_val,
+                    lpu_val,
+                    lm_val,
+                    item.get("Unit Price"),
+                    item.get("Discount %"),
+                    item.get("VAT %"),
+                    item.get("Line Total"),
+                ]
+                for c, val in enumerate(row_vals, 1):
+                    ws.cell(row=row_idx, column=c, value=val)
+                row_idx += 1
+
+        _widths(ws, [16, 12, 24, 44, 10, 8, 8, 16, 10, 14, 10, 8, 14])
+
+    ws_v = wb.create_sheet("Varelinjer")
+    _write_varelinjer_sheet(ws_v)
 
     # ── Sheet: Fakturaoversikt ────────────────────────────────────────────────
     ws_f = wb.create_sheet("Fakturaoversikt")
