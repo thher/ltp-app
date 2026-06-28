@@ -26,7 +26,11 @@ Override Tesseract path:
 
 SHEETS IN OUTPUT EXCEL
 ----------------------
-  Samlet oversikt   -- all products merged and summed (one row per product)
+  Samlet oversikt   -- one row per product across all years, with per-year
+                       quantity and price columns plus totals; sorted by
+                       category then spend
+  2024 / 2025 / …  -- one sheet per year found in the data (dynamic);
+                       same product list filtered to that year only
   Fakturaoversikt   -- one row per invoice
   Kontroll          -- uncertain / low-confidence extractions for manual review
 """
@@ -909,6 +913,7 @@ def _collect_product_data(results: list[PDFResult]) -> list[dict]:
                         "pdfs":           set(),
                         "invoices":       set(),
                         "dates":          [],
+                        "by_year":        {},
                     }
 
                 g = groups[agg_key]
@@ -935,6 +940,11 @@ def _collect_product_data(results: list[PDFResult]) -> list[dict]:
                 d = _parse_date(inv.invoice_date)
                 if d:
                     g["dates"].append(d)
+                    yr = d.year
+                    if yr not in g["by_year"]:
+                        g["by_year"][yr] = {"qty": 0.0, "spend": 0.0}
+                    g["by_year"][yr]["qty"]   += qty or 0
+                    g["by_year"][yr]["spend"] += lt  or 0
 
     return list(groups.values())
 
@@ -977,7 +987,7 @@ def _needs_review_items(results: list[PDFResult]) -> list[dict]:
 def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
     try:
         import openpyxl
-        from openpyxl.styles import Alignment, Font, PatternFill
+        from openpyxl.styles import Font, PatternFill
         from openpyxl.utils import get_column_letter
     except ImportError:
         print("ERROR: openpyxl not installed. Run: pip install openpyxl")
@@ -985,13 +995,14 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
 
     wb = openpyxl.Workbook()
 
-    TITLE_FONT  = Font(bold=True, size=13)
-    HDR_FONT    = Font(bold=True, size=11)
-    HDR_FILL    = PatternFill("solid", fgColor="D9E1F2")   # light blue
-    FLAG_FILL   = PatternFill("solid", fgColor="FFF3CD")   # light amber (needs review)
-    OK_FILL     = PatternFill("solid", fgColor="D4EDDA")   # light green
-    WARN_FILL   = PatternFill("solid", fgColor="FFF3CD")
-    FAIL_FILL   = PatternFill("solid", fgColor="F8D7DA")
+    TITLE_FONT = Font(bold=True, size=13)
+    HDR_FONT   = Font(bold=True, size=11)
+    BOLD_FONT  = Font(bold=True)
+    HDR_FILL   = PatternFill("solid", fgColor="D9E1F2")  # light blue header
+    FLAG_FILL  = PatternFill("solid", fgColor="FFF3CD")  # amber — needs review
+    OK_FILL    = PatternFill("solid", fgColor="D4EDDA")  # green
+    WARN_FILL  = PatternFill("solid", fgColor="FFF3CD")  # amber
+    FAIL_FILL  = PatternFill("solid", fgColor="F8D7DA")  # red
 
     def _hdr(ws, row: int, cols: list[str]) -> None:
         for c, label in enumerate(cols, 1):
@@ -1010,61 +1021,146 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
             ws.merge_cells(f"A1:{get_column_letter(cols)}1")
         ws.row_dimensions[1].height = 20
 
+    def _sort_products(data: list[dict], year: int | None = None) -> list[dict]:
+        """Sort by category display name, then descending spend for the given year (or total)."""
+        def _key(g: dict) -> tuple:
+            cat = _CATEGORY_DISPLAY.get(g["category"], g["category"])
+            if year is not None:
+                spend = -(g["by_year"].get(year, {}).get("spend", 0) or 0)
+            else:
+                spend = -(g["total_spend"] or 0)
+            return (cat, spend)
+        return sorted(data, key=_key)
+
+    def _write_product_sheet(
+        ws,
+        title_text: str,
+        rows: list[dict],        # already sorted product group dicts
+        flagged_keys: set[str],
+        year: int | None = None,
+    ) -> None:
+        """Write a simple product sheet (used for per-year and totals-only views)."""
+        COLS = ["Vare / produkt", "Kategori", "Enhet",
+                "Total mengde", "Total pris (NOK)", "Kommentar"]
+        _title(ws, title_text, len(COLS))
+        _hdr(ws, 2, COLS)
+
+        grand = 0.0
+        for r, g in enumerate(rows, start=3):
+            if year is not None:
+                yd        = g["by_year"].get(year, {})
+                qty_val   = round(yd.get("qty", 0), 2)   if yd.get("qty")   else None
+                price_val = round(yd.get("spend", 0), 2) if yd.get("spend") else None
+            else:
+                qty_val   = round(g["qty"], 2)          if g["qty"]          else None
+                price_val = round(g["total_spend"], 2)  if g["total_spend"]  else None
+
+            cat_disp  = _CATEGORY_DISPLAY.get(g["category"], g["category"].title())
+            unit_disp = g["norm_unit"] or g["unit"] or ""
+            comment   = "Trenger kontroll" if g["norm_key"] in flagged_keys else ""
+
+            row_vals = [g["display"], cat_disp, unit_disp, qty_val, price_val, comment]
+            for c, val in enumerate(row_vals, 1):
+                cell = ws.cell(row=r, column=c, value=val)
+                if comment:
+                    cell.fill = FLAG_FILL
+
+            if price_val:
+                grand += price_val
+
+        total_row = len(rows) + 3
+        ws.cell(row=total_row, column=1, value="TOTALT").font = BOLD_FONT
+        ws.cell(row=total_row, column=5, value=round(grand, 2)).font = BOLD_FONT
+        _widths(ws, [44, 24, 10, 14, 18, 20])
+
+    # ── Collect data ──────────────────────────────────────────────────────────
     all_invoices: list[InvoiceData] = [inv for res in results for inv in res.invoices]
     product_data: list[dict]        = _collect_product_data(results)
     review_items: list[dict]        = _needs_review_items(results)
 
-    # Build set of normalised keys that appear in the review list so we can
-    # flag those rows in "Samlet oversikt".
     flagged_keys: set[str] = {
         _normalize_product((r.get("Description") or "").strip())
         for r in review_items
     }
 
-    # ── Sheet 1: Samlet oversikt ──────────────────────────────────────────────
+    all_years: list[int] = sorted({
+        yr for g in product_data for yr in g["by_year"]
+    })
+
+    n_inv = len(all_invoices)
+    n_pdf = len(results)
+
+    # ── Sheet 1: Samlet oversikt (year columns + totals) ──────────────────────
     ws1 = wb.active
     ws1.title = "Samlet oversikt"
-    n_inv  = len(all_invoices)
-    n_pdf  = len(results)
-    _title(ws1, f"Samlet oversikt — {n_inv} faktura(er) fra {n_pdf} PDF(er)", 6)
 
-    COLS1 = ["Vare / produkt", "Kategori", "Enhet", "Total mengde", "Total pris (NOK)", "Kommentar"]
+    year_col_headers: list[str] = []
+    for yr in all_years:
+        year_col_headers += [f"{yr} mengde", f"{yr} pris (NOK)"]
+
+    COLS1 = (
+        ["Vare / produkt", "Kategori", "Enhet"]
+        + year_col_headers
+        + ["Total mengde", "Total pris (NOK)", "Kommentar"]
+    )
+    _title(ws1, f"Samlet oversikt — {n_inv} faktura(er) fra {n_pdf} PDF(er)", len(COLS1))
     _hdr(ws1, 2, COLS1)
 
-    sorted_products = sorted(product_data, key=lambda x: -(x["total_spend"] or 0))
+    sorted_all = _sort_products(product_data)
     grand_total = 0.0
 
-    for r, g in enumerate(sorted_products, start=3):
-        qty_val   = round(g["qty"], 2) if g["qty"] else None
-        price_val = round(g["total_spend"], 2) if g["total_spend"] else None
-        cat_disp  = _CATEGORY_DISPLAY.get(g["category"], g["category"].title())
-        unit_disp = g["norm_unit"] or g["unit"] or ""
-        comment   = "Trenger kontroll" if g["norm_key"] in flagged_keys else ""
+    for r, g in enumerate(sorted_all, start=3):
+        total_qty   = round(g["qty"], 2)         if g["qty"]         else None
+        total_price = round(g["total_spend"], 2) if g["total_spend"] else None
+        cat_disp    = _CATEGORY_DISPLAY.get(g["category"], g["category"].title())
+        unit_disp   = g["norm_unit"] or g["unit"] or ""
+        comment     = "Trenger kontroll" if g["norm_key"] in flagged_keys else ""
 
-        row_vals = [g["display"], cat_disp, unit_disp, qty_val, price_val, comment]
+        year_vals: list = []
+        for yr in all_years:
+            yd = g["by_year"].get(yr, {})
+            year_vals.append(round(yd.get("qty", 0), 2)   if yd.get("qty")   else None)
+            year_vals.append(round(yd.get("spend", 0), 2) if yd.get("spend") else None)
+
+        row_vals = [g["display"], cat_disp, unit_disp] + year_vals + [total_qty, total_price, comment]
         for c, val in enumerate(row_vals, 1):
             cell = ws1.cell(row=r, column=c, value=val)
             if comment:
                 cell.fill = FLAG_FILL
 
-        if price_val:
-            grand_total += price_val
+        if total_price:
+            grand_total += total_price
 
-    # Totals row
-    total_row = len(sorted_products) + 3
-    ws1.cell(row=total_row, column=1, value="TOTALT").font = Font(bold=True)
-    total_cell = ws1.cell(row=total_row, column=5, value=round(grand_total, 2))
-    total_cell.font = Font(bold=True)
+    total_row_1 = len(sorted_all) + 3
+    ws1.cell(row=total_row_1, column=1, value="TOTALT").font = BOLD_FONT
+    total_price_col = COLS1.index("Total pris (NOK)") + 1
+    ws1.cell(row=total_row_1, column=total_price_col, value=round(grand_total, 2)).font = BOLD_FONT
 
-    _widths(ws1, [42, 24, 10, 14, 18, 20])
+    base_w  = [44, 24, 10]
+    year_w  = [13, 16] * len(all_years)
+    end_w   = [14, 18, 20]
+    _widths(ws1, base_w + year_w + end_w)
 
-    # ── Sheet 2: Fakturaoversikt ──────────────────────────────────────────────
-    ws2 = wb.create_sheet("Fakturaoversikt")
-    _title(ws2, f"Fakturaoversikt — {n_inv} faktura(er) fra {n_pdf} PDF(er)", 8)
+    # ── Sheets 2…N: one sheet per year ───────────────────────────────────────
+    for yr in all_years:
+        yr_products = [g for g in product_data if yr in g["by_year"]]
+        yr_sorted   = _sort_products(yr_products, year=yr)
+        ws_yr = wb.create_sheet(str(yr))
+        _write_product_sheet(
+            ws_yr,
+            title_text=f"{yr} — {len(yr_products)} produkt(er)",
+            rows=yr_sorted,
+            flagged_keys=flagged_keys,
+            year=yr,
+        )
 
-    COLS2 = ["Faktura nr", "Leverandør", "Fakturadato", "Forfallsdato",
-             "Valuta", "Total (NOK)", "Varelinjer", "Status"]
-    _hdr(ws2, 2, COLS2)
+    # ── Sheet: Fakturaoversikt ────────────────────────────────────────────────
+    ws_f = wb.create_sheet("Fakturaoversikt")
+    _title(ws_f, f"Fakturaoversikt — {n_inv} faktura(er) fra {n_pdf} PDF(er)", 8)
+
+    COLS_F = ["Faktura nr", "Leverandør", "Fakturadato", "Forfallsdato",
+              "Valuta", "Total (NOK)", "Varelinjer", "Status"]
+    _hdr(ws_f, 2, COLS_F)
 
     for r, inv in enumerate(all_invoices, start=3):
         status_no = "OK" if inv.status == "OK" else "Kontroll"
@@ -1080,20 +1176,20 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
         ]
         fill = OK_FILL if inv.status == "OK" else WARN_FILL if inv.status == "Needs Review" else FAIL_FILL
         for c, val in enumerate(row_vals, 1):
-            cell = ws2.cell(row=r, column=c, value=val)
-            if c == len(COLS2):
+            cell = ws_f.cell(row=r, column=c, value=val)
+            if c == len(COLS_F):
                 cell.fill = fill
 
-    _widths(ws2, [18, 28, 14, 14, 8, 16, 12, 10])
+    _widths(ws_f, [18, 28, 14, 14, 8, 16, 12, 10])
 
-    # ── Sheet 3: Kontroll ─────────────────────────────────────────────────────
-    ws3 = wb.create_sheet("Kontroll")
-    _title(ws3, "Kontroll — usikre linjer som krever manuell sjekk", 8)
+    # ── Sheet: Kontroll ───────────────────────────────────────────────────────
+    ws_k = wb.create_sheet("Kontroll")
+    _title(ws_k, "Kontroll — usikre linjer som krever manuell sjekk", 8)
 
     if review_items:
-        COLS3 = ["Beskrivelse", "Leverandør", "Faktura nr", "Antall",
-                 "Enhet", "Enhetspris", "Totalsum (NOK)", "Årsak"]
-        _hdr(ws3, 2, COLS3)
+        COLS_K = ["Beskrivelse", "Leverandør", "Faktura nr", "Antall",
+                  "Enhet", "Enhetspris", "Totalsum (NOK)", "Årsak"]
+        _hdr(ws_k, 2, COLS_K)
         for r, item in enumerate(review_items, start=3):
             row_vals = [
                 item.get("Description") or "",
@@ -1106,12 +1202,12 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
                 item.get("Issue")       or "",
             ]
             for c, val in enumerate(row_vals, 1):
-                ws3.cell(row=r, column=c, value=val).fill = FLAG_FILL
-        _widths(ws3, [44, 26, 16, 10, 8, 14, 16, 44])
+                ws_k.cell(row=r, column=c, value=val).fill = FLAG_FILL
+        _widths(ws_k, [44, 26, 16, 10, 8, 14, 16, 44])
     else:
-        ws3.cell(row=2, column=1,
-                 value="Ingen usikre linjer funnet — alle utdrag godkjent.").font = Font(italic=True)
-        _widths(ws3, [60])
+        ws_k.cell(row=2, column=1,
+                  value="Ingen usikre linjer funnet — alle utdrag godkjent.").font = Font(italic=True)
+        _widths(ws_k, [60])
 
     wb.save(str(output_path))
 
