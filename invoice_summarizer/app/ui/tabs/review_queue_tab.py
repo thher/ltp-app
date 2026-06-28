@@ -20,10 +20,12 @@ from PySide6.QtWidgets import (
 
 from app.database.models import ReviewQueueItem
 from app.database.repositories.invoice_repo import InvoiceRepository
+from app.database.repositories.line_item_repo import LineItemRepository
 from app.database.repositories.review_queue_repo import ReviewQueueRepository
 
 if TYPE_CHECKING:
     from app.processing.pipeline import ProcessingPipeline
+    from app.processing.product_normalizer import ProductNormalizerService
 
 
 _ISSUE_LABELS = {
@@ -51,11 +53,15 @@ class ReviewQueueTab(QWidget):
         review_repo: ReviewQueueRepository,
         invoice_repo: InvoiceRepository,
         pipeline: Optional["ProcessingPipeline"] = None,
+        product_normalizer: Optional["ProductNormalizerService"] = None,
+        line_item_repo: Optional[LineItemRepository] = None,
     ) -> None:
         super().__init__()
-        self._review_repo = review_repo
-        self._inv_repo = invoice_repo
-        self._pipeline = pipeline
+        self._review_repo        = review_repo
+        self._inv_repo           = invoice_repo
+        self._pipeline           = pipeline
+        self._product_normalizer = product_normalizer
+        self._li_repo            = line_item_repo
         self._items: list[ReviewQueueItem] = []
         self._build_ui()
         self.refresh()
@@ -116,6 +122,11 @@ class ReviewQueueTab(QWidget):
         self._reprocess_btn.setEnabled(False)
         self._reprocess_btn.clicked.connect(self._on_reprocess)
         action_row.addWidget(self._reprocess_btn)
+
+        self._correct_product_btn = QPushButton("Correct Product")
+        self._correct_product_btn.setEnabled(False)
+        self._correct_product_btn.clicked.connect(self._on_correct_product)
+        action_row.addWidget(self._correct_product_btn)
 
         action_row.addStretch()
         b_layout.addLayout(action_row)
@@ -206,17 +217,69 @@ class ReviewQueueTab(QWidget):
         can_resolve = False
         has_invoice = False
         has_pipeline = self._pipeline is not None
+        can_correct = False
 
         if item is not None:
             status_cell = self._table.item(
                 self._table.selectionModel().selectedRows()[0].row(), 4
             )
-            can_resolve = status_cell is not None and status_cell.text() == "Open"
+            is_open = status_cell is not None and status_cell.text() == "Open"
+            can_resolve = is_open
             has_invoice = item.invoice_id is not None
+            can_correct = (
+                is_open
+                and item.issue_type == "unmatched_product"
+                and self._product_normalizer is not None
+                and self._li_repo is not None
+            )
 
         self._resolve_btn.setEnabled(can_resolve)
         self._view_text_btn.setEnabled(has_invoice)
         self._reprocess_btn.setEnabled(has_invoice and has_pipeline)
+        self._correct_product_btn.setEnabled(can_correct)
+
+    def _on_correct_product(self) -> None:
+        """Let the user enter the correct canonical product name for unmatched items.
+
+        Teaches the learning system so the same raw description is automatically
+        resolved on future imports, and links existing line items for this invoice.
+        """
+        item = self._selected_item()
+        if (
+            item is None
+            or self._product_normalizer is None
+            or self._li_repo is None
+        ):
+            return
+
+        raw_desc = item.suggestion or ""
+        canonical, ok = QInputDialog.getText(
+            self,
+            "Correct Product Name",
+            f"Enter the correct product name for:\n\"{raw_desc}\"\n\nCanonical name:",
+            text=raw_desc,
+        )
+        if not ok or not canonical.strip():
+            return
+
+        try:
+            product = self._product_normalizer.find_or_create_by_canonical(canonical.strip())
+            if raw_desc:
+                self._product_normalizer.learn_alias(raw_desc, product)
+
+            # Update any line items for this invoice that have this description
+            if item.invoice_id is not None:
+                for li in self._li_repo.find_by_invoice(item.invoice_id):
+                    if li.raw_description == raw_desc:
+                        self._li_repo.update_product(li.id, product.id)
+
+            self._review_repo.resolve(
+                item.id,
+                f"Product corrected to: {product.canonical_name}",
+            )
+            self.refresh()
+        except Exception as exc:
+            QMessageBox.critical(self, "Error", f"Could not save correction: {exc}")
 
     def _on_resolve(self) -> None:
         item = self._selected_item()

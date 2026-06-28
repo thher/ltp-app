@@ -49,6 +49,14 @@ class LineItemRepository:
             self.save(item)
         return items
 
+    def update_product(self, line_item_id: int, product_id: int) -> None:
+        """Set product_id on an existing line item (used by learning system)."""
+        with self.db.transaction():
+            self.db.execute(
+                "UPDATE line_items SET product_id = ? WHERE id = ?",
+                (product_id, line_item_id),
+            )
+
     def find_by_invoice(self, invoice_id: int) -> list[LineItem]:
         rows = self.db.fetchall(
             "SELECT * FROM line_items WHERE invoice_id = ?", (invoice_id,)

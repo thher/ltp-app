@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from app.processing.ocr_engine import OcrEngine, OcrResult
     from app.processing.invoice_splitter import InvoiceSplitter, InvoicePageGroup
     from app.processing.line_item_extractor import LineItemExtractor, ExtractedLineItem
+    from app.processing.product_normalizer import ProductNormalizerService
 
 
 # Average chars/page below which we treat the PDF as scanned
@@ -68,17 +69,19 @@ class ProcessingPipeline:
         ocr_engine: Optional["OcrEngine"] = None,
         splitter: Optional["InvoiceSplitter"] = None,
         line_item_extractor: Optional["LineItemExtractor"] = None,
+        product_normalizer: Optional["ProductNormalizerService"] = None,
     ) -> None:
-        self._fm           = file_manager
-        self._extractor    = extractor
-        self._parser       = parser
-        self._inv_repo     = invoice_repo
-        self._sup_repo     = supplier_repo
-        self._review_repo  = review_repo
-        self._li_repo      = line_item_repo
-        self._ocr          = ocr_engine
-        self._splitter     = splitter
-        self._li_extractor = line_item_extractor
+        self._fm                 = file_manager
+        self._extractor          = extractor
+        self._parser             = parser
+        self._inv_repo           = invoice_repo
+        self._sup_repo           = supplier_repo
+        self._review_repo        = review_repo
+        self._li_repo            = line_item_repo
+        self._ocr                = ocr_engine
+        self._splitter           = splitter
+        self._li_extractor       = line_item_extractor
+        self._product_normalizer = product_normalizer
 
     # ── Public API ─────────────────────────────────────────────────────
 
@@ -500,12 +503,20 @@ class ProcessingPipeline:
         sub.invoice_id = invoice.id
         sub.status = "ok"
 
+        unmatched_count = 0
         if self._li_extractor is not None and self._li_repo is not None:
             group_ocr = [ocr_pages[i] for i in group.page_indices]
             extracted = self._li_extractor.extract_from_ocr(group_ocr)
             for ei in extracted:
+                product_id = None
+                if self._product_normalizer is not None:
+                    product = self._product_normalizer.find_or_create(
+                        ei.description, ei.unit or ""
+                    )
+                    product_id = product.id
                 li = LineItem(
                     invoice_id=invoice.id,
+                    product_id=product_id,
                     raw_description=ei.description,
                     quantity=ei.quantity,
                     unit=ei.unit,
@@ -521,8 +532,18 @@ class ProcessingPipeline:
                     needs_review=ei.needs_review,
                 )
                 self._li_repo.save(li)
+                if ei.needs_review:
+                    unmatched_count += 1
 
         review_items = self._build_review_items(invoice, parse_result)
+        if unmatched_count > 0:
+            review_items.append(ReviewQueueItem(
+                invoice_id=invoice.id,
+                issue_type="unmatched_product",
+                description=(
+                    f"{unmatched_count} line item(s) flagged for product review"
+                ),
+            ))
         if not group.combined_text.strip():
             review_items.append(ReviewQueueItem(
                 invoice_id=invoice.id,

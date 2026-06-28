@@ -14,6 +14,7 @@ _MIGRATION_NAMES = [
     "v003_line_item_lengths",
     "v004_material_intelligence",
     "v005_extraction_diagnostics",
+    "v006_material_categories",
 ]
 
 

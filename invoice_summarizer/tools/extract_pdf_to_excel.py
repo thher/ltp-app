@@ -462,121 +462,18 @@ def _extract_line_items_text(text: str) -> list[dict]:
 
 
 # ── Product / unit normalisation ──────────────────────────────────────────────
+# Delegate to the shared module so that standalone CLI and GUI produce identical
+# results.  The path setup at the top of this file ensures "app.*" is importable.
 
-# Canonical unit map: all known synonyms -> one canonical string
-_UNIT_CANON: dict[str, str] = {
-    # Running metres
-    "lm": "lm", "lpm": "lm", "m": "lm", "meter": "lm", "metre": "lm",
-    # Pieces
-    "stk": "stk", "stk.": "stk", "pcs": "stk",
-    # Square metres
-    "m2": "m2", "m²": "m2", "kvm": "m2",
-    # Cubic metres
-    "m3": "m3", "m³": "m3",
-    # Other
-    "kg": "kg", "l": "l", "liter": "l",
-    "pk": "pk", "pall": "pall", "rll": "rll", "bx": "bx",
-}
-
-# Dimension pattern: 48X198, 48 x 198, 48×198 -> 48x198
-_DIM_RE = re.compile(r'(\d+)\s*[xX×]\s*(\d+)')
-
-# Structural grade codes: C24, C14, T3, GL28c, etc.
-_GRADE_RE = re.compile(r'\b(C\d+|T\d+|GL\d+[Ccs]?)\b', re.I)
-
-# Noise words: supplier branding and surface-finish descriptors that do not
-# identify the product (e.g. "UH." = uhøvlet, "JUST." = justert, "MM" =
-# Moelven Maskin, "MOELVEN" = manufacturer name).
-_NOISE_RE = re.compile(
-    r'\b(?:UH|UHØVLET|JUST|JUSTERT|MM|MOELVEN)\b\.?',
-    re.I,
+from app.processing.product_normalizer import (
+    normalize_key       as _normalize_product,
+    canonical_name      as _canonical_product,
+    normalize_unit      as _normalize_unit,
+    detect_category_key as _detect_category,
+    extract_dimension   as _extract_dimension,
 )
 
-
-def _normalize_unit(unit: str) -> str:
-    """Return canonical unit string, or the input lowercased if unknown."""
-    return _UNIT_CANON.get(unit.strip().lower().rstrip('.'), unit.strip().lower())
-
-
-def _normalize_product(description: str) -> str:
-    """Lowercase grouping key: dimensions normalised, noise words stripped.
-
-    48X198 UH. JUST. C24  ->  48x198 c24
-    28X120 MOELVEN ROYAL TERRASSEBORD  ->  28x120 royal terrassebord
-    """
-    s = _DIM_RE.sub(lambda m: f"{m.group(1)}x{m.group(2)}", description)
-    s = _NOISE_RE.sub(' ', s)
-    return ' '.join(s.split()).lower()
-
-
-def _canonical_product(description: str) -> str:
-    """Clean display name: dimension stays lowercase, grades uppercase, rest title-cased.
-
-    48X198 UH. JUST. C24  ->  48x198 C24
-    28X120 MOELVEN ROYAL TERRASSEBORD  ->  28x120 Royal Terrassebord
-    """
-    s = _DIM_RE.sub(lambda m: f"{m.group(1)}x{m.group(2)}", description)
-    s = _NOISE_RE.sub(' ', s)
-    parts = []
-    for tok in s.split():
-        if re.match(r'^\d+x\d+$', tok):    # dimension token
-            parts.append(tok)
-        elif _GRADE_RE.match(tok):           # grade code: C24, T3, GL28c
-            parts.append(tok.upper())
-        else:
-            parts.append(tok.title())
-    return ' '.join(parts)
-
-
-# ── Material category detection ───────────────────────────────────────────────
-#
-# Priority-ordered: first match wins. More specific patterns come before general.
-# Covers 16 categories; anything unmatched goes to "miscellaneous".
-
-_IS_RENTAL      = re.compile(
-    r'\bleie\b|\butleie\b|\bstillasleie\b|\bstillas\b', re.I)
-_IS_TRANSPORT   = re.compile(
-    r'\btransport\b|\bfrakt\b|\bkj[øo]ring\b|\blevering\b|\bkranvogn?\b', re.I)
-_IS_TOOLS       = re.compile(
-    r'verkt[øo]y|\bdrill\b|\bsagblad\b|\bmaskinleie\b', re.I)
-_IS_ELECTRICAL  = re.compile(
-    r'\belektro|\bkabel\b|\bsikringsskap\b|\bbryter\b|\bkontaktdos', re.I)
-_IS_PLUMBING    = re.compile(
-    r'\bvvs\b|\bavl[øo]p\b|\bvannledning\b|\btoalett\b|\bservant\b', re.I)
-_IS_VENTILATION = re.compile(
-    r'ventil(?:asjon)?|avtrekk|tillufts?|lufting|varmegjenvinning', re.I)
-_IS_PAINT       = re.compile(
-    r'maling|lakk\b|grunning|beise\b|primer\b|sparkel|impregner|overflatebehandl', re.I)
-_IS_DOOR_WIN    = re.compile(
-    r'd[øo]r|vindu|dørblad|karm\b|\bspir\b', re.I)
-_IS_INSULATION  = re.compile(
-    r'isolasj|glava|isover|rockwool|mineralull|steinull|leca\b', re.I)
-_IS_TERRACE     = re.compile(
-    r'terrassebord|terrasse', re.I)
-_IS_ROOFING     = re.compile(
-    r'takstein|takpapp|taklekter|takkledning|takbeslag|takstol|undertak|membran|\bnedl[øo]p\b|rennstein', re.I)
-_IS_FASTENER    = re.compile(
-    r'skrue|spiker|\bnagel\b|\bstift\b|\bbolt\b|vinkelbeslag|festeplat|ankerbeslag|\bklamme\b|nylonplugg|festemidl', re.I)
-_IS_BOARD       = re.compile(
-    r'\bkledning\b|\bpanel\b|\bspon\b|\bfjel\b|\bgulv(?:bord)?\b|\blekt(?:er)?\b|gipsplat|gipsbord|\bosb\b|kryssfinér?|sperreplat', re.I)
-_HAS_DIM        = re.compile(r'\d+x\d+')
-
-_CATEGORIES = (
-    ("rental",        _IS_RENTAL),
-    ("transport",     _IS_TRANSPORT),
-    ("tools",         _IS_TOOLS),
-    ("electrical",    _IS_ELECTRICAL),
-    ("plumbing",      _IS_PLUMBING),
-    ("ventilation",   _IS_VENTILATION),
-    ("paint",         _IS_PAINT),
-    ("doors_windows", _IS_DOOR_WIN),
-    ("insulation",    _IS_INSULATION),
-    ("terrace",       _IS_TERRACE),
-    ("roofing",       _IS_ROOFING),
-    ("fasteners",     _IS_FASTENER),
-    ("boards",        _IS_BOARD),
-)
-
+# English display names for the CLI Excel output (the GUI uses Norwegian).
 _CATEGORY_DISPLAY: dict[str, str] = {
     "timber":        "Timber",
     "terrace":       "Terrace",
@@ -595,22 +492,6 @@ _CATEGORY_DISPLAY: dict[str, str] = {
     "miscellaneous": "Miscellaneous",
     "unknown":       "Unknown",
 }
-
-
-def _detect_category(norm_key: str) -> str:
-    if len(norm_key.strip()) < 3:
-        return "unknown"
-    for cat, pat in _CATEGORIES:
-        if pat.search(norm_key):
-            return cat
-    if _HAS_DIM.search(norm_key):
-        return "timber" if _GRADE_RE.search(norm_key) else "boards"
-    return "miscellaneous"
-
-
-def _extract_dimension(norm_key: str) -> str:
-    m = _HAS_DIM.search(norm_key)
-    return m.group(0) if m else ""
 
 
 def _parse_date(s: str) -> datetime.date | None:
