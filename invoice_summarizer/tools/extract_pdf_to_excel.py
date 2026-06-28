@@ -26,26 +26,9 @@ Override Tesseract path:
 
 SHEETS IN OUTPUT EXCEL
 ----------------------
-  Invoice Overview        -- one row per invoice
-  Material Master Report  -- all products normalised, sorted by spend
-  Purchase History        -- every extracted line item (nothing discarded)
-  Needs Review            -- low-confidence extractions
-  Supplier Summary        -- grouped by supplier
-  Timber Summary          -- dimension lumber grouped by cross-section
-  Terrace                 -- decking and outdoor boards
-  Insulation              -- mineral wool, EPS, etc.
-  Boards                  -- cladding, panels, laths, gypsum
-  Doors & Windows
-  Fasteners & Hardware    -- screws, nails, brackets
-  Roofing                 -- tiles, membranes, flashings
-  Plumbing                -- pipes, drainage, VVS
-  Electrical              -- cables, panels, switches
-  Ventilation             -- ducts, fans, HRV
-  Paint & Surface         -- paint, treatment, sealants
-  Tools & Equipment
-  Transport & Services    -- delivery, crane, freight
-  Rental Equipment        -- scaffolding, machinery
-  Miscellaneous           -- other products and services
+  Samlet oversikt   -- all products merged and summed (one row per product)
+  Fakturaoversikt   -- one row per invoice
+  Kontroll          -- uncertain / low-confidence extractions for manual review
 """
 from __future__ import annotations
 
@@ -53,7 +36,7 @@ import os
 import re
 import sys
 import datetime
-from collections import defaultdict
+
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -473,24 +456,24 @@ from app.processing.product_normalizer import (
     extract_dimension   as _extract_dimension,
 )
 
-# English display names for the CLI Excel output (the GUI uses Norwegian).
+# Norwegian display names for category keys returned by detect_category_key().
 _CATEGORY_DISPLAY: dict[str, str] = {
-    "timber":        "Timber",
-    "terrace":       "Terrace",
-    "boards":        "Boards",
-    "insulation":    "Insulation",
-    "doors_windows": "Doors & Windows",
-    "fasteners":     "Fasteners & Hardware",
-    "roofing":       "Roofing",
-    "plumbing":      "Plumbing",
-    "electrical":    "Electrical",
-    "ventilation":   "Ventilation",
-    "paint":         "Paint & Surface Treatment",
-    "tools":         "Tools & Equipment",
-    "transport":     "Transport & Services",
-    "rental":        "Rental Equipment",
-    "miscellaneous": "Miscellaneous",
-    "unknown":       "Unknown",
+    "timber":        "Trelast",
+    "terrace":       "Terrasse",
+    "boards":        "Plater",
+    "insulation":    "Isolasjon",
+    "doors_windows": "Dører og vinduer",
+    "fasteners":     "Beslag og festemidler",
+    "roofing":       "Tak",
+    "plumbing":      "Rør",
+    "electrical":    "Elektrisk",
+    "ventilation":   "Ventilasjon",
+    "paint":         "Maling og overflate",
+    "tools":         "Verktøy",
+    "transport":     "Transport og tjenester",
+    "rental":        "Leieutstyr",
+    "miscellaneous": "Diverse",
+    "unknown":       "Ukjent",
 }
 
 
@@ -956,112 +939,6 @@ def _collect_product_data(results: list[PDFResult]) -> list[dict]:
     return list(groups.values())
 
 
-def _material_master(product_data: list[dict]) -> list[dict]:
-    """All normalised products sorted by total spend.
-
-    Columns match the Material Master Report specification:
-    Category | Product | Normalized Product | Unit | Total Quantity |
-    Total Spend | Invoice Count | Purchase Count | Suppliers |
-    First Purchase | Last Purchase
-    """
-    rows = []
-    for g in sorted(product_data, key=lambda x: -(x["total_spend"] or 0)):
-        dates = sorted(g.get("dates") or [])
-        first_date = dates[0].strftime("%d.%m.%Y") if dates else ""
-        last_date  = dates[-1].strftime("%d.%m.%Y") if dates else ""
-        rows.append({
-            "Category":           _CATEGORY_DISPLAY.get(g["category"], g["category"].title()),
-            "Product":            g["display"],
-            "Normalized Product": g["norm_key"],
-            "Unit":               g["norm_unit"] or g["unit"],
-            "Total Quantity":     round(g["qty"], 2) if g["qty"] else None,
-            "Total Spend (NOK)":  round(g["total_spend"], 2) if g["total_spend"] else None,
-            "Invoice Count":      len(g["invoices"]),
-            "Purchase Count":     g["appearances"],
-            "Suppliers":          ", ".join(sorted(g["suppliers"])),
-            "First Purchase":     first_date,
-            "Last Purchase":      last_date,
-        })
-    return rows
-
-
-def _timber_summary(product_data: list[dict]) -> list[dict]:
-    """Timber grouped by dimension (e.g. 48x198), summing lm and spend.
-
-    Items sold as lm contribute their qty; bundle items contribute
-    their total_length_m (pieces x metres/piece).
-    """
-    dims: dict[str, dict] = defaultdict(lambda: {
-        "lm": 0.0, "spend": 0.0, "products": set(),
-    })
-    for g in product_data:
-        if g["category"] != "timber":
-            continue
-        dim = g["dimension"]
-        if not dim:
-            continue
-        lm = g["total_length_m"]
-        if not lm and g["norm_unit"] == "lm":
-            lm = g["qty"] or 0.0
-        dims[dim]["lm"]    += lm
-        dims[dim]["spend"] += g["total_spend"] or 0.0
-        dims[dim]["products"].add(g["display"])
-
-    rows = []
-    for dim, d in sorted(dims.items(), key=lambda x: -(x[1]["spend"] or 0)):
-        rows.append({
-            "Dimension":         dim,
-            "Total lm":          round(d["lm"], 2) if d["lm"] else None,
-            "Total Spend (NOK)": round(d["spend"], 2) if d["spend"] else None,
-            "Products":          ", ".join(sorted(d["products"])),
-        })
-    return rows
-
-
-def _category_summary(product_data: list[dict], category: str) -> list[dict]:
-    """Product, unit, qty, spend for one material category."""
-    rows = []
-    for g in sorted(
-        [g for g in product_data if g["category"] == category],
-        key=lambda x: -(x["total_spend"] or 0),
-    ):
-        rows.append({
-            "Product":           g["display"],
-            "Unit":              g["unit"] or g["norm_unit"],
-            "Total Quantity":    round(g["qty"], 2) if g["qty"] else None,
-            "Total Spend (NOK)": round(g["total_spend"], 2) if g["total_spend"] else None,
-            "Invoice Count":     g["appearances"],
-        })
-    return rows
-
-
-def _supplier_summary(results: list[PDFResult]) -> list[dict]:
-    groups: dict[str, dict] = defaultdict(lambda: {
-        "count": 0, "total": 0.0, "pdfs": set(), "customers": set(),
-    })
-
-    for res in results:
-        for inv in res.invoices:
-            sup = inv.supplier or "(unknown)"
-            groups[sup]["count"] += 1
-            if inv.total:
-                groups[sup]["total"] += inv.total
-            groups[sup]["pdfs"].add(res.filename)
-            if inv.customer:
-                groups[sup]["customers"].add(inv.customer)
-
-    rows = []
-    for sup, g in sorted(groups.items(), key=lambda x: -(x[1]["total"] or 0)):
-        rows.append({
-            "Supplier":          sup,
-            "Invoice Count":     g["count"],
-            "Total Spend (NOK)": round(g["total"], 2) if g["total"] else None,
-            "Customers":         ", ".join(sorted(g["customers"])),
-            "Source PDFs":       ", ".join(sorted(g["pdfs"])),
-        })
-    return rows
-
-
 def _needs_review_items(results: list[PDFResult]) -> list[dict]:
     """Collect line items with low confidence or from problematic invoices."""
     rows = []
@@ -1100,7 +977,7 @@ def _needs_review_items(results: list[PDFResult]) -> list[dict]:
 def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
     try:
         import openpyxl
-        from openpyxl.styles import Font, PatternFill
+        from openpyxl.styles import Alignment, Font, PatternFill
         from openpyxl.utils import get_column_letter
     except ImportError:
         print("ERROR: openpyxl not installed. Run: pip install openpyxl")
@@ -1108,177 +985,133 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
 
     wb = openpyxl.Workbook()
 
-    title_font = Font(bold=True, size=13)
-    hdr_font   = Font(bold=True)
-    hdr_fill   = PatternFill("solid", fgColor="D9E1F2")
-    ok_fill    = PatternFill("solid", fgColor="C8E6C9")
-    warn_fill  = PatternFill("solid", fgColor="FFE0B2")
-    fail_fill  = PatternFill("solid", fgColor="FFCDD2")
+    TITLE_FONT  = Font(bold=True, size=13)
+    HDR_FONT    = Font(bold=True, size=11)
+    HDR_FILL    = PatternFill("solid", fgColor="D9E1F2")   # light blue
+    FLAG_FILL   = PatternFill("solid", fgColor="FFF3CD")   # light amber (needs review)
+    OK_FILL     = PatternFill("solid", fgColor="D4EDDA")   # light green
+    WARN_FILL   = PatternFill("solid", fgColor="FFF3CD")
+    FAIL_FILL   = PatternFill("solid", fgColor="F8D7DA")
 
-    def _status_fill(s: str) -> PatternFill:
-        return ok_fill if s == "OK" else warn_fill if s == "Needs Review" else fail_fill
-
-    def _hdr_row(ws, row: int, cols: list[str]) -> None:
+    def _hdr(ws, row: int, cols: list[str]) -> None:
         for c, label in enumerate(cols, 1):
             cell = ws.cell(row=row, column=c, value=label)
-            cell.font = hdr_font
-            cell.fill = hdr_fill
+            cell.font = HDR_FONT
+            cell.fill = HDR_FILL
 
-    def _col_widths(ws, widths: list[int]) -> None:
+    def _widths(ws, widths: list[int]) -> None:
         for c, w in enumerate(widths, 1):
             ws.column_dimensions[get_column_letter(c)].width = w
 
-    def _write_report_sheet(
-        ws, title: str, merge_cols: int, rows: list[dict],
-        col_widths: list[int], empty_msg: str = "(no data)",
-    ) -> None:
-        ws["A1"] = title
-        ws["A1"].font = title_font
-        ws.merge_cells(f"A1:{get_column_letter(merge_cols)}1")
-        ws.row_dimensions[1].height = 18
-        if rows:
-            cols = list(rows[0].keys())
-            _hdr_row(ws, 2, cols)
-            for r, row_data in enumerate(rows, start=3):
-                for c, key in enumerate(cols, 1):
-                    ws.cell(row=r, column=c, value=row_data.get(key))
-            _col_widths(ws, col_widths)
-        else:
-            ws.cell(row=2, column=1, value=empty_msg).font = Font(italic=True)
+    def _title(ws, text: str, cols: int) -> None:
+        ws["A1"] = text
+        ws["A1"].font = TITLE_FONT
+        if cols > 1:
+            ws.merge_cells(f"A1:{get_column_letter(cols)}1")
+        ws.row_dimensions[1].height = 20
 
     all_invoices: list[InvoiceData] = [inv for res in results for inv in res.invoices]
     product_data: list[dict]        = _collect_product_data(results)
+    review_items: list[dict]        = _needs_review_items(results)
 
-    # ── Sheet 1: Invoice Overview ─────────────────────────────────────────────
+    # Build set of normalised keys that appear in the review list so we can
+    # flag those rows in "Samlet oversikt".
+    flagged_keys: set[str] = {
+        _normalize_product((r.get("Description") or "").strip())
+        for r in review_items
+    }
+
+    # ── Sheet 1: Samlet oversikt ──────────────────────────────────────────────
     ws1 = wb.active
-    ws1.title = "Invoice Overview"
-    ws1["A1"] = (
-        f"Invoice Overview -- {len(all_invoices)} invoice(s) from {len(results)} PDF(s)"
-    )
-    ws1["A1"].font = title_font
-    ws1.merge_cells(f"A1:{get_column_letter(11)}1")
-    ws1.row_dimensions[1].height = 20
+    ws1.title = "Samlet oversikt"
+    n_inv  = len(all_invoices)
+    n_pdf  = len(results)
+    _title(ws1, f"Samlet oversikt — {n_inv} faktura(er) fra {n_pdf} PDF(er)", 6)
 
-    INV_COLS = [
-        "Source PDF", "Supplier", "Customer", "Invoice #", "Date", "Due Date",
-        "Total (NOK)", "Currency", "Line Items", "Confidence", "Status",
-    ]
-    _hdr_row(ws1, 2, INV_COLS)
+    COLS1 = ["Vare / produkt", "Kategori", "Enhet", "Total mengde", "Total pris (NOK)", "Kommentar"]
+    _hdr(ws1, 2, COLS1)
 
-    for r, inv in enumerate(all_invoices, start=3):
-        sup_display = inv.supplier or "(unknown)"
-        row_vals = [
-            inv.source_pdf,
-            sup_display,
-            inv.customer or "(unknown)",
-            inv.invoice_number or "(not found)",
-            inv.invoice_date or "(not found)",
-            inv.due_date or "",
-            inv.total,
-            inv.currency,
-            len(inv.line_items),
-            f"{inv.confidence:.0%}" if inv.confidence else "0%",
-            inv.status,
-        ]
-        fill = _status_fill(inv.status)
+    sorted_products = sorted(product_data, key=lambda x: -(x["total_spend"] or 0))
+    grand_total = 0.0
+
+    for r, g in enumerate(sorted_products, start=3):
+        qty_val   = round(g["qty"], 2) if g["qty"] else None
+        price_val = round(g["total_spend"], 2) if g["total_spend"] else None
+        cat_disp  = _CATEGORY_DISPLAY.get(g["category"], g["category"].title())
+        unit_disp = g["norm_unit"] or g["unit"] or ""
+        comment   = "Trenger kontroll" if g["norm_key"] in flagged_keys else ""
+
+        row_vals = [g["display"], cat_disp, unit_disp, qty_val, price_val, comment]
         for c, val in enumerate(row_vals, 1):
             cell = ws1.cell(row=r, column=c, value=val)
-            if c == len(INV_COLS):
+            if comment:
+                cell.fill = FLAG_FILL
+
+        if price_val:
+            grand_total += price_val
+
+    # Totals row
+    total_row = len(sorted_products) + 3
+    ws1.cell(row=total_row, column=1, value="TOTALT").font = Font(bold=True)
+    total_cell = ws1.cell(row=total_row, column=5, value=round(grand_total, 2))
+    total_cell.font = Font(bold=True)
+
+    _widths(ws1, [42, 24, 10, 14, 18, 20])
+
+    # ── Sheet 2: Fakturaoversikt ──────────────────────────────────────────────
+    ws2 = wb.create_sheet("Fakturaoversikt")
+    _title(ws2, f"Fakturaoversikt — {n_inv} faktura(er) fra {n_pdf} PDF(er)", 8)
+
+    COLS2 = ["Faktura nr", "Leverandør", "Fakturadato", "Forfallsdato",
+             "Valuta", "Total (NOK)", "Varelinjer", "Status"]
+    _hdr(ws2, 2, COLS2)
+
+    for r, inv in enumerate(all_invoices, start=3):
+        status_no = "OK" if inv.status == "OK" else "Kontroll"
+        row_vals = [
+            inv.invoice_number or "(ikke funnet)",
+            inv.supplier       or "(ukjent)",
+            inv.invoice_date   or "",
+            inv.due_date       or "",
+            inv.currency       or "NOK",
+            inv.total,
+            len(inv.line_items),
+            status_no,
+        ]
+        fill = OK_FILL if inv.status == "OK" else WARN_FILL if inv.status == "Needs Review" else FAIL_FILL
+        for c, val in enumerate(row_vals, 1):
+            cell = ws2.cell(row=r, column=c, value=val)
+            if c == len(COLS2):
                 cell.fill = fill
 
-    _col_widths(ws1, [35, 24, 22, 16, 13, 13, 14, 10, 11, 11, 14])
+    _widths(ws2, [18, 28, 14, 14, 8, 16, 12, 10])
 
-    # ── Sheet 2: Material Master Report ──────────────────────────────────────
-    _write_report_sheet(
-        wb.create_sheet("Material Master Report"),
-        title="Material Master Report -- all products normalised, sorted by spend",
-        merge_cols=11,
-        rows=_material_master(product_data),
-        col_widths=[20, 40, 35, 10, 15, 16, 14, 15, 30, 18, 18],
-        empty_msg="(no line items extracted)",
-    )
+    # ── Sheet 3: Kontroll ─────────────────────────────────────────────────────
+    ws3 = wb.create_sheet("Kontroll")
+    _title(ws3, "Kontroll — usikre linjer som krever manuell sjekk", 8)
 
-    # ── Sheet 3: Purchase History ─────────────────────────────────────────────
-    ws3 = wb.create_sheet("Purchase History")
-    LI_COLS = [
-        "Source PDF", "Supplier", "Customer", "Invoice #",
-        "Description", "Section",
-        "Quantity", "Unit", "Unit Price", "Discount %", "VAT %", "Line Total",
-        "Length/unit m", "Total length m", "Material", "Confidence",
-    ]
-    _hdr_row(ws3, 1, LI_COLS)
-
-    ph_row = 2
-    any_items = False
-    for res in results:
-        for inv in res.invoices:
-            for item in inv.line_items:
-                any_items = True
-                for c, key in enumerate(LI_COLS, 1):
-                    ws3.cell(row=ph_row, column=c, value=item.get(key))
-                ph_row += 1
-
-    if not any_items:
+    if review_items:
+        COLS3 = ["Beskrivelse", "Leverandør", "Faktura nr", "Antall",
+                 "Enhet", "Enhetspris", "Totalsum (NOK)", "Årsak"]
+        _hdr(ws3, 2, COLS3)
+        for r, item in enumerate(review_items, start=3):
+            row_vals = [
+                item.get("Description") or "",
+                item.get("Supplier")    or "",
+                item.get("Invoice #")   or "",
+                item.get("Quantity"),
+                item.get("Unit")        or "",
+                item.get("Unit Price"),
+                item.get("Line Total"),
+                item.get("Issue")       or "",
+            ]
+            for c, val in enumerate(row_vals, 1):
+                ws3.cell(row=r, column=c, value=val).fill = FLAG_FILL
+        _widths(ws3, [44, 26, 16, 10, 8, 14, 16, 44])
+    else:
         ws3.cell(row=2, column=1,
-                 value="(no line items extracted -- check raw text file)").font = Font(italic=True)
-
-    _col_widths(ws3, [30, 22, 20, 14, 40, 14, 10, 8, 12, 11, 8, 14, 13, 14, 14, 11])
-
-    # ── Sheet 4: Needs Review ─────────────────────────────────────────────────
-    _write_report_sheet(
-        wb.create_sheet("Needs Review"),
-        title="Needs Review -- low confidence extractions requiring manual check",
-        merge_cols=10,
-        rows=_needs_review_items(results),
-        col_widths=[30, 22, 14, 40, 10, 8, 12, 14, 11, 40],
-        empty_msg="(all extractions passed quality checks -- no items flagged)",
-    )
-
-    # ── Sheet 5: Supplier Summary ─────────────────────────────────────────────
-    _write_report_sheet(
-        wb.create_sheet("Supplier Summary"),
-        title="Supplier Summary",
-        merge_cols=5,
-        rows=_supplier_summary(results),
-        col_widths=[30, 14, 18, 28, 55],
-    )
-
-    # ── Sheet 6: Timber Summary ───────────────────────────────────────────────
-    _write_report_sheet(
-        wb.create_sheet("Timber Summary"),
-        title="Timber -- structural dimension lumber, grouped by cross-section",
-        merge_cols=4,
-        rows=_timber_summary(product_data),
-        col_widths=[14, 12, 18, 60],
-        empty_msg="(no timber line items found)",
-    )
-
-    # ── Sheets 7-20: Category summary sheets ─────────────────────────────────
-    _CAT_SHEETS = [
-        ("terrace",       "Terrace",             "Terrace -- decking and outdoor boards"),
-        ("insulation",    "Insulation",           "Insulation -- mineral wool, EPS, etc."),
-        ("boards",        "Boards",               "Boards -- cladding, panels, laths, gypsum"),
-        ("doors_windows", "Doors & Windows",      "Doors & Windows"),
-        ("fasteners",     "Fasteners & Hardware", "Fasteners & Hardware -- screws, nails, brackets"),
-        ("roofing",       "Roofing",              "Roofing -- tiles, membranes, flashings"),
-        ("plumbing",      "Plumbing",             "Plumbing -- pipes, drainage, VVS"),
-        ("electrical",    "Electrical",           "Electrical -- cables, panels, switches"),
-        ("ventilation",   "Ventilation",          "Ventilation -- ducts, fans, HRV"),
-        ("paint",         "Paint & Surface",      "Paint & Surface Treatment"),
-        ("tools",         "Tools & Equipment",    "Tools & Equipment"),
-        ("transport",     "Transport & Services", "Transport & Delivery"),
-        ("rental",        "Rental Equipment",     "Rental Equipment"),
-        ("miscellaneous", "Miscellaneous",        "Miscellaneous products and services"),
-    ]
-    for cat_key, sheet_name, sheet_title in _CAT_SHEETS:
-        _write_report_sheet(
-            wb.create_sheet(sheet_name),
-            title=sheet_title,
-            merge_cols=5,
-            rows=_category_summary(product_data, cat_key),
-            col_widths=[42, 10, 14, 18, 14],
-            empty_msg=f"(no {sheet_name.lower()} items found)",
-        )
+                 value="Ingen usikre linjer funnet — alle utdrag godkjent.").font = Font(italic=True)
+        _widths(ws3, [60])
 
     wb.save(str(output_path))
 
