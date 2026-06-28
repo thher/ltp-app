@@ -26,16 +26,33 @@ Override Tesseract path:
 
 SHEETS IN OUTPUT EXCEL
 ----------------------
-  Invoices            -- one row per invoice
-  Line Items          -- every extracted line item
-  Aggregated Products -- grouped by normalised product + unit
-  Supplier Summary    -- grouped by supplier
+  Invoice Overview        -- one row per invoice
+  Material Master Report  -- all products normalised, sorted by spend
+  Purchase History        -- every extracted line item (nothing discarded)
+  Needs Review            -- low-confidence extractions
+  Supplier Summary        -- grouped by supplier
+  Timber Summary          -- dimension lumber grouped by cross-section
+  Terrace                 -- decking and outdoor boards
+  Insulation              -- mineral wool, EPS, etc.
+  Boards                  -- cladding, panels, laths, gypsum
+  Doors & Windows
+  Fasteners & Hardware    -- screws, nails, brackets
+  Roofing                 -- tiles, membranes, flashings
+  Plumbing                -- pipes, drainage, VVS
+  Electrical              -- cables, panels, switches
+  Ventilation             -- ducts, fans, HRV
+  Paint & Surface         -- paint, treatment, sealants
+  Tools & Equipment
+  Transport & Services    -- delivery, crane, freight
+  Rental Equipment        -- scaffolding, machinery
+  Miscellaneous           -- other products and services
 """
 from __future__ import annotations
 
 import os
 import re
 import sys
+import datetime
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -513,40 +530,99 @@ def _canonical_product(description: str) -> str:
 
 # ── Material category detection ───────────────────────────────────────────────
 #
-# Categories are detected from the normalised (lowercase) product key.
-# Priority order matters: transport is checked first, then doors/windows,
-# insulation, boards, timber (dimension + grade), other.
+# Priority-ordered: first match wins. More specific patterns come before general.
+# Covers 16 categories; anything unmatched goes to "miscellaneous".
 
-_IS_TRANSPORT  = re.compile(
-    r'\btransport\b|\bfrakt\b|\bkj[øo]ring\b|\blevering\b', re.I)
-_IS_DOOR_WIN   = re.compile(
+_IS_RENTAL      = re.compile(
+    r'\bleie\b|\butleie\b|\bstillasleie\b|\bstillas\b', re.I)
+_IS_TRANSPORT   = re.compile(
+    r'\btransport\b|\bfrakt\b|\bkj[øo]ring\b|\blevering\b|\bkranvogn?\b', re.I)
+_IS_TOOLS       = re.compile(
+    r'verkt[øo]y|\bdrill\b|\bsagblad\b|\bmaskinleie\b', re.I)
+_IS_ELECTRICAL  = re.compile(
+    r'\belektro|\bkabel\b|\bsikringsskap\b|\bbryter\b|\bkontaktdos', re.I)
+_IS_PLUMBING    = re.compile(
+    r'\bvvs\b|\bavl[øo]p\b|\bvannledning\b|\btoalett\b|\bservant\b', re.I)
+_IS_VENTILATION = re.compile(
+    r'ventil(?:asjon)?|avtrekk|tillufts?|lufting|varmegjenvinning', re.I)
+_IS_PAINT       = re.compile(
+    r'maling|lakk\b|grunning|beise\b|primer\b|sparkel|impregner|overflatebehandl', re.I)
+_IS_DOOR_WIN    = re.compile(
     r'd[øo]r|vindu|dørblad|karm\b|\bspir\b', re.I)
-_IS_INSULATION = re.compile(
+_IS_INSULATION  = re.compile(
     r'isolasj|glava|isover|rockwool|mineralull|steinull|leca\b', re.I)
-_IS_BOARD      = re.compile(
-    r'terrassebord|kledning|panel|spon\b|\bfjel\b|\bgulv\b|\blekt(?:er)?\b', re.I)
-_HAS_DIM       = re.compile(r'\d+x\d+')
+_IS_TERRACE     = re.compile(
+    r'terrassebord|terrasse', re.I)
+_IS_ROOFING     = re.compile(
+    r'takstein|takpapp|taklekter|takkledning|takbeslag|takstol|undertak|membran|\bnedl[øo]p\b|rennstein', re.I)
+_IS_FASTENER    = re.compile(
+    r'skrue|spiker|\bnagel\b|\bstift\b|\bbolt\b|vinkelbeslag|festeplat|ankerbeslag|\bklamme\b|nylonplugg|festemidl', re.I)
+_IS_BOARD       = re.compile(
+    r'\bkledning\b|\bpanel\b|\bspon\b|\bfjel\b|\bgulv(?:bord)?\b|\blekt(?:er)?\b|gipsplat|gipsbord|\bosb\b|kryssfinér?|sperreplat', re.I)
+_HAS_DIM        = re.compile(r'\d+x\d+')
 
 _CATEGORIES = (
-    ("transport",    _IS_TRANSPORT),
+    ("rental",        _IS_RENTAL),
+    ("transport",     _IS_TRANSPORT),
+    ("tools",         _IS_TOOLS),
+    ("electrical",    _IS_ELECTRICAL),
+    ("plumbing",      _IS_PLUMBING),
+    ("ventilation",   _IS_VENTILATION),
+    ("paint",         _IS_PAINT),
     ("doors_windows", _IS_DOOR_WIN),
-    ("insulation",   _IS_INSULATION),
-    ("boards",       _IS_BOARD),
+    ("insulation",    _IS_INSULATION),
+    ("terrace",       _IS_TERRACE),
+    ("roofing",       _IS_ROOFING),
+    ("fasteners",     _IS_FASTENER),
+    ("boards",        _IS_BOARD),
 )
+
+_CATEGORY_DISPLAY: dict[str, str] = {
+    "timber":        "Timber",
+    "terrace":       "Terrace",
+    "boards":        "Boards",
+    "insulation":    "Insulation",
+    "doors_windows": "Doors & Windows",
+    "fasteners":     "Fasteners & Hardware",
+    "roofing":       "Roofing",
+    "plumbing":      "Plumbing",
+    "electrical":    "Electrical",
+    "ventilation":   "Ventilation",
+    "paint":         "Paint & Surface Treatment",
+    "tools":         "Tools & Equipment",
+    "transport":     "Transport & Services",
+    "rental":        "Rental Equipment",
+    "miscellaneous": "Miscellaneous",
+    "unknown":       "Unknown",
+}
 
 
 def _detect_category(norm_key: str) -> str:
+    if len(norm_key.strip()) < 3:
+        return "unknown"
     for cat, pat in _CATEGORIES:
         if pat.search(norm_key):
             return cat
     if _HAS_DIM.search(norm_key):
         return "timber" if _GRADE_RE.search(norm_key) else "boards"
-    return "other"
+    return "miscellaneous"
 
 
 def _extract_dimension(norm_key: str) -> str:
     m = _HAS_DIM.search(norm_key)
     return m.group(0) if m else ""
+
+
+def _parse_date(s: str) -> datetime.date | None:
+    """Parse Norwegian invoice date string to a date object."""
+    if not s:
+        return None
+    for fmt in ("%d.%m.%Y", "%d/%m/%Y", "%Y-%m-%d"):
+        try:
+            return datetime.datetime.strptime(s.strip(), fmt).date()
+        except ValueError:
+            pass
+    return None
 
 
 # ── Supplier profiles (optional helpers for known suppliers) ──────────────────
@@ -968,6 +1044,7 @@ def _collect_product_data(results: list[PDFResult]) -> list[dict]:
                         "suppliers":      set(),
                         "pdfs":           set(),
                         "invoices":       set(),
+                        "dates":          [],
                     }
 
                 g = groups[agg_key]
@@ -991,23 +1068,38 @@ def _collect_product_data(results: list[PDFResult]) -> list[dict]:
                 g["pdfs"].add(res.filename)
                 if inv.invoice_number:
                     g["invoices"].add(inv.invoice_number)
+                d = _parse_date(inv.invoice_date)
+                if d:
+                    g["dates"].append(d)
 
     return list(groups.values())
 
 
 def _material_master(product_data: list[dict]) -> list[dict]:
-    """All normalised products sorted by total spend."""
+    """All normalised products sorted by total spend.
+
+    Columns match the Material Master Report specification:
+    Category | Product | Normalized Product | Unit | Total Quantity |
+    Total Spend | Invoice Count | Purchase Count | Suppliers |
+    First Purchase | Last Purchase
+    """
     rows = []
     for g in sorted(product_data, key=lambda x: -(x["total_spend"] or 0)):
+        dates = sorted(g.get("dates") or [])
+        first_date = dates[0].strftime("%d.%m.%Y") if dates else ""
+        last_date  = dates[-1].strftime("%d.%m.%Y") if dates else ""
         rows.append({
-            "Product":           g["display"],
-            "Category":          g["category"].replace("_", " ").title(),
-            "Unit":              g["unit"] or g["norm_unit"],
-            "Total Quantity":    round(g["qty"], 2) if g["qty"] else None,
-            "Total Length m":    round(g["total_length_m"], 2) if g["total_length_m"] else None,
-            "Total Spend (NOK)": round(g["total_spend"], 2) if g["total_spend"] else None,
-            "Invoice Count":     g["appearances"],
-            "Suppliers":         ", ".join(sorted(g["suppliers"])),
+            "Category":           _CATEGORY_DISPLAY.get(g["category"], g["category"].title()),
+            "Product":            g["display"],
+            "Normalized Product": g["norm_key"],
+            "Unit":               g["norm_unit"] or g["unit"],
+            "Total Quantity":     round(g["qty"], 2) if g["qty"] else None,
+            "Total Spend (NOK)":  round(g["total_spend"], 2) if g["total_spend"] else None,
+            "Invoice Count":      len(g["invoices"]),
+            "Purchase Count":     g["appearances"],
+            "Suppliers":          ", ".join(sorted(g["suppliers"])),
+            "First Purchase":     first_date,
+            "Last Purchase":      last_date,
         })
     return rows
 
@@ -1089,6 +1181,39 @@ def _supplier_summary(results: list[PDFResult]) -> list[dict]:
     return rows
 
 
+def _needs_review_items(results: list[PDFResult]) -> list[dict]:
+    """Collect line items with low confidence or from problematic invoices."""
+    rows = []
+    for res in results:
+        for inv in res.invoices:
+            inv_flagged = inv.status == "Needs Review"
+            for item in inv.line_items:
+                conf = item.get("Confidence") or 1.0
+                desc = (item.get("Description") or "").strip()
+                issues = []
+                if conf < 0.7:
+                    issues.append(f"low confidence ({conf:.0%})")
+                if inv_flagged:
+                    issues.append("invoice needs review")
+                if len(desc) < 5:
+                    issues.append("short description")
+                if not issues:
+                    continue
+                rows.append({
+                    "Source PDF":  item.get("Source PDF") or "",
+                    "Supplier":    item.get("Supplier") or "",
+                    "Invoice #":   item.get("Invoice #") or "",
+                    "Description": desc,
+                    "Quantity":    item.get("Quantity"),
+                    "Unit":        item.get("Unit") or "",
+                    "Unit Price":  item.get("Unit Price"),
+                    "Line Total":  item.get("Line Total"),
+                    "Confidence":  round(conf, 2),
+                    "Issue":       "; ".join(issues),
+                })
+    return rows
+
+
 # ── Excel writer ──────────────────────────────────────────────────────────────
 
 def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
@@ -1122,14 +1247,32 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
         for c, w in enumerate(widths, 1):
             ws.column_dimensions[get_column_letter(c)].width = w
 
+    def _write_report_sheet(
+        ws, title: str, merge_cols: int, rows: list[dict],
+        col_widths: list[int], empty_msg: str = "(no data)",
+    ) -> None:
+        ws["A1"] = title
+        ws["A1"].font = title_font
+        ws.merge_cells(f"A1:{get_column_letter(merge_cols)}1")
+        ws.row_dimensions[1].height = 18
+        if rows:
+            cols = list(rows[0].keys())
+            _hdr_row(ws, 2, cols)
+            for r, row_data in enumerate(rows, start=3):
+                for c, key in enumerate(cols, 1):
+                    ws.cell(row=r, column=c, value=row_data.get(key))
+            _col_widths(ws, col_widths)
+        else:
+            ws.cell(row=2, column=1, value=empty_msg).font = Font(italic=True)
+
     all_invoices: list[InvoiceData] = [inv for res in results for inv in res.invoices]
     product_data: list[dict]        = _collect_product_data(results)
 
-    # ── Sheet 1: Invoices ─────────────────────────────────────────────────────
+    # ── Sheet 1: Invoice Overview ─────────────────────────────────────────────
     ws1 = wb.active
-    ws1.title = "Invoices"
+    ws1.title = "Invoice Overview"
     ws1["A1"] = (
-        f"Invoices -- {len(all_invoices)} invoice(s) from {len(results)} PDF(s)"
+        f"Invoice Overview -- {len(all_invoices)} invoice(s) from {len(results)} PDF(s)"
     )
     ws1["A1"].font = title_font
     ws1.merge_cells(f"A1:{get_column_letter(11)}1")
@@ -1164,61 +1307,62 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
 
     _col_widths(ws1, [35, 24, 22, 16, 13, 13, 14, 10, 11, 11, 14])
 
-    # ── Sheet 2: Line Items ───────────────────────────────────────────────────
-    ws2 = wb.create_sheet("Line Items")
+    # ── Sheet 2: Material Master Report ──────────────────────────────────────
+    _write_report_sheet(
+        wb.create_sheet("Material Master Report"),
+        title="Material Master Report -- all products normalised, sorted by spend",
+        merge_cols=11,
+        rows=_material_master(product_data),
+        col_widths=[20, 40, 35, 10, 15, 16, 14, 15, 30, 18, 18],
+        empty_msg="(no line items extracted)",
+    )
+
+    # ── Sheet 3: Purchase History ─────────────────────────────────────────────
+    ws3 = wb.create_sheet("Purchase History")
     LI_COLS = [
         "Source PDF", "Supplier", "Customer", "Invoice #",
         "Description", "Section",
         "Quantity", "Unit", "Unit Price", "Discount %", "VAT %", "Line Total",
         "Length/unit m", "Total length m", "Material", "Confidence",
     ]
-    _hdr_row(ws2, 1, LI_COLS)
+    _hdr_row(ws3, 1, LI_COLS)
 
-    row = 2
+    ph_row = 2
     any_items = False
     for res in results:
         for inv in res.invoices:
             for item in inv.line_items:
                 any_items = True
                 for c, key in enumerate(LI_COLS, 1):
-                    ws2.cell(row=row, column=c, value=item.get(key))
-                row += 1
+                    ws3.cell(row=ph_row, column=c, value=item.get(key))
+                ph_row += 1
 
     if not any_items:
-        ws2.cell(row=2, column=1,
+        ws3.cell(row=2, column=1,
                  value="(no line items extracted -- check raw text file)").font = Font(italic=True)
 
-    _col_widths(ws2, [30, 22, 20, 14, 40, 14, 10, 8, 12, 11, 8, 14, 13, 14, 14, 11])
+    _col_widths(ws3, [30, 22, 20, 14, 40, 14, 10, 8, 12, 11, 8, 14, 13, 14, 14, 11])
 
-    def _write_report_sheet(
-        ws, title: str, merge_cols: int, rows: list[dict],
-        col_widths: list[int], empty_msg: str = "(no data)",
-    ) -> None:
-        ws["A1"] = title
-        ws["A1"].font = title_font
-        ws.merge_cells(f"A1:{get_column_letter(merge_cols)}1")
-        ws.row_dimensions[1].height = 18
-        if rows:
-            cols = list(rows[0].keys())
-            _hdr_row(ws, 2, cols)
-            for r, row_data in enumerate(rows, start=3):
-                for c, key in enumerate(cols, 1):
-                    ws.cell(row=r, column=c, value=row_data.get(key))
-            _col_widths(ws, col_widths)
-        else:
-            ws.cell(row=2, column=1, value=empty_msg).font = Font(italic=True)
-
-    # ── Sheet 3: Material Master ──────────────────────────────────────────────
+    # ── Sheet 4: Needs Review ─────────────────────────────────────────────────
     _write_report_sheet(
-        wb.create_sheet("Material Master"),
-        title="Material Master -- all products normalised, sorted by spend",
-        merge_cols=8,
-        rows=_material_master(product_data),
-        col_widths=[42, 16, 10, 14, 14, 18, 14, 30],
-        empty_msg="(no line items extracted)",
+        wb.create_sheet("Needs Review"),
+        title="Needs Review -- low confidence extractions requiring manual check",
+        merge_cols=10,
+        rows=_needs_review_items(results),
+        col_widths=[30, 22, 14, 40, 10, 8, 12, 14, 11, 40],
+        empty_msg="(all extractions passed quality checks -- no items flagged)",
     )
 
-    # ── Sheet 4: Timber Summary ───────────────────────────────────────────────
+    # ── Sheet 5: Supplier Summary ─────────────────────────────────────────────
+    _write_report_sheet(
+        wb.create_sheet("Supplier Summary"),
+        title="Supplier Summary",
+        merge_cols=5,
+        rows=_supplier_summary(results),
+        col_widths=[30, 14, 18, 28, 55],
+    )
+
+    # ── Sheet 6: Timber Summary ───────────────────────────────────────────────
     _write_report_sheet(
         wb.create_sheet("Timber Summary"),
         title="Timber -- structural dimension lumber, grouped by cross-section",
@@ -1228,54 +1372,32 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
         empty_msg="(no timber line items found)",
     )
 
-    # ── Sheet 5: Insulation Summary ───────────────────────────────────────────
-    _write_report_sheet(
-        wb.create_sheet("Insulation Summary"),
-        title="Insulation -- mineral wool, EPS, etc.",
-        merge_cols=5,
-        rows=_category_summary(product_data, "insulation"),
-        col_widths=[42, 10, 14, 18, 14],
-        empty_msg="(no insulation line items found)",
-    )
-
-    # ── Sheet 6: Boards Summary ───────────────────────────────────────────────
-    _write_report_sheet(
-        wb.create_sheet("Boards Summary"),
-        title="Boards -- decking, cladding, panels, laths",
-        merge_cols=5,
-        rows=_category_summary(product_data, "boards"),
-        col_widths=[42, 10, 14, 18, 14],
-        empty_msg="(no boards line items found)",
-    )
-
-    # ── Sheet 7: Doors & Windows ──────────────────────────────────────────────
-    _write_report_sheet(
-        wb.create_sheet("Doors & Windows"),
-        title="Doors & Windows",
-        merge_cols=5,
-        rows=_category_summary(product_data, "doors_windows"),
-        col_widths=[42, 10, 14, 18, 14],
-        empty_msg="(no doors/windows line items found)",
-    )
-
-    # ── Sheet 8: Transport Summary ────────────────────────────────────────────
-    _write_report_sheet(
-        wb.create_sheet("Transport Summary"),
-        title="Transport & Delivery",
-        merge_cols=5,
-        rows=_category_summary(product_data, "transport"),
-        col_widths=[42, 10, 14, 18, 14],
-        empty_msg="(no transport line items found)",
-    )
-
-    # ── Sheet 9: Supplier Summary ─────────────────────────────────────────────
-    _write_report_sheet(
-        wb.create_sheet("Supplier Summary"),
-        title="Supplier Summary",
-        merge_cols=5,
-        rows=_supplier_summary(results),
-        col_widths=[30, 14, 18, 28, 55],
-    )
+    # ── Sheets 7-20: Category summary sheets ─────────────────────────────────
+    _CAT_SHEETS = [
+        ("terrace",       "Terrace",             "Terrace -- decking and outdoor boards"),
+        ("insulation",    "Insulation",           "Insulation -- mineral wool, EPS, etc."),
+        ("boards",        "Boards",               "Boards -- cladding, panels, laths, gypsum"),
+        ("doors_windows", "Doors & Windows",      "Doors & Windows"),
+        ("fasteners",     "Fasteners & Hardware", "Fasteners & Hardware -- screws, nails, brackets"),
+        ("roofing",       "Roofing",              "Roofing -- tiles, membranes, flashings"),
+        ("plumbing",      "Plumbing",             "Plumbing -- pipes, drainage, VVS"),
+        ("electrical",    "Electrical",           "Electrical -- cables, panels, switches"),
+        ("ventilation",   "Ventilation",          "Ventilation -- ducts, fans, HRV"),
+        ("paint",         "Paint & Surface",      "Paint & Surface Treatment"),
+        ("tools",         "Tools & Equipment",    "Tools & Equipment"),
+        ("transport",     "Transport & Services", "Transport & Delivery"),
+        ("rental",        "Rental Equipment",     "Rental Equipment"),
+        ("miscellaneous", "Miscellaneous",        "Miscellaneous products and services"),
+    ]
+    for cat_key, sheet_name, sheet_title in _CAT_SHEETS:
+        _write_report_sheet(
+            wb.create_sheet(sheet_name),
+            title=sheet_title,
+            merge_cols=5,
+            rows=_category_summary(product_data, cat_key),
+            col_widths=[42, 10, 14, 18, 14],
+            empty_msg=f"(no {sheet_name.lower()} items found)",
+        )
 
     wb.save(str(output_path))
 
