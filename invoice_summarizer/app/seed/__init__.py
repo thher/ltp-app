@@ -1,3 +1,2 @@
-from app.seed.demo_data import SeedDataGenerator
-
-__all__ = ["SeedDataGenerator"]
+# Seed package — demo data generator removed.
+# The application starts with an empty database on first launch.

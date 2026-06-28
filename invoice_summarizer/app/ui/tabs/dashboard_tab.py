@@ -8,7 +8,7 @@ Shows:
   • Spend by Category
 
 When the database is empty an empty-state panel is shown with a
-"Load Demo Data" button that emits ``seed_requested``.
+prompt to import the first invoice.
 """
 from __future__ import annotations
 
@@ -74,7 +74,6 @@ class _DataTable(QTableWidget):
 class DashboardTab(QWidget):
     """Supplier Dashboard — application default landing page."""
 
-    seed_requested   = Signal()
     export_requested = Signal()
 
     def __init__(self, aggregation_repo: Optional[AggregationRepository] = None) -> None:
@@ -127,12 +126,12 @@ class DashboardTab(QWidget):
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.setSpacing(16)
 
-        icon = QLabel("📊")
+        icon = QLabel("📂")
         icon.setStyleSheet("font-size: 64px; background: transparent;")
         icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(icon)
 
-        msg = QLabel("No data yet")
+        msg = QLabel("Ingen data ennå")
         font = QFont()
         font.setPointSize(18)
         font.setBold(True)
@@ -142,23 +141,12 @@ class DashboardTab(QWidget):
         layout.addWidget(msg)
 
         sub = QLabel(
-            "Load demo data to explore the application,\n"
-            "or import your first invoice to get started."
+            "Gå til Dokumenter og importer PDF-fakturaer\n"
+            "for å komme i gang."
         )
         sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
         sub.setStyleSheet("color: #6c7086; font-size: 13px; background: transparent;")
         layout.addWidget(sub)
-
-        load_btn = QPushButton("Load Demo Data")
-        load_btn.setObjectName("primary")
-        load_btn.setFixedWidth(180)
-        load_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        load_btn.clicked.connect(self.seed_requested.emit)
-        btn_row = QHBoxLayout()
-        btn_row.addStretch()
-        btn_row.addWidget(load_btn)
-        btn_row.addStretch()
-        layout.addLayout(btn_row)
 
         return w
 

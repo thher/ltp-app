@@ -1,97 +1,20 @@
-"""Tests for the demo data seed generator and updated aggregation queries."""
+"""Aggregation query tests."""
 import pytest
 
 from app.database.repositories import AggregationRepository, CategoryRepository, SupplierRepository
-from app.seed import SeedDataGenerator
 
 
-class TestSeedDataGenerator:
-    def test_generates_all_categories(self, db):
-        gen = SeedDataGenerator(db)
-        gen.generate()
-        cat_repo = CategoryRepository(db)
-        assert cat_repo.count() == 6
-
-    def test_generates_all_suppliers(self, db):
-        gen = SeedDataGenerator(db)
-        gen.generate()
-        sup_repo = SupplierRepository(db)
-        assert sup_repo.count() == 20
-
-    def test_generates_invoices(self, db):
-        gen = SeedDataGenerator(db)
-        result = gen.generate()
-        assert result["invoices"] > 0
-
-    def test_all_invoices_processed(self, db):
-        gen = SeedDataGenerator(db)
-        gen.generate()
-        rows = db.fetchall("SELECT DISTINCT status FROM invoices")
-        statuses = {r["status"] for r in rows}
-        assert statuses == {"processed"}
-
-    def test_all_invoices_have_totals(self, db):
-        gen = SeedDataGenerator(db)
-        gen.generate()
-        rows = db.fetchall("SELECT grand_total FROM invoices WHERE grand_total IS NULL")
-        assert len(rows) == 0
-
-    def test_suppliers_have_categories(self, db):
-        gen = SeedDataGenerator(db)
-        gen.generate()
-        rows = db.fetchall(
-            "SELECT COUNT(*) AS n FROM suppliers WHERE category_id IS NOT NULL"
-        )
-        assert rows[0]["n"] == 20
-
-    def test_idempotent_categories(self, db):
-        gen = SeedDataGenerator(db)
-        gen.generate()
-        gen.generate()  # second run
-        cat_repo = CategoryRepository(db)
-        assert cat_repo.count() == 6
-
-    def test_idempotent_suppliers(self, db):
-        gen = SeedDataGenerator(db)
-        gen.generate()
-        gen.generate()  # second run
-        sup_repo = SupplierRepository(db)
-        assert sup_repo.count() == 20
-
-    def test_idempotent_invoices(self, db):
-        gen = SeedDataGenerator(db)
-        r1 = gen.generate()
-        r2 = gen.generate()
-        assert r2["invoices"] == 0     # nothing new on second run
-
-    def test_clear_removes_demo_invoices(self, db):
-        gen = SeedDataGenerator(db)
-        gen.generate()
-        count_before = db.fetchscalar("SELECT COUNT(*) FROM invoices")
-        gen.clear()
-        count_after = db.fetchscalar("SELECT COUNT(*) FROM invoices")
-        assert count_before > 0
-        assert count_after == 0
-
-    def test_dashboard_metrics_populated(self, db):
-        gen = SeedDataGenerator(db)
-        gen.generate()
-        agg = AggregationRepository(db)
-        assert agg.total_suppliers() == 20
-        assert agg.total_invoices() > 0
-        assert agg.total_spend() > 0
-        assert agg.total_categories() == 6
-
-
-class TestUpdatedAggregationQueries:
-    def test_total_categories_zero_on_empty(self, agg_repo):
-        assert agg_repo.total_categories() == 0
+class TestAggregationQueries:
+    def test_total_categories_zero_invoices_on_empty(self, agg_repo):
+        # v006 seeds 16 Norwegian categories; what matters is invoices = 0
+        assert agg_repo.total_invoices() == 0
 
     def test_total_categories_counts(self, category_repo, agg_repo):
         from app.database.models import Category
+        before = agg_repo.total_categories()
         category_repo.save(Category(name="A"))
         category_repo.save(Category(name="B"))
-        assert agg_repo.total_categories() == 2
+        assert agg_repo.total_categories() == before + 2
 
     def test_spend_by_category_live_query(self, db):
         """spend_by_category should aggregate from invoices, not category_aggregations."""
@@ -160,3 +83,9 @@ class TestUpdatedAggregationQueries:
         stats = agg_repo.supplier_stats()
         row = next(r for r in stats if r["canonical_name"] == "NoCategory")
         assert row["category_name"] == "Uncategorized"
+
+    def test_empty_database_shows_zeros(self, db):
+        agg_repo = AggregationRepository(db)
+        assert agg_repo.total_suppliers() == 0
+        assert agg_repo.total_invoices() == 0
+        assert agg_repo.total_spend() == 0

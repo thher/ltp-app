@@ -33,7 +33,6 @@ from app.processing.ocr_engine import OcrEngine
 from app.processing.pdf_extractor import PDFExtractor
 from app.processing.pipeline import ProcessingPipeline
 from app.processing.product_normalizer import ProductNormalizerService
-from app.seed import SeedDataGenerator
 from app.ui.dialogs.export_dialog import ExportDialog
 from app.ui.style import DARK
 from app.ui.tabs.categories_tab import CategoriesTab
@@ -54,7 +53,6 @@ class MainWindow(QMainWindow):
         self._db = db
         self._init_repos()
         self._init_pipeline()
-        self._seeder = SeedDataGenerator(db)
 
         self.setWindowTitle(config.WINDOW_TITLE)
         self.setMinimumSize(config.WINDOW_MIN_WIDTH, config.WINDOW_MIN_HEIGHT)
@@ -139,7 +137,6 @@ class MainWindow(QMainWindow):
             self._stack.addWidget(page)
 
         # Wire signals
-        self._dashboard.seed_requested.connect(self._on_seed_requested)
         self._dashboard.export_requested.connect(self._on_export_requested)
         self._documents.import_completed.connect(self._refresh_all)
         self._documents.import_completed.connect(self._materials.refresh)
@@ -169,19 +166,9 @@ class MainWindow(QMainWindow):
         ]
         return names[index] if index < len(names) else ""
 
-    # ── Seed ──────────────────────────────────────────────────────────
-
     def _on_export_requested(self) -> None:
         dlg = ExportDialog(self._export_svc, self._sup_repo, parent=self)
         dlg.exec()
-
-    def _on_seed_requested(self) -> None:
-        result = self._seeder.generate()
-        self._refresh_all()
-        self.statusBar().showMessage(
-            f"Demo data loaded — {result['suppliers']} suppliers, "
-            f"{result['invoices']} invoices"
-        )
 
     def _refresh_all(self) -> None:
         for i in range(self._stack.count()):

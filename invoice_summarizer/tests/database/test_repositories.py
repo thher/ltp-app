@@ -58,10 +58,10 @@ class TestCategoryRepository:
         assert category_repo.find_by_id(cat.id) is None
 
     def test_count(self, category_repo):
-        assert category_repo.count() == 0
+        before = category_repo.count()  # v006 seeds Norwegian categories
         category_repo.save(Category(name="C1"))
         category_repo.save(Category(name="C2"))
-        assert category_repo.count() == 2
+        assert category_repo.count() == before + 2
 
     def test_subcategory_parent_id(self, category_repo):
         parent = category_repo.save(Category(name="Parent"))
@@ -348,8 +348,9 @@ class TestAggregationRepository:
         assert result[0]["invoice_count"] == 5
 
     def test_spend_by_category_empty(self, agg_repo):
+        # v006 seeds 16 Norwegian categories; with no invoices all totals are zero
         result = agg_repo.spend_by_category()
-        assert result == []
+        assert all(r["total_gross"] == 0.0 and r["invoice_count"] == 0 for r in result)
 
     def test_spend_by_category_with_data(self, category_repo, agg_repo):
         category_repo.save(Category(name="Auto Parts"))
