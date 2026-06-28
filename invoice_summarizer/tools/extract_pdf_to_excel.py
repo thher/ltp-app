@@ -264,7 +264,8 @@ def _extract_line_items_spatial(ocr_results: list) -> list[dict]:
 
 # ── Text-based line item parser (generic Norwegian building invoices) ─────────
 
-_TABLE_HDR_RE  = re.compile(r'\b(tekst|antall|pris|bel[øo]p|beloep)\b', re.I)
+_TABLE_HDR_RE  = re.compile(r'\b(tekst|antall|pris|bel[øo]p|beloep|beskrivelse)\b', re.I)
+_DESC_ONLY_RE  = re.compile(r'^[A-Za-zÆØÅæøå0-9\s\.\-/,]+$')  # no trailing amount
 _SECTION_RE    = re.compile(r'^\s*(HUS|ETG|BYGNING|AVDELING|SEKSJON|BLOKK)\b', re.I)
 _STOP_RE       = re.compile(
     r'F[oø]lgende\s+bel[øo]p|Totalt\s+bel[øo]p|^\s*MVA\s*\(|Betalingsbetingelser',
@@ -340,12 +341,12 @@ def _try_parse_item(line: str, section: str) -> dict | None:
         vat_pct = float(nxt)
         idx -= 1
 
-    # Step 3: Discount% (1-60)
+    # Step 3: Discount% (0-99) — Nydal uses decimal "45,00"; must not re-consume a VAT rate
     discount_pct = None
     nxt = tokens[idx - 1] if idx >= 1 else None
-    if is_int(nxt):
-        v = float(nxt)
-        if 1 <= v <= 60:
+    if is_num(nxt) and nxt not in _VAT_RATES:
+        v = _parse_no_num(nxt)
+        if v is not None and 0.0 <= v < 100.0:
             discount_pct = v
             idx -= 1
 
@@ -427,11 +428,16 @@ def _try_parse_item(line: str, section: str) -> dict | None:
 
 
 def _extract_line_items_text(text: str) -> list[dict]:
-    """Text-based line item extraction for Norwegian building invoices."""
+    """Text-based line item extraction for Norwegian building invoices.
+
+    Supports multi-line descriptions: if a line fails to parse and looks like
+    pure description text, it is accumulated and prepended to the next line.
+    """
     lines = text.splitlines()
     items: list[dict] = []
     in_table = False
     section = ""
+    pending_desc = ""
 
     for line in lines:
         stripped = line.strip()
@@ -439,17 +445,36 @@ def _extract_line_items_text(text: str) -> list[dict]:
             continue
         if _STOP_RE.search(stripped):
             in_table = False
+            pending_desc = ""
             continue
         if not in_table:
             if len(_TABLE_HDR_RE.findall(stripped)) >= 2:
                 in_table = True
+                pending_desc = ""
             continue
         if _SECTION_RE.match(stripped):
             section = stripped
+            pending_desc = ""
             continue
-        item = _try_parse_item(stripped, section)
+
+        # Try parsing with any accumulated description prefix
+        full_line = (pending_desc + " " + stripped).strip() if pending_desc else stripped
+        item = _try_parse_item(full_line, section)
+
         if item:
             items.append(item)
+            pending_desc = ""
+        else:
+            # Line didn't parse — check if it's a pure-text description continuation
+            # (no trailing number sequence that looks like an amount)
+            if not re.search(r'\d[,.\d]*\s*$', stripped) and len(stripped) > 2:
+                pending_desc = (pending_desc + " " + stripped).strip() if pending_desc else stripped
+            else:
+                # Try the line on its own (pending prefix may have confused the parser)
+                item2 = _try_parse_item(stripped, section)
+                if item2:
+                    items.append(item2)
+                pending_desc = ""
 
     return items
 
@@ -696,8 +721,15 @@ def _parse_invoice_block(block_text: str, filename: str = "") -> dict:
     ])
     total = _find_amount([
         r"Totalt\s+bel[øo]p\s*[:\s]+([\d\s,.\xa0]+)",
+        r"Total\s*inkl\.?\s*(?:mva|MVA)\s*[:\s]+([\d\s,.\xa0]+)",
         r"Total\s*[:\s]+([\d\s,.\xa0]+)",
-        r"Netto\s+bel[øo]p\s*[:\s]+([\d\s,.\xa0]+)",
+    ])
+    # Subtotal before VAT — used for extraction validation
+    netto = _find_amount([
+        r"Netto\s*bel[øo]p\s*[:\s]+([\d\s,.\xa0]+)",
+        r"Sum\s+eks\.?\s*(?:mva|MVA)\s*[:\s]+([\d\s,.\xa0]+)",
+        r"Grunnlag\s*(?:MVA)?\s*[:\s]+([\d\s,.\xa0]+)",
+        r"Netto\s*[:\s]+([\d\s,.\xa0]+)",
     ])
     cur_m = re.search(r"\b(NOK|SEK|EUR|USD|GBP)\b", block_text, re.I)
 
@@ -708,6 +740,7 @@ def _parse_invoice_block(block_text: str, filename: str = "") -> dict:
         "invoice_date":   date,
         "due_date":       due,
         "total":          total,
+        "netto_total":    netto,
         "currency":       cur_m.group(1).upper() if cur_m else "NOK",
         "confidence":     0.7 if inv_num else 0.3,
     }
@@ -717,18 +750,22 @@ def _parse_invoice_block(block_text: str, filename: str = "") -> dict:
 
 @dataclass
 class InvoiceData:
-    source_pdf:     str
-    supplier:       str
-    customer:       str
-    invoice_number: str
-    invoice_date:   str
-    due_date:       str
-    total:          float | None
-    currency:       str
-    confidence:     float
-    status:         str
-    line_items:     list[dict] = field(default_factory=list)
-    raw_text:       str = ""
+    source_pdf:       str
+    supplier:         str
+    customer:         str
+    invoice_number:   str
+    invoice_date:     str
+    due_date:         str
+    total:            float | None
+    currency:         str
+    confidence:       float
+    status:           str
+    line_items:       list[dict] = field(default_factory=list)
+    raw_text:         str = ""
+    netto_total:      float | None = None   # subtotal before VAT (for validation)
+    extracted_sum:    float | None = None   # sum of all line totals extracted
+    extraction_ok:    bool = True           # False when mismatch > 2%
+    extraction_note:  str = ""              # human-readable mismatch description
 
 
 @dataclass
@@ -813,6 +850,7 @@ def _process_pdf(
         inv_date   = header.get("invoice_date") or ""
         due_date   = header.get("due_date") or ""
         total      = header.get("total")
+        netto      = header.get("netto_total")
         currency   = header.get("currency") or "NOK"
         confidence = header.get("confidence") or 0.0
 
@@ -821,7 +859,7 @@ def _process_pdf(
         print(f"  Invoice# : {inv_num or '(not found)'}")
         print(f"  Date     : {inv_date or '(not found)'}")
         print(f"  Due      : {due_date or '(not found)'}")
-        print(f"  Total    : {total} {currency}")
+        print(f"  Total    : {total} {currency}  Netto: {netto}")
 
         # E: Line items
         print("  Extracting line items ...")
@@ -845,8 +883,33 @@ def _process_pdf(
             item["Customer"]   = customer
             item["Invoice #"]  = inv_num
 
+        # F: Validate extraction completeness
+        extracted_sum = sum(it.get("Line Total") or 0.0 for it in items)
+        ref_amount    = netto or total   # prefer pre-VAT subtotal for comparison
+        extraction_ok   = True
+        extraction_note = ""
+        if ref_amount and ref_amount > 0 and items:
+            mismatch_pct = abs(extracted_sum - ref_amount) / ref_amount
+            if mismatch_pct > 0.02:
+                extraction_ok   = False
+                extraction_note = (
+                    f"Extracted sum {extracted_sum:,.2f} vs "
+                    f"{'netto' if netto else 'total'} {ref_amount:,.2f} "
+                    f"({mismatch_pct:.1%} mismatch, {len(items)} rows)"
+                )
+                print(f"  ** VALIDATION WARNING: {extraction_note}")
+            else:
+                print(f"  -> Validation OK: {extracted_sum:,.2f} ≈ {ref_amount:,.2f} "
+                      f"({mismatch_pct:.1%})")
+        elif not items:
+            extraction_ok   = False
+            extraction_note = "No line items extracted"
+            print("  ** VALIDATION WARNING: No line items extracted")
+
         # Always create the invoice entry — never discard
         inv_status = "OK" if (inv_num or total) else "Needs Review"
+        if not extraction_ok:
+            inv_status = "Needs Review"
         res.invoices.append(InvoiceData(
             source_pdf=pdf_path.name,
             supplier=supplier,
@@ -860,6 +923,10 @@ def _process_pdf(
             status=inv_status,
             line_items=items,
             raw_text=block_text,
+            netto_total=netto,
+            extracted_sum=extracted_sum,
+            extraction_ok=extraction_ok,
+            extraction_note=extraction_note,
         ))
 
     # Overall PDF status
@@ -991,10 +1058,25 @@ def _collect_product_data(results: list[PDFResult]) -> list[dict]:
 
 
 def _needs_review_items(results: list[PDFResult]) -> list[dict]:
-    """Collect line items with low confidence or from problematic invoices."""
+    """Collect line items with low confidence plus invoice-level extraction mismatches."""
     rows = []
     for res in results:
         for inv in res.invoices:
+            # Invoice-level: extraction sum doesn't match expected total
+            if not inv.extraction_ok and inv.extraction_note:
+                rows.append({
+                    "Source PDF":  res.filename,
+                    "Supplier":    inv.supplier or "",
+                    "Invoice #":   inv.invoice_number or "",
+                    "Description": "(faktura-nivå kontroll)",
+                    "Quantity":    None,
+                    "Unit":        "",
+                    "Unit Price":  None,
+                    "Line Total":  inv.extracted_sum,
+                    "Confidence":  0.0,
+                    "Issue":       inv.extraction_note,
+                })
+
             inv_flagged = inv.status == "Needs Review"
             for item in inv.line_items:
                 conf = item.get("Confidence") or 1.0
@@ -1002,7 +1084,7 @@ def _needs_review_items(results: list[PDFResult]) -> list[dict]:
                 issues = []
                 if conf < 0.7:
                     issues.append(f"low confidence ({conf:.0%})")
-                if inv_flagged:
+                if inv_flagged and not inv.extraction_note:
                     issues.append("invoice needs review")
                 if len(desc) < 5:
                     issues.append("short description")

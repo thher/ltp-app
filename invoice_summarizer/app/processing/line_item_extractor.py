@@ -39,6 +39,20 @@ _COL_FRACTIONS: list[tuple[str, float, float]] = [
     ("amount",      0.810, 1.000),
 ]
 
+# Maps lowercase header keywords → canonical column name
+_HEADER_KW: dict[str, str] = {
+    "beskrivelse": "description",
+    "tekst":       "description",
+    "antall":      "quantity",
+    "enhetspris":  "unit_price",
+    "pris":        "unit_price",
+    "enhet":       "unit",
+    "rabatt":      "discount",
+    "mva":         "vat",
+    "beløp":       "amount",
+    "belop":       "amount",
+}
+
 # "22 stk a 4,8 28X120 ROYAL TERRASSEBORD"
 # "70 stk a 3,6 meter 48x148 JUST. IMPREGNERT"
 # group 1 = piece count, group 2 = length per piece, group 3 = product description
@@ -109,8 +123,11 @@ class LineItemExtractor:
         if page.page_width == 0:
             return [], section
 
-        col_bounds = self._compute_col_bounds(page.page_width)
         rows = self._group_words_into_rows(page.words)
+
+        # Try auto-detecting column bounds from header row; fall back to hardcoded fractions
+        auto_bounds = self._auto_detect_col_bounds(rows, page.page_width)
+        col_bounds  = auto_bounds if auto_bounds else self._compute_col_bounds(page.page_width)
 
         items: list[ExtractedLineItem] = []
         in_table = False
@@ -160,6 +177,51 @@ class LineItemExtractor:
         return items, section
 
     # ── Spatial helpers ────────────────────────────────────────────────
+
+    @staticmethod
+    def _auto_detect_col_bounds(
+        rows: "list[list[OcrWord]]", page_width: int
+    ) -> "dict[str, tuple[int, int]] | None":
+        """Scan rows for a table header and derive column boundaries from word positions.
+
+        Returns None when no header row with ≥ 4 recognisable column keywords is found,
+        so the caller can fall back to the hardcoded fractions.
+        """
+        for row_words in rows:
+            row_lower = " ".join(w.text for w in row_words).lower()
+            if sum(1 for kw in _HEADER_KW if kw in row_lower) < 3:
+                continue
+
+            # Header row found — map each keyword to the centre-X of its word
+            centers: dict[str, int] = {}
+            for word in row_words:
+                wl = word.text.lower().rstrip('%').rstrip('.')
+                col_name = _HEADER_KW.get(wl)
+                if col_name and col_name not in centers:
+                    centers[col_name] = word.left + word.width // 2
+
+            if len(centers) < 4:
+                continue
+
+            # Build bounds by splitting at midpoints between adjacent column centres
+            sorted_cols = sorted(centers.items(), key=lambda x: x[1])
+            bounds: dict[str, tuple[int, int]] = {}
+            for j, (name, cx) in enumerate(sorted_cols):
+                lo = 0 if j == 0 else (sorted_cols[j - 1][1] + cx) // 2
+                hi = (page_width
+                      if j == len(sorted_cols) - 1
+                      else (cx + sorted_cols[j + 1][1]) // 2)
+                bounds[name] = (lo, hi)
+
+            # Anchor edge columns to page boundaries
+            if "description" in bounds:
+                bounds["description"] = (0, bounds["description"][1])
+            if "amount" in bounds:
+                bounds["amount"] = (bounds["amount"][0], page_width)
+
+            return bounds
+
+        return None
 
     @staticmethod
     def _compute_col_bounds(page_width: int) -> dict[str, tuple[int, int]]:
