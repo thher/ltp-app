@@ -26,11 +26,12 @@ Override Tesseract path:
 
 SHEETS IN OUTPUT EXCEL
 ----------------------
-  Samlet oversikt   -- one row per product across all years, with per-year
-                       quantity and price columns plus totals; sorted by
-                       category then spend
+  Samlet oversikt   -- one row per product (all years combined); columns:
+                       Vare/produkt, Kategori, Stk, Lengde pr stk (m),
+                       Total lm, Enhet, Total pris (NOK), Kommentar.
+                       Sorted by category then descending spend.
   2024 / 2025 / …  -- one sheet per year found in the data (dynamic);
-                       same product list filtered to that year only
+                       same columns filtered to that year only.
   Fakturaoversikt   -- one row per invoice
   Kontroll          -- uncertain / low-confidence extractions for manual review
 """
@@ -875,13 +876,16 @@ def _process_pdf(
 # ── Aggregation ───────────────────────────────────────────────────────────────
 
 def _collect_product_data(results: list[PDFResult]) -> list[dict]:
-    """Aggregate all line items by (normalised product, normalised unit).
+    """Aggregate all line items by (normalised product key, effective unit).
 
-    Noise words (UH., JUST., MM, MOELVEN) are stripped and dimension
-    notation is normalised before grouping, so the same product described
-    differently by different suppliers ends up in the same bucket.
+    Noise words (UH, JUST, MM, MOELVEN, TERRASSEBORD …) are stripped and
+    dimension notation is normalised before grouping, so the same product
+    described differently by different suppliers lands in one bucket.
 
-    Returns a flat list of group dicts (one per unique product+unit).
+    Bundle items ("22 stk a 4,8 m …") are grouped with lm items for the
+    same product because the effective measure is linear metres.
+
+    Returns a flat list of group dicts (one per unique product).
     """
     groups: dict[str, dict] = {}
 
@@ -893,20 +897,30 @@ def _collect_product_data(results: list[PDFResult]) -> list[dict]:
                     continue
 
                 unit      = item.get("Unit", "") or ""
+                lpu       = item.get("Length/unit m")      # board length (m/piece)
+                total_len = item.get("Total length m") or 0.0
+                qty       = item.get("Quantity")
+                lt        = item.get("Line Total")
+
                 norm_prod = _normalize_product(desc)
                 norm_unit = _normalize_unit(unit)
-                agg_key   = f"{norm_prod}|{norm_unit}"
+
+                # Bundle items ("22 stk a 4.8 m") and lm items represent the
+                # same physical measure; group them together under "lm".
+                agg_unit_key = "lm" if (total_len or lpu) else norm_unit
+                agg_key = f"{norm_prod}|{agg_unit_key}"
 
                 if agg_key not in groups:
                     groups[agg_key] = {
                         "norm_key":       norm_prod,
                         "display":        _canonical_product(desc),
                         "unit":           unit,
-                        "norm_unit":      norm_unit,
+                        "norm_unit":      agg_unit_key,
                         "category":       _detect_category(norm_prod),
                         "dimension":      _extract_dimension(norm_prod),
-                        "qty":            0.0,
-                        "total_length_m": 0.0,
+                        "stk_total":      0.0,    # total piece count
+                        "lm_total":       0.0,    # total linear metres
+                        "length_per_unit": None,  # typical board length
                         "total_spend":    0.0,
                         "appearances":    0,
                         "suppliers":      set(),
@@ -917,18 +931,28 @@ def _collect_product_data(results: list[PDFResult]) -> list[dict]:
                     }
 
                 g = groups[agg_key]
-                # Prefer shorter canonical display (less noise)
+
+                # Prefer the longer canonical display (more complete description)
                 candidate = _canonical_product(desc)
-                if candidate and (not g["display"] or len(candidate) < len(g["display"])):
+                if candidate and len(candidate) > len(g["display"] or ""):
                     g["display"] = candidate
 
-                qty = item.get("Quantity")
-                if qty:
-                    g["qty"] += qty
-                tl = item.get("Total length m")
-                if tl:
-                    g["total_length_m"] += tl
-                lt = item.get("Line Total")
+                # Accumulate piece count
+                if norm_unit == "stk" and qty:
+                    g["stk_total"] += qty
+                elif (total_len or lpu) and qty:
+                    g["stk_total"] += qty   # bundle qty = piece count
+
+                # Accumulate linear metres
+                if total_len:
+                    g["lm_total"] += total_len
+                elif norm_unit == "lm" and qty:
+                    g["lm_total"] += qty
+
+                # Record the typical board length (first non-null wins)
+                if lpu and g["length_per_unit"] is None:
+                    g["length_per_unit"] = lpu
+
                 if lt:
                     g["total_spend"] += lt
                 g["appearances"] += 1
@@ -937,14 +961,26 @@ def _collect_product_data(results: list[PDFResult]) -> list[dict]:
                 g["pdfs"].add(res.filename)
                 if inv.invoice_number:
                     g["invoices"].add(inv.invoice_number)
+
                 d = _parse_date(inv.invoice_date)
                 if d:
                     g["dates"].append(d)
                     yr = d.year
                     if yr not in g["by_year"]:
-                        g["by_year"][yr] = {"qty": 0.0, "spend": 0.0}
-                    g["by_year"][yr]["qty"]   += qty or 0
-                    g["by_year"][yr]["spend"] += lt  or 0
+                        g["by_year"][yr] = {"stk": 0.0, "lm": 0.0, "spend": 0.0}
+
+                    if norm_unit == "stk" and qty:
+                        g["by_year"][yr]["stk"] += qty
+                    elif (total_len or lpu) and qty:
+                        g["by_year"][yr]["stk"] += qty
+
+                    if total_len:
+                        g["by_year"][yr]["lm"] += total_len
+                    elif norm_unit == "lm" and qty:
+                        g["by_year"][yr]["lm"] += qty
+
+                    if lt:
+                        g["by_year"][yr]["spend"] += lt
 
     return list(groups.values())
 
@@ -1039,9 +1075,9 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
         flagged_keys: set[str],
         year: int | None = None,
     ) -> None:
-        """Write a simple product sheet (used for per-year and totals-only views)."""
-        COLS = ["Vare / produkt", "Kategori", "Enhet",
-                "Total mengde", "Total pris (NOK)", "Kommentar"]
+        """Write a product sheet with piece / length / price columns."""
+        COLS = ["Vare / produkt", "Kategori", "Stk", "Lengde pr stk (m)",
+                "Total lm", "Enhet", "Total pris (NOK)", "Kommentar"]
         _title(ws, title_text, len(COLS))
         _hdr(ws, 2, COLS)
 
@@ -1049,17 +1085,26 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
         for r, g in enumerate(rows, start=3):
             if year is not None:
                 yd        = g["by_year"].get(year, {})
-                qty_val   = round(yd.get("qty", 0), 2)   if yd.get("qty")   else None
+                stk_val   = round(yd.get("stk", 0))   if yd.get("stk")   else None
+                lm_val    = round(yd.get("lm",  0), 1) if yd.get("lm")    else None
                 price_val = round(yd.get("spend", 0), 2) if yd.get("spend") else None
             else:
-                qty_val   = round(g["qty"], 2)          if g["qty"]          else None
-                price_val = round(g["total_spend"], 2)  if g["total_spend"]  else None
+                stk_val   = round(g["stk_total"])     if g["stk_total"]   else None
+                lm_val    = round(g["lm_total"],  1)  if g["lm_total"]    else None
+                price_val = round(g["total_spend"], 2) if g["total_spend"] else None
 
-            cat_disp  = _CATEGORY_DISPLAY.get(g["category"], g["category"].title())
-            unit_disp = g["norm_unit"] or g["unit"] or ""
-            comment   = "Trenger kontroll" if g["norm_key"] in flagged_keys else ""
+            lpu_val  = g["length_per_unit"]
+            cat_disp = _CATEGORY_DISPLAY.get(g["category"], g["category"].title())
+            if g["lm_total"] or (year is not None and g["by_year"].get(year, {}).get("lm")):
+                unit_disp = "lm"
+            elif g["stk_total"]:
+                unit_disp = "stk"
+            else:
+                unit_disp = g["norm_unit"] or g["unit"] or ""
+            comment  = "Trenger kontroll" if g["norm_key"] in flagged_keys else ""
 
-            row_vals = [g["display"], cat_disp, unit_disp, qty_val, price_val, comment]
+            row_vals = [g["display"], cat_disp, stk_val, lpu_val, lm_val,
+                        unit_disp, price_val, comment]
             for c, val in enumerate(row_vals, 1):
                 cell = ws.cell(row=r, column=c, value=val)
                 if comment:
@@ -1070,8 +1115,8 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
 
         total_row = len(rows) + 3
         ws.cell(row=total_row, column=1, value="TOTALT").font = BOLD_FONT
-        ws.cell(row=total_row, column=5, value=round(grand, 2)).font = BOLD_FONT
-        _widths(ws, [44, 24, 10, 14, 18, 20])
+        ws.cell(row=total_row, column=7, value=round(grand, 2)).font = BOLD_FONT
+        _widths(ws, [44, 24, 8, 16, 10, 8, 18, 22])
 
     # ── Collect data ──────────────────────────────────────────────────────────
     all_invoices: list[InvoiceData] = [inv for res in results for inv in res.invoices]
@@ -1090,56 +1135,46 @@ def _write_excel(output_path: Path, results: list[PDFResult]) -> None:
     n_inv = len(all_invoices)
     n_pdf = len(results)
 
-    # ── Sheet 1: Samlet oversikt (year columns + totals) ──────────────────────
+    # ── Sheet 1: Samlet oversikt (all years combined) ────────────────────────
     ws1 = wb.active
     ws1.title = "Samlet oversikt"
 
-    year_col_headers: list[str] = []
-    for yr in all_years:
-        year_col_headers += [f"{yr} mengde", f"{yr} pris (NOK)"]
-
-    COLS1 = (
-        ["Vare / produkt", "Kategori", "Enhet"]
-        + year_col_headers
-        + ["Total mengde", "Total pris (NOK)", "Kommentar"]
-    )
+    COLS1 = ["Vare / produkt", "Kategori", "Stk", "Lengde pr stk (m)",
+             "Total lm", "Enhet", "Total pris (NOK)", "Kommentar"]
     _title(ws1, f"Samlet oversikt — {n_inv} faktura(er) fra {n_pdf} PDF(er)", len(COLS1))
     _hdr(ws1, 2, COLS1)
 
-    sorted_all = _sort_products(product_data)
+    sorted_all  = _sort_products(product_data)
     grand_total = 0.0
 
     for r, g in enumerate(sorted_all, start=3):
-        total_qty   = round(g["qty"], 2)         if g["qty"]         else None
-        total_price = round(g["total_spend"], 2) if g["total_spend"] else None
-        cat_disp    = _CATEGORY_DISPLAY.get(g["category"], g["category"].title())
-        unit_disp   = g["norm_unit"] or g["unit"] or ""
-        comment     = "Trenger kontroll" if g["norm_key"] in flagged_keys else ""
+        stk_val   = round(g["stk_total"])      if g["stk_total"]   else None
+        lpu_val   = g["length_per_unit"]
+        lm_val    = round(g["lm_total"], 1)    if g["lm_total"]    else None
+        price_val = round(g["total_spend"], 2) if g["total_spend"] else None
+        cat_disp  = _CATEGORY_DISPLAY.get(g["category"], g["category"].title())
+        if g["lm_total"]:
+            unit_disp = "lm"
+        elif g["stk_total"]:
+            unit_disp = "stk"
+        else:
+            unit_disp = g["norm_unit"] or g["unit"] or ""
+        comment = "Trenger kontroll" if g["norm_key"] in flagged_keys else ""
 
-        year_vals: list = []
-        for yr in all_years:
-            yd = g["by_year"].get(yr, {})
-            year_vals.append(round(yd.get("qty", 0), 2)   if yd.get("qty")   else None)
-            year_vals.append(round(yd.get("spend", 0), 2) if yd.get("spend") else None)
-
-        row_vals = [g["display"], cat_disp, unit_disp] + year_vals + [total_qty, total_price, comment]
+        row_vals = [g["display"], cat_disp, stk_val, lpu_val, lm_val,
+                    unit_disp, price_val, comment]
         for c, val in enumerate(row_vals, 1):
             cell = ws1.cell(row=r, column=c, value=val)
             if comment:
                 cell.fill = FLAG_FILL
 
-        if total_price:
-            grand_total += total_price
+        if price_val:
+            grand_total += price_val
 
     total_row_1 = len(sorted_all) + 3
     ws1.cell(row=total_row_1, column=1, value="TOTALT").font = BOLD_FONT
-    total_price_col = COLS1.index("Total pris (NOK)") + 1
-    ws1.cell(row=total_row_1, column=total_price_col, value=round(grand_total, 2)).font = BOLD_FONT
-
-    base_w  = [44, 24, 10]
-    year_w  = [13, 16] * len(all_years)
-    end_w   = [14, 18, 20]
-    _widths(ws1, base_w + year_w + end_w)
+    ws1.cell(row=total_row_1, column=7, value=round(grand_total, 2)).font = BOLD_FONT
+    _widths(ws1, [44, 24, 8, 16, 10, 8, 18, 22])
 
     # ── Sheets 2…N: one sheet per year ───────────────────────────────────────
     for yr in all_years:

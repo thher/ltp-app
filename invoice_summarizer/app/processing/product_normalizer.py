@@ -41,6 +41,14 @@ _NOISE_RE = re.compile(
     re.I,
 )
 
+# Generic product-type suffixes: stripped from the grouping key so that
+# "28X120 ROYAL TERRASSEBORD" and "28X120 MOELVEN ROYAL" share the same key,
+# but kept in canonical_name() so the display label stays descriptive.
+_TYPE_NOISE_RE = re.compile(
+    r'\b(?:TERRASSEBORD|KLEDNINGSBORD|TRELAST)\b',
+    re.I,
+)
+
 # ── Unit canonical map ────────────────────────────────────────────────────────
 
 _UNIT_CANON: dict[str, str] = {
@@ -120,11 +128,14 @@ _CATEGORY_DISPLAY: dict[str, str] = {
 def normalize_key(description: str) -> str:
     """Return a lowercase grouping key with dimensions and noise words normalised.
 
-    48X198 UH. JUST. C24  ->  48x198 c24
-    28X120 MOELVEN ROYAL TERRASSEBORD  ->  28x120 royal terrassebord
+    48X198 UH. JUST. C24        ->  48x198 c24
+    28X120 MOELVEN ROYAL        ->  28x120 royal
+    28X120 ROYAL TERRASSEBORD   ->  28x120 royal   (same key — merged)
+    48x198 impregnert           ->  48x198 impregnert  (stays separate)
     """
     s = _DIM_RE.sub(lambda m: f"{m.group(1)}x{m.group(2)}", description)
     s = _NOISE_RE.sub(' ', s)
+    s = _TYPE_NOISE_RE.sub(' ', s)
     return ' '.join(s.split()).lower()
 
 
